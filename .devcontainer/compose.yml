@@ -32,4 +32,4 @@ services:
     volumes:
       - ./config/nats-server.conf:/nats/conf/nats-server.conf:ro
       - ./nats-data:/data:rw
-    command: [ "--js", "-c", "/nats/conf/nats-server.conf" ]
+    command: [ "--js", "-m", "8222", "-c", "/nats/conf/nats-server.conf" ]
