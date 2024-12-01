@@ -1,0 +1,35 @@
+services:
+  devcontainer:
+    build: .
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+  tuner:
+    image: ghcr.io/kurec-tool/images/mirakc:latest
+    volumes:
+      - ./epg:/var/lib/mirakc/epg
+      - ./config/mirakc-config.yml:/etc/mirakc/config.yml:ro
+      - ./recorded:/recorded
+      - ./records:/records
+    environment:
+      - RUST_LOG=debug
+    ports:
+      - "40772:40772"
+  tailscale:
+    image: tailscale/tailscale:latest
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    env_file: .env
+    environment:
+      - TS_HOSTNAME=kurec-devcontainer-tuner
+    network_mode: service:tuner
+  nats:
+    image: nats:latest
+    ports:
+      - "8222:8222"
+    volumes:
+      - ./config/nats-server.conf:/nats/conf/nats-server.conf:ro
+      - ./nats-data:/data:rw
+    command: [ "--js", "-c", "/nats/conf/nats-server.conf" ]
