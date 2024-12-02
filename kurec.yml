@@ -1,2 +1,5 @@
 mirakc:
-  url: "http://tuner:40772"
+  tuners:
+    tuner0: "http://tuner:40772"
+nats:
+  host: nats

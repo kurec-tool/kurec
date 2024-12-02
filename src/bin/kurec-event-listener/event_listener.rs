@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use kurec::message::event::parse_event;
+use kurec::message::event::{parse_event, MirakcEventData};
 use tracing::{debug, error, info};
 
 #[derive(Message)]
@@ -7,15 +7,21 @@ use tracing::{debug, error, info};
 pub struct Ping {}
 
 pub(crate) struct EventListener {
+    tuner_name: String,
     mirakc_resp: Option<reqwest::Response>,
-    nats_connection: nats::Connection,
+    nats_client: async_nats::Client,
 }
 
 impl EventListener {
-    pub fn new(mirakc_resp: reqwest::Response, nats_connection: nats::Connection) -> Self {
+    pub fn new(
+        tuner_name: String,
+        mirakc_resp: reqwest::Response,
+        nats_client: async_nats::Client,
+    ) -> Self {
         EventListener {
+            tuner_name,
             mirakc_resp: Some(mirakc_resp),
-            nats_connection,
+            nats_client,
         }
     }
 }
@@ -47,12 +53,25 @@ impl StreamHandler<Result<bytes::Bytes, reqwest::Error>> for EventListener {
                             return;
                         }
                     };
-                    if let Err(e) = self
-                        .nats_connection
-                        .publish("mirakc.event", message_body.as_bytes())
-                    {
-                        error!("Failed to publish message: {:?}", e);
+                    let subject = match ev.data {
+                        MirakcEventData::EpgProgramsUpdated { service_id } => format!(
+                            "mirakc.event.{}.{}.{}",
+                            ev.event, self.tuner_name, service_id
+                        ),
+                        _ => format!("mirakc.event.{}.{}", ev.event, self.tuner_name),
+                    };
+                    let nc = self.nats_client.clone();
+                    async move {
+                        match nc
+                            .publish(subject.clone(), message_body.clone().into())
+                            .await
+                        {
+                            Ok(_) => info!("published message[{}]: {}", subject, message_body),
+                            Err(e) => error!("Failed to publish message: {:?}", e),
+                        }
                     }
+                    .into_actor(self)
+                    .spawn(ctx);
                 }
             }
             Err(e) => {

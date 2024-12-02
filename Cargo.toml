@@ -6,11 +6,11 @@ edition = "2021"
 [dependencies]
 actix = "0.13.5"
 actix-web = "4.9.0"
+async-nats = "0.38.0"
 bytes = "1.9.0"
 figment = { version = "0.10.19", features = ["env", "json", "toml", "yaml"] }
 futures = "0.3.31"
 mirakc-core = { git = "https://github.com/mirakc/mirakc.git", version = "3.3.0-dev.0", branch = "feat-recording-endpoints" }
-nats = "0.25.0"
 reqwest = { version = "0.12.9", features = ["stream"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
@@ -19,5 +19,6 @@ tokio-stream = { version = "0.1.16", features = ["full"] }
 tracing = { version = "0.1.41", features = ["log"] }
 tracing-actix-web = "0.7.15"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "tracing"] }
+url = "2.5.4"
 validator = { version = "0.19.0", features = ["derive"] }
 

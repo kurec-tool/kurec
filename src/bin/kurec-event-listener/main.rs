@@ -9,21 +9,27 @@ mod event_listener;
 
 #[derive(Clone)]
 struct AppData {
-    event_listener: Addr<EventListener>,
+    event_listeners: Vec<Addr<EventListener>>,
 }
 
 impl AppData {
-    fn new(event_listener: Addr<EventListener>) -> Self {
-        Self { event_listener }
+    fn new(event_listeners: Vec<Addr<EventListener>>) -> Self {
+        Self { event_listeners }
     }
 }
 
 #[get("/health")]
 async fn health(data: web::Data<AppData>) -> HttpResponse {
-    match data.event_listener.send(event_listener::Ping {}).await {
-        Ok(true) => HttpResponse::Ok().finish(),
-        _ => HttpResponse::ServiceUnavailable().finish(),
+    for event_listener in &data.event_listeners {
+        match event_listener.send(event_listener::Ping {}).await {
+            Ok(true) => continue,
+            _ => {
+                error!("event_listener is not available");
+                return HttpResponse::ServiceUnavailable().finish();
+            }
+        }
     }
+    HttpResponse::Ok().finish()
 }
 
 #[actix_web::main]
@@ -34,29 +40,34 @@ async fn main() -> std::io::Result<()> {
         .with_ansi(true)
         .init();
 
-    let mut mirakc_url = config.mirakc.url.clone();
-    if mirakc_url.ends_with('/') {
-        mirakc_url.pop();
+    let mut event_listeners = Vec::new();
+
+    for (tuner_name, tuner_url) in &config.mirakc.tuners {
+        let mut tuner_url = tuner_url.clone();
+        if tuner_url.ends_with('/') {
+            tuner_url.pop();
+        }
+        let event_url = format!("{}/events", tuner_url);
+        let mirakc_resp = match reqwest::get(event_url).await {
+            Ok(resp) => resp,
+            Err(e) => {
+                error!("mirakc connect error: {:?}", e);
+                std::process::exit(1);
+            }
+        };
+
+        let nc = match async_nats::connect(config.nats.host.clone()).await {
+            Ok(nc) => nc,
+            Err(e) => {
+                error!("nats connect error: {:?}", e);
+                std::process::exit(1);
+            }
+        };
+        let event_listener = EventListener::new(tuner_name.clone(), mirakc_resp, nc).start();
+        event_listeners.push(event_listener);
     }
-    let events_url = format!("{}/events", mirakc_url);
 
-    let mirakc_resp = match reqwest::get(events_url).await {
-        Ok(resp) => resp,
-        Err(e) => {
-            error!("mirakc connect error: {:?}", e);
-            std::process::exit(1);
-        }
-    };
-
-    let nc = match nats::connect(config.nats.host) {
-        Ok(nc) => nc,
-        Err(e) => {
-            error!("nats connect error: {:?}", e);
-            std::process::exit(1);
-        }
-    };
-    let event_listener = EventListener::new(mirakc_resp, nc).start();
-    let data = AppData::new(event_listener);
+    let data = AppData::new(event_listeners);
 
     HttpServer::new(move || {
         App::new()

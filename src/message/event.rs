@@ -1,23 +1,23 @@
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-const EVENT_TUNER_STATUS_CHANGED: &str = "tuner.status-changed";
-const EVENT_EPG_PROGRAM_UPDATED: &str = "epg.programs-updated";
-const EVENT_RECORDING_STARTED: &str = "recording.started";
-const EVENT_RECORDING_STOPPED: &str = "recording.stopped";
-const EVENT_RECORDING_FAILED: &str = "recording.failed";
-const EVENT_RECORDING_RESCHEDULED: &str = "recording.rescheduled";
-const EVENT_RECORDING_RECORD_SAVED: &str = "recording.record-saved";
-const EVENT_RECORDING_RECORD_REMOVED: &str = "recording.record-removed";
-const EVENT_RECORDING_CONTENT_REMOVED: &str = "recording.content-removed";
-const EVENT_RECORDING_RECORD_BROKEN: &str = "recording.record-broken";
-// const EVENT_TIMESHIFT_TIMELINE: &str = "timeshift.timeline";
-// const EVENT_TIMESHIFT_STARTED: &str = "timeshift.started";
-// const EVENT_TIMESHIFT_STOPPED: &str = "timeshift.stopped";
-// const EVENT_TIMESHIFT_RECORD_STARTED: &str = "timeshift.record.started";
-// const EVENT_TIMESHIFT_RECORD_UPDATED: &str = "timeshift.record.updated";
-// const EVENT_TIMESHIFT_RECORD_ENDED: &str = "timeshift.record.ended";
-const EVENT_ONAIR_PROGRAM_CHANGED: &str = "onair.program-changed";
+pub const EVENT_TUNER_STATUS_CHANGED: &str = "tuner.status-changed";
+pub const EVENT_EPG_PROGRAM_UPDATED: &str = "epg.programs-updated";
+pub const EVENT_RECORDING_STARTED: &str = "recording.started";
+pub const EVENT_RECORDING_STOPPED: &str = "recording.stopped";
+pub const EVENT_RECORDING_FAILED: &str = "recording.failed";
+pub const EVENT_RECORDING_RESCHEDULED: &str = "recording.rescheduled";
+pub const EVENT_RECORDING_RECORD_SAVED: &str = "recording.record-saved";
+pub const EVENT_RECORDING_RECORD_REMOVED: &str = "recording.record-removed";
+pub const EVENT_RECORDING_CONTENT_REMOVED: &str = "recording.content-removed";
+pub const EVENT_RECORDING_RECORD_BROKEN: &str = "recording.record-broken";
+// pub const EVENT_TIMESHIFT_TIMELINE: &str = "timeshift.timeline";
+// pub const EVENT_TIMESHIFT_STARTED: &str = "timeshift.started";
+// pub const EVENT_TIMESHIFT_STOPPED: &str = "timeshift.stopped";
+// pub const EVENT_TIMESHIFT_RECORD_STARTED: &str = "timeshift.record.started";
+// pub const EVENT_TIMESHIFT_RECORD_UPDATED: &str = "timeshift.record.updated";
+// pub const EVENT_TIMESHIFT_RECORD_ENDED: &str = "timeshift.record.ended";
+pub const EVENT_ONAIR_PROGRAM_CHANGED: &str = "onair.program-changed";
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
