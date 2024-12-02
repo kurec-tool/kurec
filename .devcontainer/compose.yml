@@ -33,3 +33,14 @@ services:
       - ./config/nats-server.conf:/nats/conf/nats-server.conf:ro
       - ./nats-data:/data:rw
     command: [ "--js", "-m", "8222", "-c", "/nats/conf/nats-server.conf" ]
+  meilisearch:
+    image: getmeili/meilisearch:prototype-japanese-13
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch-data:/data.ms:rw
+    environment:
+      - MEILI_DB_PATH=/data.ms
+
+volumes:
+  meilisearch-data:
