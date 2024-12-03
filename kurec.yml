@@ -1,5 +1,4 @@
-mirakc:
-  tuners:
-    tuner0: "http://tuner:40772"
-nats:
-  host: nats
+tuners:
+  - tuner
+nats_host: nats
+meilisearch_host: meilisearch

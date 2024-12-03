@@ -1,5 +1,4 @@
 use futures::StreamExt;
-use kurec::message::event::MirakcEvent;
 use tracing::error;
 use tracing_subscriber::EnvFilter;
 
@@ -11,21 +10,17 @@ async fn main() -> std::io::Result<()> {
         .with_ansi(true)
         .init();
 
-    let nc = match async_nats::connect(config.nats.host).await {
+    let nc = match async_nats::connect(config.nats_host).await {
         Ok(nc) => nc,
         Err(e) => {
             error!("nats connect error: {:?}", e);
             std::process::exit(1);
         }
     };
-    let mut sub = nc.subscribe("mirakc.event.>").await.unwrap();
+    let mut sub = nc.subscribe(">").await.unwrap();
 
     while let Some(msg) = sub.next().await {
-        println!(
-            "{:?} {:?}",
-            msg,
-            serde_json::from_slice::<MirakcEvent>(msg.payload.as_ref())
-        );
+        println!("{:?}", msg);
     }
 
     Ok(())
