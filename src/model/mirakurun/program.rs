@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 pub type Programs = Vec<Program>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Program {
     pub id: u64,
@@ -36,7 +36,7 @@ pub struct Program {
     pub related_items: Option<Vec<RelatedItem>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Audio {
     pub component_type: u64,
@@ -47,7 +47,7 @@ pub struct Audio {
 
 pub type Lang = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RelatedItem {
     #[serde(rename = "type")]
@@ -57,7 +57,7 @@ pub struct RelatedItem {
     pub event_id: u64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RelatedItemType {
     Shared,
@@ -65,7 +65,7 @@ pub enum RelatedItemType {
     Movement,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Video {
     #[serde(rename = "type")]
@@ -77,7 +77,7 @@ pub struct Video {
 
 pub type Resolution = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VideoType {
     Mpeg2,

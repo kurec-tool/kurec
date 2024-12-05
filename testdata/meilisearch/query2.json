@@ -1,0 +1,5 @@
+{
+    "id": "XXXXXXX-meilisearch-query1",
+    "query": "\"マジルミエ\"",
+    "matchingStrategy": "all"
+}

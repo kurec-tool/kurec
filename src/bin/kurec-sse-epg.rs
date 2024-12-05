@@ -2,7 +2,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use futures::StreamExt;
 use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -58,6 +58,8 @@ async fn main() -> Result<()> {
                     }
                 };
 
+                let mut program_ids: Vec<u64> = Vec::with_capacity(programs.len());
+
                 for program in &programs {
                     let program_id_str = program.id.to_string();
                     let json_bytes: Bytes = program.json.clone().into();
@@ -72,33 +74,35 @@ async fn main() -> Result<()> {
                         // TODO: updateにしてちゃんとリビジョン処理したり、available_tunersを更新したりする
                         match kv.put(program_id_str.clone(), json_bytes).await {
                             Ok(_) => {
-                                info!("program_id: {} recorded", program.id);
+                                debug!("program_id: {} recorded", program.id);
                             }
                             Err(e) => {
                                 error!("Error: {:?}", e);
                                 continue;
                             }
                         };
-                        let message = kurec::message::jetstream_message::OnEpgProgramUpdated {
-                            program_id: program.id,
-                            tuner_url: tuner_url.to_string(),
-                        };
-                        let message_vec = match serde_json::to_vec(&message) {
-                            Ok(message_vec) => message_vec,
-                            Err(e) => {
-                                error!("JSON serialize error: {:?}", e);
-                                continue;
-                            }
-                        };
-                        match jetstream.publish(stream_name, message_vec.into()).await {
-                            Ok(_) => {
-                                info!("program_id: {} published", program.id);
-                            }
-                            Err(e) => {
-                                error!("Error: {:?}", e);
-                                continue;
-                            }
-                        }
+                        program_ids.push(program.id);
+                    }
+                }
+                let message = kurec::message::jetstream_message::OnEpgProgramUpdated {
+                    tuner_url: tuner_url.to_string(),
+                    service_id,
+                    program_ids: program_ids.clone(),
+                };
+                let message_vec = match serde_json::to_vec(&message) {
+                    Ok(message_vec) => message_vec,
+                    Err(e) => {
+                        error!("JSON serialize error: {:?}", e);
+                        continue;
+                    }
+                };
+                match jetstream.publish(stream_name, message_vec.into()).await {
+                    Ok(_) => {
+                        info!("program_ids.len:{:?} published", program_ids.len());
+                    }
+                    Err(e) => {
+                        error!("Error: {:?}", e);
+                        continue;
                     }
                 }
             }

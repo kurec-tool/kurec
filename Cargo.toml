@@ -23,4 +23,5 @@ tracing = { version = "0.1.41", features = ["log"] }
 tracing-actix-web = "0.7.15"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "tracing"] }
 url = "2.5.4"
+uuid = { version = "1.11.0", features = ["v7"] }
 

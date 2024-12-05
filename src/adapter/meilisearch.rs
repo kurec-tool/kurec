@@ -1,12 +1,13 @@
 use crate::model::{
-    meilisearch::program::ProgramDocument,
-    mirakurun::{program::Programs, service::Service},
+    meilisearch::{program::ProgramDocument, MeilisearchQuery},
+    mirakurun::{
+        program::{Program, Programs},
+        service::Service,
+    },
 };
-use meilisearch_sdk::search::{MatchingStrategies, SearchQuery};
-use serde::de::{self, Deserializer as SerdeDeserializer, Visitor};
-use serde::{Deserialize, Serialize};
-use std::fmt;
-use tracing::debug;
+use meilisearch_sdk::search::SearchQuery;
+use serde::Deserialize;
+use tracing::{debug, warn};
 
 async fn get_meilisearch_index(
     client: &meilisearch_sdk::client::Client,
@@ -44,64 +45,6 @@ pub async fn update_programs(
     let task_info = index.add_or_replace(&documents, None).await?;
     task_info.wait_for_completion(&client, None, None).await?;
     Ok(())
-}
-
-fn deserialize_matching_strategies<'de, D>(
-    deserializer: D,
-) -> Result<Option<MatchingStrategies>, D::Error>
-where
-    D: SerdeDeserializer<'de>,
-{
-    struct MatchingStrategiesVisitor;
-
-    impl<'de> Visitor<'de> for MatchingStrategiesVisitor {
-        type Value = Option<MatchingStrategies>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("an optional string representing a MatchingStrategies variant")
-        }
-
-        fn visit_none<E>(self) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(None)
-        }
-
-        fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        where
-            D: SerdeDeserializer<'de>,
-        {
-            deserializer.deserialize_str(self)
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match value {
-                "all" => Ok(Some(MatchingStrategies::ALL)),
-                "last" => Ok(Some(MatchingStrategies::LAST)),
-                "frequency" => Ok(Some(MatchingStrategies::FREQUENCY)),
-                _ => Err(de::Error::unknown_variant(
-                    value,
-                    &["all", "last", "frequency"],
-                )),
-            }
-        }
-    }
-
-    deserializer.deserialize_option(MatchingStrategiesVisitor)
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MeilisearchQuery {
-    #[serde(rename = "q")]
-    query: Option<String>,
-    filter: Option<String>,
-    #[serde(deserialize_with = "deserialize_matching_strategies")]
-    matching_strategy: Option<MatchingStrategies>,
 }
 
 const TEST_QUERIES_JSON: &str = r#"
@@ -150,4 +93,128 @@ pub async fn search_program_ids(
         .collect::<Vec<_>>();
     debug!("program_ids: {:?}", program_ids);
     Ok(program_ids)
+}
+
+pub async fn is_program_matching_rule(
+    meilisearch_url: &str,
+    meilisearch_api_key: &Option<String>,
+    service: &Service,
+    program: &Program,
+    query: &MeilisearchQuery,
+) -> Result<bool, meilisearch_sdk::errors::Error> {
+    let client =
+        meilisearch_sdk::client::Client::new(meilisearch_url, meilisearch_api_key.clone())?;
+
+    let tmp_index_uid = format!("tmp_{}", uuid::Uuid::now_v7());
+    let index = client.index(tmp_index_uid.clone());
+    let filterable = ProgramDocument::get_filterable_attributes();
+    let searchable = ProgramDocument::get_searchable_attributes();
+    let sortable = ProgramDocument::get_sortable_attributes();
+
+    index.set_filterable_attributes(&filterable).await?;
+    index.set_sortable_attributes(&sortable).await?;
+    index.set_searchable_attributes(&searchable).await?;
+
+    let task = index
+        .add_documents(&[ProgramDocument::from_mirakurun(program, service)], None)
+        .await?;
+    task.wait_for_completion(&client, None, None).await?;
+
+    let mut search = index.search();
+    if let Some(query) = &query.query {
+        search.with_query(query);
+    }
+    if let Some(filter) = &query.filter {
+        search.with_filter(filter);
+    }
+    if let Some(matching_strategy) = &query.matching_strategy {
+        search.with_matching_strategy(matching_strategy.clone());
+    }
+    let search_result = search.execute::<ProgramDocument>().await?;
+
+    let result = search_result.hits.is_empty();
+    match client.delete_index(tmp_index_uid).await {
+        Ok(_) => {}
+        Err(e) => {
+            warn!("Error occurs when deleting index: {:?}", e);
+        }
+    };
+
+    Ok(result)
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchResult {
+    program_id: u64,
+}
+
+pub async fn list_rule_matched_program_ids(
+    meilisearch_url: &str,
+    meilisearch_api_key: &Option<String>,
+    service: &Service,
+    programs: &Programs,
+    query: &MeilisearchQuery,
+) -> Result<Vec<u64>, meilisearch_sdk::errors::Error> {
+    debug!(
+        "appling rule programs count: {} query: {:?}",
+        programs.len(),
+        query
+    );
+    let client =
+        meilisearch_sdk::client::Client::new(meilisearch_url, meilisearch_api_key.clone())?;
+
+    let tmp_index_uid = format!("tmp_{}", uuid::Uuid::now_v7());
+    let index = client.index(tmp_index_uid.clone());
+    let filterable = ProgramDocument::get_filterable_attributes();
+    let searchable = ProgramDocument::get_searchable_attributes();
+    let sortable = ProgramDocument::get_sortable_attributes();
+
+    index.set_filterable_attributes(&filterable).await?;
+    index.set_sortable_attributes(&sortable).await?;
+    index.set_searchable_attributes(&searchable).await?;
+
+    let documents: Vec<ProgramDocument> = programs
+        .iter()
+        .filter_map(|p| ProgramDocument::from_mirakurun(p, service))
+        .collect();
+
+    let task = index.add_documents(&documents, None).await?;
+    debug!("start waiting for completion...");
+    task.wait_for_completion(&client, None, None).await?;
+    debug!("done.");
+
+    let mut search = index.search();
+    if let Some(query) = &query.query {
+        search.with_query(query);
+    }
+    if let Some(filter) = &query.filter {
+        search.with_filter(filter);
+    }
+    if let Some(matching_strategy) = &query.matching_strategy {
+        search.with_matching_strategy(matching_strategy.clone());
+    }
+    search.with_limit(programs.len());
+    search.with_attributes_to_retrieve(meilisearch_sdk::search::Selectors::Some(&["programId"]));
+    debug!("start searching...");
+    let search_result = search.execute::<SearchResult>().await?;
+    debug!("search done. hits count: {}", search_result.hits.len());
+    // dbg!(&search_result);
+
+    match client.delete_index(tmp_index_uid).await {
+        Ok(_) => {}
+        Err(e) => {
+            warn!("Error occurs when deleting index: {:?}", e);
+        }
+    };
+
+    if !search_result.hits.is_empty() {
+        dbg!(&search_result);
+    }
+
+    Ok(search_result
+        .hits
+        .iter()
+        .map(|h| h.result.program_id)
+        .collect())
 }

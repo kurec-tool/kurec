@@ -24,7 +24,7 @@ pub async fn apply_meili_rule(
     debug!("program_ids: {:?}", program_ids);
 
     for program_id in &program_ids {
-        schedule_program(tuner_url, program_id).await?;
+        schedule_program(tuner_url, *program_id).await?;
     }
 
     Ok(program_ids.len())
