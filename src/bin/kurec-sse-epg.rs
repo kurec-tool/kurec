@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use futures::StreamExt;
 use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
 use kurec::domain::rule::apply_rule;
@@ -13,6 +14,10 @@ async fn main() -> Result<()> {
         .init();
 
     let tuner_url = "http://tuner:40772";
+    let nats_url = "nats:4222";
+    let client = async_nats::connect(nats_url).await?;
+    let jetstream = async_nats::jetstream::new(client);
+    let kv = jetstream.get_key_value("epg").await?;
 
     match get_sse_service_id_stream(tuner_url).await {
         Ok(mut stream) => {
@@ -26,9 +31,9 @@ async fn main() -> Result<()> {
                     }
                 };
 
-                let programs = match mirakc::get_programs(tuner_url, service_id).await {
+                let programs = match mirakc::get_json_programs(tuner_url, service_id).await {
                     Ok(programs) => {
-                        debug!("got programs: {:?}", programs.len());
+                        // debug!("got programs: {:?}", programs.len());
                         programs
                     }
                     Err(e) => {
@@ -36,6 +41,15 @@ async fn main() -> Result<()> {
                         continue;
                     }
                 };
+
+                for program in &programs {
+                    let program_id_str = program.id.to_string();
+                    let json_bytes: Bytes = program.json.into();
+                    let kv_bytes = kv.get(program_id_str).await?;
+                    if kv_bytes.is_none() || kv_bytes.unwrap() != json_bytes {
+                        kv.create(program_id_str, json_bytes).await?;
+                    }
+                }
 
                 let num_applied = match apply_rule(&programs, &service).await {
                     Ok(num_applied) => {

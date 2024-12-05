@@ -11,5 +11,6 @@
 			]
 		}
 	},
-	"remoteUser": "vscode"
+	"remoteUser": "vscode",
+	"postCreateCommand": "nats context add nats --server nats:4222 --description \"docker-compose NATS\" --select"
 }
