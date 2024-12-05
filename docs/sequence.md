@@ -47,9 +47,15 @@ end
 deactivate kurec-sse-epg
 ```
 
-## kurec-rule
+## kurec-meilisearch-appender
 
-NATS JetStream Stream からイベントを受信して何らかの処理をする
+NATS JetStream Stream からイベントを受信して Meilisearch にデータを追加する
+
+TBW
+
+## kurec-rule-meilisearch
+
+NATS JetStream Stream からイベントを受信してMeilisearchの検索エンジンを使ってルールヒット判定をする
 
 - EpgProgramsUpdatedMessage: EPG データが更新されたので Meilisearch に保存して検索し、録画予約の更新をする
 - RuleUpdatedMessage: 録画ルールが更新されたので内部の録画ルールを更新する
@@ -57,32 +63,38 @@ NATS JetStream Stream からイベントを受信して何らかの処理をす�
 ```mermaid
 sequenceDiagram
 
-participant js-epg as JetStream "kurec-epg" stream
+participant js-epg-stream as JetStream "kurec-epg" stream
+participant js-epg as JetStream "kurec-epg-rule-meilisearch" consumer
 participant kurec-rule
 
-participant mirakc
 participant kv-bucket-epg as KV store "kurec-epg" bucket
 participant kv-bucket-rule as KV store "rule" bucket
 
+participant mirakc
 participant meilisearch
 
 activate js-epg
 loop ずっと
+    js-epg-stream ->>+ js-epg: (Streamからメッセージを受信)
     js-epg ->>+ kurec-rule: （consumerにメッセージが届く）
 
     alt EpgProgramsUpdatedMessage の場合
         note right of kurec-rule: EPG データが更新された
         kurec-rule ->>+ kv-bucket-epg: get("epg-programs.{service_id}")
-        kv-bucket-epg ->>- kurec-rule: {json: "{JSON-serialized epg}", ...}
+        kv-bucket-epg ->>- kurec-rule: {json: "{JSON-serialized epg}", tuner_url:"http://tuner1:40772", ...}
+
+        note right of kurec-rule: Meilisearchにルール判定用のテンポラリインデックス(temp_{uuid})を作る
+        kurec-rule -)+ meilisearch: インデックス: temp_{uuid} を作成
+        meilisearch -) kurec-rule: OK {task_uid: number}
 
         note right of kurec-rule: Meilisearch保存Document用に変換
-        kurec-rule ->>+ meilisearch: Add or update documents on index: epg-programs_{service_id}
-        meilisearch ->>- kurec-rule: {task_uid: number}
+        kurec-rule -) meilisearch: ドキュメント: epg-programs_{document_id}を作成
+        meilisearch -) kurec-rule: {task_uid: number}
 
-        kurec-rule ->>+ meilisearch: wait on task(task_uid)
+        kurec-rule -) meilisearch: wait on task(task_uid)
         meilisearch ->>- kurec-rule: {status: "completed"}
 
-        kurec-rule ->>+ meilisearch: Search documents on index: epg-programs_{service_id} +filter: program_id = {program_id}
+        kurec-rule ->>+ meilisearch: multiSearchで検索
         meilisearch ->>- kurec-rule: OK {hits: ...}
 
         alt 検索でヒット
@@ -120,6 +132,11 @@ loop ずっと
 end
 deactivate js-epg
 ```
+
+## kurec-rule-code
+
+検索は Meilisearch 版と同じようなシーケンスをプログラムコードで行う
+
 
 ## kurec-record-retriever
 
