@@ -1,5 +1,6 @@
-use kurec::model::mirakurun::{program::Programs, service::Service};
 use serde_json::json;
+
+use crate::model::mirakurun::{program::Programs, service::Service};
 
 pub async fn get_programs(tuner_url: &str, service_id: u64) -> Result<Programs, anyhow::Error> {
     let programs_url = format!("{}/api/services/{}/programs", tuner_url, service_id);

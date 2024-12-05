@@ -1,7 +1,7 @@
-use kurec::model::mirakurun::{program::Programs, service::Service};
+use crate::model::mirakurun::{program::Programs, service::Service};
 use tracing::debug;
 
-use crate::{
+use crate::adapter::{
     meilisearch::{search_program_ids, update_programs},
     mirakc::schedule_program,
 };

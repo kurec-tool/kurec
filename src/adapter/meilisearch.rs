@@ -1,4 +1,4 @@
-use kurec::model::{
+use crate::model::{
     meilisearch::program::ProgramDocument,
     mirakurun::{program::Programs, service::Service},
 };

@@ -1,16 +1,9 @@
 use anyhow::Result;
 use futures::StreamExt;
-use mirakc::get_programs;
-use rule::apply_rule;
-use sse_stream::get_sse_service_id_stream;
+use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
+use kurec::domain::rule::apply_rule;
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
-
-mod meili_rule;
-mod meilisearch;
-mod mirakc;
-mod rule;
-mod sse_stream;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,7 +26,7 @@ async fn main() -> Result<()> {
                     }
                 };
 
-                let programs = match get_programs(tuner_url, service_id).await {
+                let programs = match mirakc::get_programs(tuner_url, service_id).await {
                     Ok(programs) => {
                         debug!("got programs: {:?}", programs.len());
                         programs

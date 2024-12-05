@@ -1,6 +1,6 @@
-use kurec::model::mirakurun::{program::Programs, service::Service};
+use crate::model::mirakurun::{program::Programs, service::Service};
 
-use crate::meili_rule::apply_meili_rule;
+use crate::domain::meili_rule::apply_meili_rule;
 use tracing::error;
 
 pub async fn apply_rule(programs: &Programs, service: &Service) -> Result<usize, anyhow::Error> {
