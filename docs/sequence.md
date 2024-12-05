@@ -56,14 +56,15 @@ NATS JetStream Stream からイベントを受信して何らかの処理をす�
 
 ```mermaid
 sequenceDiagram
+
+participant mirakc
+participant kurec-rule
+
 box nats
     participant kv-bucket-epg as KV store "kurec-epg" bucket
     participant kv-bucket-rule as KV store "rule" bucket
     participant js-epg as JetStream "kurec-epg" stream
 end
-
-participant mirakc
-participant kurec-rule
 
 participant meilisearch
 
