@@ -2,8 +2,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use futures::StreamExt;
 use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
-use kurec::domain::rule::apply_rule;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -13,24 +12,41 @@ async fn main() -> Result<()> {
         .with_ansi(true)
         .init();
 
+    let bucket_name = "kurec-epg"; // TODO: ユーザがPrefix変えられるようにする
+    let stream_name = "kurec-epg"; // TODO: ユーザがPrefix変えられるようにする
     let tuner_url = "http://tuner:40772";
     let nats_url = "nats:4222";
     let client = async_nats::connect(nats_url).await?;
     let jetstream = async_nats::jetstream::new(client);
-    let kv = jetstream.get_key_value("epg").await?;
+    let kv = match jetstream.get_key_value(bucket_name.to_string()).await {
+        Ok(kv) => kv,
+        Err(e) => {
+            error!("Error: {:?}", e);
+            jetstream
+                .create_key_value(async_nats::jetstream::kv::Config {
+                    bucket: bucket_name.to_string(),
+                    max_age: std::time::Duration::from_secs(30 * 24 * 60 * 60), // 30 days
+                    history: 10,                                                // 適当
+                    // TODO: パラメータ調整
+                    ..Default::default()
+                })
+                .await?
+        }
+    };
+    // consumer作るときにはstreamいるけど、publishだけならいらないが、
+    // Config設定する必要があるのでget_or_create_streamを使う
+    let _ = jetstream
+        .get_or_create_stream(async_nats::jetstream::stream::Config {
+            name: stream_name.to_string(),
+            max_messages: 10_000_000,
+            // TODO: Config調整
+            ..Default::default()
+        })
+        .await?;
 
     match get_sse_service_id_stream(tuner_url).await {
         Ok(mut stream) => {
             while let Some(service_id) = stream.next().await {
-                debug!("service_id: {}", service_id);
-                let service = match mirakc::get_service(tuner_url, service_id).await {
-                    Ok(service) => service,
-                    Err(e) => {
-                        error!("Error: {:?}", e);
-                        continue;
-                    }
-                };
-
                 let programs = match mirakc::get_json_programs(tuner_url, service_id).await {
                     Ok(programs) => {
                         // debug!("got programs: {:?}", programs.len());
@@ -44,27 +60,40 @@ async fn main() -> Result<()> {
 
                 for program in &programs {
                     let program_id_str = program.id.to_string();
-                    let json_bytes: Bytes = program.json.into();
-                    let kv_bytes = kv.get(program_id_str).await?;
+                    let json_bytes: Bytes = program.json.clone().into();
+                    let kv_bytes = match kv.get(program_id_str.clone()).await {
+                        Ok(kv_bytes) => kv_bytes,
+                        Err(e) => {
+                            error!("Error: {:?}", e);
+                            continue;
+                        }
+                    };
                     if kv_bytes.is_none() || kv_bytes.unwrap() != json_bytes {
-                        kv.create(program_id_str, json_bytes).await?;
+                        // TODO: updateにしてちゃんとリビジョン処理したり、available_tunersを更新したりする
+                        match kv.put(program_id_str.clone(), json_bytes).await {
+                            Ok(_) => {
+                                info!("program_id: {} recorded", program.id);
+                            }
+                            Err(e) => {
+                                error!("Error: {:?}", e);
+                                continue;
+                            }
+                        };
+                        let message = serde_json::json!({"programId": program_id_str});
+                        match jetstream
+                            .publish(stream_name, message.to_string().into())
+                            .await
+                        {
+                            Ok(_) => {
+                                info!("program_id: {} published", program.id);
+                            }
+                            Err(e) => {
+                                error!("Error: {:?}", e);
+                                continue;
+                            }
+                        }
                     }
                 }
-
-                let num_applied = match apply_rule(&programs, &service).await {
-                    Ok(num_applied) => {
-                        debug!("num_applied: {}", num_applied);
-                        num_applied
-                    }
-                    Err(e) => {
-                        error!("Error: {:?}", e);
-                        continue;
-                    }
-                };
-                info!(
-                    "service_id: {} apply rule done. {} programs will be recorded.",
-                    service_id, num_applied
-                );
             }
             error!("mirakc events stream ended");
 

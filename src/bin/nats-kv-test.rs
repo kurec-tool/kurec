@@ -1,11 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use bytes::Bytes;
-use futures::StreamExt;
-use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
-use kurec::domain::rule::apply_rule;
-use tracing::{debug, error, info};
+use tracing::error;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
