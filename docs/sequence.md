@@ -125,6 +125,7 @@ deactivate js-epg
 
 mirakc の `/events` から SSE で録画ファイル作成完了イベント(recording.record-saved)を受信して、mirakc から録画ファイルを回収する
 
+
 ```mermaid
 sequenceDiagram
 
@@ -163,3 +164,11 @@ end
 deactivate kurec-record-retriever
 ```
 
+### 検討事項
+
+S3への転送処理が途中で失敗したりとかにリトライがちゃんと走るようにしたいが、イベントが一過性のものなのでどうするか？
+
+- JetStream にリトライ用のメッセージを投げる？
+- 起動時や定期的に処理して、転送されてないけど finished な record があるかチェックする？
+
+後者が良さそうだけど、どうやって実装するか？
