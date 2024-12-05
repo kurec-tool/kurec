@@ -85,6 +85,7 @@ loop ずっと
         meilisearch ->>- kurec-rule: {status: "completed"}
 
         kurec-rule ->>+ meilisearch: Search documents on index: epg-programs_{service_id} +filter: program_id = {program_id}
+        meilisearch ->>- kurec-rule: OK {hits: ...}
 
         alt 検索でヒット
             note right of kurec-rule: 録画予約する
