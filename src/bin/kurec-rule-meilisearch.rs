@@ -27,11 +27,10 @@ async fn main() -> Result<()> {
 
     let consumer: PullConsumer = stream
         .get_or_create_consumer(
-            "kurec-epg-debug-consumer", // この名前の意味は？
+            "kurec-epg-rule-meilisearch", // この名前の意味は？
             async_nats::jetstream::consumer::pull::Config {
-                // ack_policy: async_nats::jetstream::consumer::AckPolicy::Explicit,
-                // deliver_subject: "kurec-epg-debug".to_string(),
-                durable_name: Some("kurec-epg-debug-durable2".to_string()),
+                durable_name: Some("kurec-epg-rule-meilisearch".to_string()),
+                // TODO: Config調整
                 ..Default::default()
             },
         )
@@ -42,11 +41,10 @@ async fn main() -> Result<()> {
         match messages.next().await {
             Some(Ok(msg)) => {
                 let value = String::from_utf8_lossy(msg.payload.as_ref());
-                println!("value: {}", value);
                 msg.ack().await.unwrap();
             }
             Some(Err(e)) => {
-                error!("Error: {:?}", e);
+                error!("Error when reading messages: {:?}", e);
             }
             None => {
                 error!("No more messages");
@@ -54,6 +52,8 @@ async fn main() -> Result<()> {
             }
         }
     }
+
+    error!("End of the program");
 
     Ok(())
 }

@@ -79,11 +79,18 @@ async fn main() -> Result<()> {
                                 continue;
                             }
                         };
-                        let message = serde_json::json!({"programId": program_id_str});
-                        match jetstream
-                            .publish(stream_name, message.to_string().into())
-                            .await
-                        {
+                        let message = kurec::message::jetstream_message::OnEpgProgramUpdated {
+                            program_id: program.id,
+                            tuner_url: tuner_url.to_string(),
+                        };
+                        let message_vec = match serde_json::to_vec(&message) {
+                            Ok(message_vec) => message_vec,
+                            Err(e) => {
+                                error!("JSON serialize error: {:?}", e);
+                                continue;
+                            }
+                        };
+                        match jetstream.publish(stream_name, message_vec.into()).await {
                             Ok(_) => {
                                 info!("program_id: {} published", program.id);
                             }
