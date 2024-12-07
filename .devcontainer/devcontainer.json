@@ -12,5 +12,5 @@
 		}
 	},
 	"remoteUser": "vscode",
-	"postCreateCommand": "nats context add nats --server nats:4222 --description \"docker-compose NATS\" --select"
+	"postCreateCommand": "/workspaces/kurec/.devcontainer/startup.sh"
 }

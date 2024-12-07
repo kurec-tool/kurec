@@ -1,5 +1,7 @@
+use futures::{Stream, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio_util::io::StreamReader;
 
 use crate::model::mirakurun::{
     program::{Program, Programs},
@@ -164,4 +166,25 @@ pub async fn unschedule_program(tuner_url: &str, program_id: u64) -> Result<(), 
         ));
     }
     Ok(())
+}
+
+pub async fn get_record_stream_reader(
+    tuner_url: &str,
+    record_id: &str,
+) -> Result<
+    StreamReader<impl Stream<Item = Result<bytes::Bytes, std::io::Error>>, bytes::Bytes>,
+    anyhow::Error,
+> {
+    let url = format!("{}/api/recording/records/{}/stream", tuner_url, record_id);
+    let resp = reqwest::get(&url).await?;
+    if resp.status() != 200 {
+        return Err(anyhow::anyhow!(
+            "Failed to get record stream response: {}",
+            resp.status()
+        ));
+    }
+    let stream = resp
+        .bytes_stream()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+    Ok(StreamReader::new(stream))
 }
