@@ -190,3 +190,16 @@ pub async fn get_record_stream_reader(
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
     Ok(StreamReader::new(stream))
 }
+
+pub async fn delete_record(tuner_url: &str, record_id: &str) -> Result<(), anyhow::Error> {
+    let url = format!("{}/api/recording/records/{}?purge=1", tuner_url, record_id);
+    let client = reqwest::Client::new();
+    let resp = client.delete(&url).send().await?;
+    if resp.status() != 200 {
+        return Err(anyhow::anyhow!(
+            "Failed to delete record: {}",
+            resp.status()
+        ));
+    }
+    Ok(())
+}

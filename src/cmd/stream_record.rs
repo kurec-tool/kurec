@@ -1,7 +1,11 @@
 use anyhow::Result;
+use async_nats::jetstream::object_store::{self, ObjectMetadata, ObjectStore};
 use bytes::Bytes;
-use futures::stream::{IntoAsyncRead, StreamExt, TryStreamExt};
-use kurec::{adapter::sse_stream::get_sse_record_id_stream, config::KurecConfig};
+use futures::StreamExt;
+use kurec::{
+    adapter::{mirakc::delete_record, sse_stream::get_sse_record_id_stream},
+    config::KurecConfig,
+};
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
@@ -11,11 +15,11 @@ pub async fn run_stream_record(config: KurecConfig) -> Result<()> {
         .with_ansi(true)
         .init();
 
+    let tuner_url = "http://tuner:40772"; // TODO: メッセージから取得するようにする
+
     let bucket_name = "kurec-record"; // TODO: ユーザがPrefix変えられるようにする
     let stream_name = "kurec-encode"; // TODO: ユーザがPrefix変えられるようにする
-    let tuner_url = "http://tuner:40772";
-    let nats_url = "nats:4222";
-    let client = async_nats::connect(nats_url).await?;
+    let client = async_nats::connect(&config.nats_url).await?;
     let jetstream = async_nats::jetstream::new(client);
     let kv = match jetstream.get_key_value(bucket_name.to_string()).await {
         Ok(kv) => kv,
@@ -42,29 +46,12 @@ pub async fn run_stream_record(config: KurecConfig) -> Result<()> {
             ..Default::default()
         })
         .await?;
-
-    let region = "";
-    let endpoint_url = "http://minio:9000";
-    let access_key = "minio";
-    let secret_key = "minio123";
-
-    let cred = s3::creds::Credentials::new(
-        config.minio_access_key.as_deref(),
-        config.minio_secret_key.as_deref(),
-        None,
-        None,
-        None,
-    )?;
-
-    let mut bucket = s3::Bucket::new(
-        &config.minio_record_bucket_name,
-        s3::Region::Custom {
-            region: config.minio_region.clone(),
-            endpoint: config.minio_url.clone(),
-        },
-        cred,
-    )?
-    .with_path_style();
+    let object_store = jetstream
+        .create_object_store(object_store::Config {
+            bucket: config.get_record_object_store_name().clone(),
+            ..Default::default()
+        })
+        .await?;
 
     info!("start loop");
 
@@ -73,7 +60,10 @@ pub async fn run_stream_record(config: KurecConfig) -> Result<()> {
             while let Some(record_id) = stream.next().await {
                 info!("record received: {}", record_id);
 
-                save_record_to_s3(tuner_url, &bucket, &record_id).await?;
+                save_record_to_object_store(tuner_url, &object_store, &record_id).await?;
+                debug!("save done.");
+                delete_record(tuner_url, &record_id).await?;
+                debug!("delete done.");
             }
             error!("mirakc events stream ended");
 
@@ -86,9 +76,9 @@ pub async fn run_stream_record(config: KurecConfig) -> Result<()> {
     }
 }
 
-async fn save_record_to_s3(
+async fn save_record_to_object_store(
     tuner_url: &str,
-    bucket: &s3::Bucket,
+    object_store: &ObjectStore,
     record_id: &str,
 ) -> Result<(), anyhow::Error> {
     let url = format!("{}/api/recording/records/{}/stream", tuner_url, record_id);
@@ -103,12 +93,13 @@ async fn save_record_to_s3(
         Ok(bytes) => Ok::<Bytes, std::io::Error>(bytes),
         Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
     });
-    let s3_path = format!("record/{}.ts", record_id);
-    let content_type = "video/MP2T";
     let mut reader = tokio_util::io::StreamReader::new(stream);
-    let resp = bucket
-        .put_object_stream_with_content_type(&mut reader, s3_path, content_type)
-        .await?;
-    debug!("put_object_stream_with_content_type: {:?}", resp);
+    let name = format!("record/{}.ts", record_id);
+    let metadata = ObjectMetadata {
+        name: name.clone(),
+        ..Default::default()
+    };
+    let resp = object_store.put(metadata, &mut reader).await?;
+    debug!("put to : {} {:?}", name, resp);
     Ok(())
 }

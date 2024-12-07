@@ -30,7 +30,7 @@ enum SubCommands {
         tuner_port: u16,
     },
     RuleMeilisearch {},
-    StreamRecords {},
+    StreamRecord {},
 }
 
 #[tokio::main]
@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             cmd::run_rule_meilisearch(config).await?;
             Ok(())
         }
-        SubCommands::StreamRecords {} => {
+        SubCommands::StreamRecord {} => {
             cmd::run_stream_record(config).await?;
             Ok(())
         }

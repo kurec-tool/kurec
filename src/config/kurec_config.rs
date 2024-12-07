@@ -36,6 +36,9 @@ pub struct KurecConfig {
     #[envconfig(from = "NATS_RECORD_STREAM_NAME", default = "record")]
     record_stream_name: String,
 
+    #[envconfig(from = "NATS_RECORD_OBJECT_STORE_NAME", default = "record")]
+    record_object_store_name: String,
+
     #[envconfig(from = "MINIO_URL")]
     pub minio_url: String,
 
@@ -74,6 +77,10 @@ impl KurecConfig {
 
     pub fn get_record_stream_name(&self) -> String {
         format!("{}-{}", self.prefix, self.record_stream_name)
+    }
+
+    pub fn get_record_object_store_name(&self) -> String {
+        format!("{}-{}", self.prefix, self.record_object_store_name)
     }
 }
 
