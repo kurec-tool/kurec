@@ -5,6 +5,8 @@ services:
       - ../..:/workspaces:cached
     command: sleep infinity
     environment:
+      - MEILISERCH_URL=http://meilisearch:7700
+      - NATS_URL=nats:4222
       - MINIO_ALIAS=minio
       - MINIO_ACCESS_KEY=minio
       - MINIO_SECRET_KEY=minio123
@@ -12,6 +14,7 @@ services:
       - MINIO_URL=http://minio:9000
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=password
+      - RUST_LOG=debug
 
   tuner:
     image: ghcr.io/kurec-tool/images/mirakc:0.0.11

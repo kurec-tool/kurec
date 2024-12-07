@@ -2,6 +2,7 @@ use futures::{Stream, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::io::StreamReader;
+use tracing::debug;
 
 use crate::model::mirakurun::{
     program::{Program, Programs},
@@ -20,6 +21,7 @@ pub async fn get_json_programs(
     service_id: u64,
 ) -> Result<Vec<JsonProgram>, anyhow::Error> {
     let programs_url = format!("{}/api/services/{}/programs", tuner_url, service_id);
+    debug!("requesting: {}", programs_url);
     let resp = reqwest::get(&programs_url).await?;
     if resp.status() != 200 {
         return Err(anyhow::anyhow!(

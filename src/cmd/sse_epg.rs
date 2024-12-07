@@ -84,6 +84,11 @@ pub async fn run_sse_epg(config: KurecConfig, tuner_url: &str) -> Result<()> {
                         program_ids.push(program.id);
                     }
                 }
+
+                if program_ids.is_empty() {
+                    continue;
+                }
+
                 let message = kurec::message::jetstream_message::OnEpgProgramUpdated {
                     tuner_url: tuner_url.to_string(),
                     service_id,
