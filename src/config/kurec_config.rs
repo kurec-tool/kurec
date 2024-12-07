@@ -54,8 +54,11 @@ pub struct KurecConfig {
     #[envconfig(from = "MINIO_RECORD_BUCKET_NAME", default = "kurec-record")]
     pub minio_record_bucket_name: String,
 
-    #[envconfig(from = "MEILISERCH_URL")]
+    #[envconfig(from = "MEILISEARCH_URL")]
     pub meilisearch_url: String,
+
+    #[envconfig(from = "MEILISEARCH_API_KEY")]
+    pub meilisearch_api_key: Option<String>,
 }
 
 impl KurecConfig {

@@ -16,13 +16,10 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
         .with_ansi(true)
         .init();
 
-    let meilisearch_url = "http://meilisearch:7700";
-    let meilisearch_api_key: Option<String> = None;
-    let nats_url = "nats:4222";
-    let client = async_nats::connect(nats_url).await?;
+    let client = async_nats::connect(&config.nats_url).await?;
     let jetstream = async_nats::jetstream::new(client);
 
-    let stream_name = "kurec-epg"; // TODO: ユーザがPrefix変えられるようにする
+    let stream_name = config.get_epg_stream_name();
 
     // TODO: ファイルからじゃなくKVから読む
     let query1 = {
@@ -111,8 +108,8 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                     };
 
                 let hits = match kurec::adapter::meilisearch::list_rule_matched_program_ids(
-                    meilisearch_url,
-                    &meilisearch_api_key,
+                    &config.meilisearch_url,
+                    &config.meilisearch_api_key,
                     &service,
                     &programs,
                     &query1,

@@ -13,10 +13,8 @@ pub async fn run_sse_record(config: KurecConfig, tuner_url: &str) -> Result<()> 
         .with_ansi(true)
         .init();
 
-    let stream_name = "kurec-record"; // TODO: ユーザがPrefix変えられるようにする
-    let tuner_url = "http://tuner:40772";
-    let nats_url = "nats:4222";
-    let client = async_nats::connect(nats_url).await?;
+    let stream_name = config.get_record_stream_name();
+    let client = async_nats::connect(&config.nats_url).await?;
     let jetstream = async_nats::jetstream::new(client);
     // consumer作るときにはstreamいるけど、publishだけならいらないが、
     // Config設定する必要があるのでget_or_create_streamを使う
@@ -40,7 +38,9 @@ pub async fn run_sse_record(config: KurecConfig, tuner_url: &str) -> Result<()> 
                     record_id,
                 };
                 let message = serde_json::to_string(&message)?;
-                jetstream.publish(stream_name, message.into()).await?;
+                jetstream
+                    .publish(stream_name.clone(), message.into())
+                    .await?;
             }
             error!("mirakc events stream ended");
 
