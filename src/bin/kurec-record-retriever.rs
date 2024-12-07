@@ -1,7 +1,7 @@
 use anyhow::Result;
+use bytes::Bytes;
 use futures::stream::StreamExt;
-use kurec::adapter::{mirakc::get_record_stream_reader, sse_stream::get_sse_record_id_stream};
-use s3::Bucket;
+use kurec::adapter::sse_stream::get_sse_record_id_stream;
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
@@ -44,18 +44,19 @@ async fn main() -> Result<()> {
         })
         .await?;
 
-    let credentials =
-        s3::creds::Credentials::new(Some("minio"), Some("minio123"), None, None, None).unwrap();
-    let bucket = s3::Bucket::new(
-        bucket_name,
-        s3::Region::Custom {
-            region: "".to_owned(),
-            endpoint: "http://minio:9000".to_owned(),
-        },
-        credentials,
-    )
-    .unwrap()
-    .with_path_style();
+    let region = "";
+    let endpoint_url = "http://minio:9000";
+    let access_key = "minio";
+    let secret_key = "minio123";
+
+    let cred_provider = AwsCredentials::new(Some(access_key), Some(secret_key), None, None);
+
+    let s3_config = aws_types::SdkConfig::builder()
+        .endpoint_url(endpoint_url)
+        .region(aws_sdk_s3::config::Region::from_static(region))
+        .credentials_provider(cred_provider)
+        .build();
+    let s3_client = aws_sdk_s3::Client::new(&s3_config);
 
     info!("start loop");
 
@@ -79,21 +80,33 @@ async fn main() -> Result<()> {
 
 async fn save_record_to_s3(
     tuner_url: &str,
-    bucket: &Bucket,
+    client: &aws_sdk_s3::Client,
+    bucket_name: &str,
     record_id: &str,
 ) -> Result<(), anyhow::Error> {
-    let mut ts_stream = get_record_stream_reader(tuner_url, record_id).await?;
+    let url = format!("{}/api/recording/records/{}/stream", tuner_url, record_id);
+    let resp = reqwest::get(&url).await?;
+    if resp.status() != 200 {
+        return Err(anyhow::anyhow!(
+            "Failed to get record stream response: {}",
+            resp.status()
+        ));
+    }
+    let stream = resp.bytes_stream().map(|b| match b {
+        Ok(bytes) => Ok::<Bytes, std::io::Error>(bytes),
+        Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
+    });
+    let body = hyper::Body::wrap_stream(stream);
+
     let s3_path = format!("{}.ts", record_id);
     let content_type = "video/MP2T";
-    debug!(
-        "start save to s3 host:{} bucket:{} path:{}",
-        bucket.host(),
-        bucket.name(),
-        s3_path
-    );
-    let resp = bucket
-        .put_object_stream_with_content_type(&mut ts_stream, &s3_path, content_type)
+    debug!("start save to s3 bucket:{} path:{}", bucket_name, s3_path);
+    let request = client
+        .put_object()
+        .bucket(bucket_name)
+        .key(&s3_path)
+        .body(SdkBody::from(body))
+        .send()
         .await?;
-    debug!("save to s3 done resp:{:?}", resp);
     Ok(())
 }
