@@ -5,17 +5,17 @@ use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+use kurec::config::KurecConfig;
+
+pub async fn run_sse_epg(config: KurecConfig, tuner_url: &str) -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_ansi(true)
         .init();
 
-    let bucket_name = "kurec-epg"; // TODO: ユーザがPrefix変えられるようにする
-    let stream_name = "kurec-epg"; // TODO: ユーザがPrefix変えられるようにする
-    let tuner_url = "http://tuner:40772";
-    let nats_url = "nats:4222";
+    let bucket_name = config.get_epg_bucket_name();
+    let stream_name = config.get_epg_stream_name();
+    let nats_url = config.nats_url;
     let client = async_nats::connect(nats_url).await?;
     let jetstream = async_nats::jetstream::new(client);
     let kv = match jetstream.get_key_value(bucket_name.to_string()).await {
@@ -25,8 +25,8 @@ async fn main() -> Result<()> {
             jetstream
                 .create_key_value(async_nats::jetstream::kv::Config {
                     bucket: bucket_name.to_string(),
-                    max_age: std::time::Duration::from_secs(30 * 24 * 60 * 60), // 30 days
-                    history: 10,                                                // 適当
+                    max_age: config.epg_kv_max_age.into(), // 30 days
+                    history: config.epg_kv_history,        // 適当
                     // TODO: パラメータ調整
                     ..Default::default()
                 })
@@ -96,7 +96,10 @@ async fn main() -> Result<()> {
                         continue;
                     }
                 };
-                match jetstream.publish(stream_name, message_vec.into()).await {
+                match jetstream
+                    .publish(stream_name.clone(), message_vec.into())
+                    .await
+                {
                     Ok(_) => {
                         info!("program_ids.len:{:?} published", program_ids.len());
                     }

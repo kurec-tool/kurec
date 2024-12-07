@@ -1,14 +1,16 @@
 use anyhow::Result;
 use async_nats::jetstream::consumer::PullConsumer;
 use futures::StreamExt;
-use kurec::model::{meilisearch::MeilisearchQuery, mirakurun::program::Program};
+use kurec::{
+    config::KurecConfig,
+    model::{meilisearch::MeilisearchQuery, mirakurun::program::Program},
+};
 use std::fs::File;
 use std::io::BufReader;
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_ansi(true)

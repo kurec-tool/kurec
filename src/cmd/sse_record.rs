@@ -1,13 +1,13 @@
 use anyhow::Result;
 use futures::stream::StreamExt;
 use kurec::{
-    adapter::sse_stream::get_sse_record_id_stream, message::jetstream_message::OnRecordingFinished,
+    adapter::sse_stream::get_sse_record_id_stream, config::KurecConfig,
+    message::jetstream_message::OnRecordingFinished,
 };
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub async fn run_sse_record(config: KurecConfig, tuner_url: &str) -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_ansi(true)

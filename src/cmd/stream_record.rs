@@ -1,12 +1,11 @@
 use anyhow::Result;
 use bytes::Bytes;
-use futures::stream::StreamExt;
-use kurec::adapter::sse_stream::get_sse_record_id_stream;
+use futures::stream::{IntoAsyncRead, StreamExt, TryStreamExt};
+use kurec::{adapter::sse_stream::get_sse_record_id_stream, config::KurecConfig};
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub async fn run_stream_record(config: KurecConfig) -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_ansi(true)
@@ -49,14 +48,23 @@ async fn main() -> Result<()> {
     let access_key = "minio";
     let secret_key = "minio123";
 
-    let cred_provider = AwsCredentials::new(Some(access_key), Some(secret_key), None, None);
+    let cred = s3::creds::Credentials::new(
+        config.minio_access_key.as_deref(),
+        config.minio_secret_key.as_deref(),
+        None,
+        None,
+        None,
+    )?;
 
-    let s3_config = aws_types::SdkConfig::builder()
-        .endpoint_url(endpoint_url)
-        .region(aws_sdk_s3::config::Region::from_static(region))
-        .credentials_provider(cred_provider)
-        .build();
-    let s3_client = aws_sdk_s3::Client::new(&s3_config);
+    let mut bucket = s3::Bucket::new(
+        &config.minio_record_bucket_name,
+        s3::Region::Custom {
+            region: config.minio_region.clone(),
+            endpoint: config.minio_url.clone(),
+        },
+        cred,
+    )?
+    .with_path_style();
 
     info!("start loop");
 
@@ -80,8 +88,7 @@ async fn main() -> Result<()> {
 
 async fn save_record_to_s3(
     tuner_url: &str,
-    client: &aws_sdk_s3::Client,
-    bucket_name: &str,
+    bucket: &s3::Bucket,
     record_id: &str,
 ) -> Result<(), anyhow::Error> {
     let url = format!("{}/api/recording/records/{}/stream", tuner_url, record_id);
@@ -96,17 +103,12 @@ async fn save_record_to_s3(
         Ok(bytes) => Ok::<Bytes, std::io::Error>(bytes),
         Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
     });
-    let body = hyper::Body::wrap_stream(stream);
-
-    let s3_path = format!("{}.ts", record_id);
+    let s3_path = format!("record/{}.ts", record_id);
     let content_type = "video/MP2T";
-    debug!("start save to s3 bucket:{} path:{}", bucket_name, s3_path);
-    let request = client
-        .put_object()
-        .bucket(bucket_name)
-        .key(&s3_path)
-        .body(SdkBody::from(body))
-        .send()
+    let mut reader = tokio_util::io::StreamReader::new(stream);
+    let resp = bucket
+        .put_object_stream_with_content_type(&mut reader, s3_path, content_type)
         .await?;
+    debug!("put_object_stream_with_content_type: {:?}", resp);
     Ok(())
 }
