@@ -7,10 +7,21 @@
 		"vscode": {
 			"extensions": [
 				"EditorConfig.EditorConfig",
-				"bierner.markdown-mermaid"
+				"bierner.markdown-mermaid",
+				"biomejs.biome",
+				"mhutchie.git-graph"
 			]
 		}
 	},
 	"remoteUser": "vscode",
-	"postCreateCommand": "/workspaces/kurec/.devcontainer/startup.sh"
+	"postCreateCommand": "/workspaces/kurec/.devcontainer/startup.sh",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {
+			"nodeGypDependencies": true,
+			"installYarnUsingApt": true,
+			"version": "lts",
+			"pnpmVersion": "latest",
+			"nvmVersion": "latest"
+		}
+	}
 }
