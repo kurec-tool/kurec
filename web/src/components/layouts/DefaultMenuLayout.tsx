@@ -3,6 +3,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MailIcon from '@mui/icons-material/Mail';
 import MenuIcon from '@mui/icons-material/Menu';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
+import { useMediaQuery } from '@mui/material';
 import MuiAppBar, {
   type AppBarProps as MuiAppBarProps,
 } from '@mui/material/AppBar';
@@ -120,41 +121,38 @@ export default function MiniDrawer({ children }: MiniDrawerProps) {
   const [open, setOpen] = React.useState(false);
 
   const handleDrawerOpen = () => {
+    console.log(`open: ${open} -> true`);
     setOpen(true);
   };
 
   const handleDrawerClose = () => {
+    console.log(`open: ${open} -> false`);
     setOpen(false);
   };
+  const isMobile = useMediaQuery('(max-width: 600px)');
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <AppBar position="fixed" open={open}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerOpen}
-            edge="start"
-            sx={[
-              {
-                marginRight: 2,
-              },
-              open && { display: 'none' },
-            ]}
-          >
-            <MenuIcon />
-          </IconButton>
-          <KuRecIcon size="small" mb="-6px" />
-          <Typography variant="h6" noWrap component="div" ml="10px">
-            KuRec
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Drawer variant="permanent" open={open}>
+      <Drawer
+        variant="permanent"
+        anchor="left"
+        open={open}
+        onClose={handleDrawerClose}
+        style={{ display: isMobile && !open ? 'none' : 'block' }}
+      >
         <DrawerHeader>
-          <IconButton onClick={handleDrawerClose}>
+          <IconButton
+            onClick={handleDrawerClose}
+            sx={{
+              width: '100%',
+              justifyContent: 'center',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                borderRadius: 0,
+              },
+            }}
+          >
             {theme.direction === 'rtl' ? (
               <ChevronRightIcon />
             ) : (
