@@ -86,7 +86,7 @@ const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
         <LogoIcon src={KuRecIconImage} alt="KuRec アイコン" />
         <LogoText>KuRec</LogoText>
       </HeaderBarBox>
-      {children}
+      <Box padding={1}>{children}</Box>
     </Box>
   );
 };
