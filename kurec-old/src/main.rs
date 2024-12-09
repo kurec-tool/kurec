@@ -1,8 +1,12 @@
+use crate::config::KurecConfig;
 use clap::{Parser, Subcommand};
-use kurec::config::KurecConfig;
-use tracing::debug;
 
+pub mod adapter;
 mod cmd;
+mod config;
+mod domain;
+mod message;
+mod model;
 
 #[derive(Clone, Debug, Parser)]
 #[clap(name = env!("CARGO_PKG_NAME"), version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
@@ -47,7 +51,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = KurecConfig::get_config()?;
 
     match cli.subcommand {
-        SubCommands::SseConverter { protocol, tuner_host, tuner_port } =>{
+        SubCommands::SseConverter {
+            protocol,
+            tuner_host,
+            tuner_port,
+        } => {
             let tuner_url = format!("{}://{}:{}", protocol, tuner_host, tuner_port);
             cmd::run_sse_converter(config, &tuner_url).await?;
             Ok(())

@@ -1,13 +1,12 @@
 use std::{str::from_utf8, time::Duration};
 
+use crate::adapter::sse_stream::get_sse_stream;
+use crate::config::KurecConfig;
 use anyhow::Result;
 use futures::StreamExt;
-use kurec::adapter::sse_stream::get_sse_stream;
 use serde_json::json;
 use tracing::{debug, error};
 use tracing_subscriber::EnvFilter;
-
-use kurec::config::KurecConfig;
 
 const EVENT_HEADER: &[u8] = b"event: ";
 const DATA_HEADER: &[u8] = b"data: ";

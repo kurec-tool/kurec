@@ -1,10 +1,10 @@
-use anyhow::Result;
-use async_nats::jetstream::consumer::PullConsumer;
-use futures::StreamExt;
-use kurec::{
+use crate::{
     config::KurecConfig,
     model::{meilisearch::MeilisearchQuery, mirakurun::program::Program},
 };
+use anyhow::Result;
+use async_nats::jetstream::consumer::PullConsumer;
+use futures::StreamExt;
 use std::fs::File;
 use std::io::BufReader;
 use tracing::{debug, error, info};
@@ -59,7 +59,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
     loop {
         match messages.next().await {
             Some(Ok(msg)) => {
-                let message: kurec::message::jetstream_message::OnEpgProgramUpdated =
+                let message: crate::message::jetstream_message::OnEpgProgramUpdated =
                     match serde_json::from_slice(&msg.payload) {
                         Ok(m) => m,
                         Err(e) => {
@@ -76,7 +76,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                 );
 
                 let scheduled_program_ids =
-                    match kurec::adapter::mirakc::list_scheduled_program_ids(&tuner_url).await {
+                    match crate::adapter::mirakc::list_scheduled_program_ids(&tuner_url).await {
                         Ok(ids) => ids,
                         Err(e) => {
                             error!("Error when listing scheduled program ids: {:?}", e);
@@ -85,7 +85,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                     };
 
                 debug!("start getting programs...");
-                let programs: Vec<Program> = kurec::adapter::mirakc::list_programs_by_service_id(
+                let programs: Vec<Program> = crate::adapter::mirakc::list_programs_by_service_id(
                     &tuner_url,
                     message.service_id,
                 )
@@ -98,7 +98,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                 debug!("done.");
 
                 let service =
-                    match kurec::adapter::mirakc::get_service(&tuner_url, message.service_id).await
+                    match crate::adapter::mirakc::get_service(&tuner_url, message.service_id).await
                     {
                         Ok(s) => s,
                         Err(e) => {
@@ -107,7 +107,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                         }
                     };
 
-                let hits = match kurec::adapter::meilisearch::list_rule_matched_program_ids(
+                let hits = match crate::adapter::meilisearch::list_rule_matched_program_ids(
                     &config.meilisearch_url,
                     &config.meilisearch_api_key,
                     &service,
@@ -132,7 +132,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                             continue;
                         }
                         info!("scheduling program_id: {}", program_id);
-                        match kurec::adapter::mirakc::schedule_program(&tuner_url, *program_id)
+                        match crate::adapter::mirakc::schedule_program(&tuner_url, *program_id)
                             .await
                         {
                             Ok(_) => {}
@@ -146,7 +146,7 @@ pub async fn run_rule_meilisearch(config: KurecConfig) -> Result<()> {
                             continue;
                         }
                         info!("unscheduling program_id: {}", program_id);
-                        match kurec::adapter::mirakc::unschedule_program(&tuner_url, *program_id)
+                        match crate::adapter::mirakc::unschedule_program(&tuner_url, *program_id)
                             .await
                         {
                             Ok(_) => {}

@@ -1,11 +1,11 @@
+use crate::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
 use anyhow::Result;
 use bytes::Bytes;
 use futures::StreamExt;
-use kurec::adapter::{mirakc, sse_stream::get_sse_service_id_stream};
 use tracing::{debug, error, info};
 use tracing_subscriber::EnvFilter;
 
-use kurec::config::KurecConfig;
+use crate::config::KurecConfig;
 
 pub async fn run_sse_epg(config: KurecConfig, tuner_url: &str) -> Result<()> {
     tracing_subscriber::fmt()
@@ -89,7 +89,7 @@ pub async fn run_sse_epg(config: KurecConfig, tuner_url: &str) -> Result<()> {
                     continue;
                 }
 
-                let message = kurec::message::jetstream_message::OnEpgProgramUpdated {
+                let message = crate::message::jetstream_message::OnEpgProgramUpdated {
                     tuner_url: tuner_url.to_string(),
                     service_id,
                     program_ids: program_ids.clone(),

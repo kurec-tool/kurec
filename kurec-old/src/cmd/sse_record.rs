@@ -1,9 +1,9 @@
-use anyhow::Result;
-use futures::stream::StreamExt;
-use kurec::{
+use crate::{
     adapter::sse_stream::get_sse_record_id_stream, config::KurecConfig,
     message::jetstream_message::OnRecordingFinished,
 };
+use anyhow::Result;
+use futures::stream::StreamExt;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 

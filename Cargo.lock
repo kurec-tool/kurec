@@ -1484,6 +1484,10 @@ dependencies = [
 
 [[package]]
 name = "kurec"
+version = "0.1.0"
+
+[[package]]
+name = "kurec-old"
 version = "0.0.1"
 dependencies = [
  "actix",

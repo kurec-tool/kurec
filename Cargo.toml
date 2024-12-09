@@ -1,35 +1,4 @@
-[package]
-name = "kurec"
-version = "0.0.1"
-edition = "2021"
+[workspace]
 
-[dependencies]
-actix = "0.13.5"
-actix-web = "4.9.0"
-anyhow = "1.0.94"
-async-nats = "0.38.0"
-bytes = "1.9.0"
-chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.23", features = ["derive", "env"] }
-duration-string = { version = "0.4.0", features = ["serde"] }
-envconfig = "0.11.0"
-figment = { version = "0.10.19", features = ["env", "json", "toml", "yaml"] }
-futures = "0.3.31"
-futures-util = "0.3.31"
-meilisearch-sdk = "0.27.1"
-reqwest = { version = "0.12.9", features = ["json", "stream"] }
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = { version = "1.0.133", features = ["preserve_order"] }
-thiserror = "2.0.4"
-tokio = { version = "1.41.1", features = ["full"] }
-tokio-stream = { version = "0.1.16", features = ["full"] }
-tokio-util = { version = "0.7.13", features = ["io"] }
-tracing = { version = "0.1.41", features = ["log"] }
-tracing-actix-web = "0.7.15"
-tracing-subscriber = { version = "0.3.19", features = [
-    "env-filter",
-    "json",
-    "tracing",
-] }
-url = "2.5.4"
-uuid = { version = "1.11.0", features = ["v7"] }
+resolver = "2"
+members = ["kurec-old", "kurec"]
