@@ -2,7 +2,9 @@
 import DefaultLayout from '@/component/Navigation/DefaultLayout';
 import { instantMeiliSearch } from '@meilisearch/instant-meilisearch';
 import { Typography } from '@mui/joy';
-import { InstantSearch, SearchBox } from 'react-instantsearch';
+import { SearchBox } from 'react-instantsearch';
+import { InstantSearchNext } from 'react-instantsearch-nextjs';
+import 'instantsearch.css/themes/satellite.css';
 
 const { searchClient } = instantMeiliSearch(
   // biome-ignore lint/style/noNonNullAssertion: <explanation>
@@ -10,18 +12,13 @@ const { searchClient } = instantMeiliSearch(
   process.env.NEXT_PUBLIC_MEILISEARCH_KEY,
 );
 
-function EpgSearch() {
-  return (
-    <InstantSearch indexName="" searchClient={searchClient}>
-      <SearchBox />
-    </InstantSearch>
-  );
-}
-
 export default function Home() {
   return (
     <DefaultLayout>
       <Typography>Meilisearchテスト</Typography>
+      <InstantSearchNext indexName="" searchClient={searchClient}>
+        <SearchBox />
+      </InstantSearchNext>
     </DefaultLayout>
   );
 }

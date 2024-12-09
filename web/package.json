@@ -18,10 +18,11 @@
     "@mui/icons-material": "^6.1.10",
     "@mui/joy": "5.0.0-beta.48",
     "instantsearch.css": "^8.5.1",
-    "next": "15.0.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-instantsearch": "^7.13.9"
+    "next": "14.2.20",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-instantsearch": "^7.13.9",
+    "react-instantsearch-nextjs": "^0.3.19"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.2",
@@ -33,7 +34,7 @@
     "@storybook/react": "^8.4.7",
     "@storybook/test": "^8.4.7",
     "@types/node": "^20",
-    "@types/react": "^19",
+    "@types/react": "^18.3.14",
     "@types/react-dom": "^19",
     "storybook": "^8.4.7",
     "typescript": "^5"
