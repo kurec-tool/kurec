@@ -1,26 +1,33 @@
-import { CssBaseline, ThemeProvider } from '@mui/material';
+import CssBaseline from '@mui/joy/CssBaseline';
+import InitColorSchemeScript from '@mui/joy/InitColorSchemeScript';
+import { CssVarsProvider } from '@mui/joy/styles';
 import type { Preview, StoryContext } from '@storybook/react';
-// biome-ignore lint/style/useImportType: なぜかtypeにすると上手くいかない
+// biome-ignore lint/style/useImportType: <explanation>
 import React from 'react';
 import { theme } from '../src/app/theme';
-
-import '../src/app/globals.css';
+import '@fontsource/inter';
 
 const withThemeProvider = (Story: React.FC, context: StoryContext) => {
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
-      <Story />
-    </ThemeProvider>
+      <InitColorSchemeScript defaultMode="system" />
+      <CssVarsProvider
+        // colorSchemeSelector="media"
+        defaultMode="system"
+        theme={theme}
+      >
+        <Story />
+      </CssVarsProvider>
+    </>
   );
 };
-
 const preview: Preview = {
   parameters: {
     controls: {
       matchers: {
         color: /(background|color)$/i,
-        date: /Date$/,
+        date: /Date$/i,
       },
     },
   },
