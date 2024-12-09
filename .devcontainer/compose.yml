@@ -5,7 +5,7 @@ services:
       - ../..:/workspaces:cached
     command: sleep infinity
     environment:
-      - MEILISERCH_URL=http://meilisearch:7700
+      - MEILISEARCH_URL=http://meilisearch:7700
       - NATS_URL=nats:4222
       - MINIO_ALIAS=minio
       - MINIO_ACCESS_KEY=minio
