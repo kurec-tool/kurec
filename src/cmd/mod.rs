@@ -9,3 +9,6 @@ pub use stream_record::run_stream_record;
 
 mod rule_meilisearch;
 pub use rule_meilisearch::run_rule_meilisearch;
+
+mod sse_converter;
+pub use sse_converter::run_sse_converter;

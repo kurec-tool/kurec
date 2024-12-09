@@ -7,7 +7,7 @@ use envconfig::Envconfig;
 pub struct KurecConfig {
     /// Prefix for NATS KV bucket name, stream name, etc.
     #[envconfig(from = "KUREC_PREFIX", default = "kurec")]
-    prefix: String,
+    pub prefix: String,
 
     #[envconfig(from = "NATS_URL")]
     pub nats_url: String,

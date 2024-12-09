@@ -13,6 +13,14 @@ struct Cli {
 
 #[derive(Clone, Debug, Subcommand)]
 enum SubCommands {
+    SseConverter {
+        #[clap(long = "proto", default_value = "http")]
+        protocol: String,
+        #[clap(long = "host", default_value = "tuner")]
+        tuner_host: String,
+        #[clap(long = "port", default_value = "40772")]
+        tuner_port: u16,
+    },
     SseEpg {
         #[clap(long = "proto", default_value = "http")]
         protocol: String,
@@ -39,6 +47,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = KurecConfig::get_config()?;
 
     match cli.subcommand {
+        SubCommands::SseConverter { protocol, tuner_host, tuner_port } =>{
+            let tuner_url = format!("{}://{}:{}", protocol, tuner_host, tuner_port);
+            cmd::run_sse_converter(config, &tuner_url).await?;
+            Ok(())
+        }
         SubCommands::SseEpg {
             protocol,
             tuner_host,

@@ -69,10 +69,17 @@ pub enum RecordingStatusEnum {
 
 const EVENT_RECORDING_RECORD_SAVED_HEADER: &[u8] = b"event: recording.record-saved\ndata: ";
 
-async fn get_sse_stream(
-    events_url: &str,
+pub async fn get_sse_stream(
+    tuner_url: &str,
 ) -> Result<impl Stream<Item = Result<bytes::Bytes, anyhow::Error>>, anyhow::Error> {
+    let events_url = format!("{}/events", tuner_url);
     let resp = reqwest::get(events_url).await?;
+    if !resp.status().is_success() {
+        return Err(anyhow::anyhow!(
+            "Failed to get events stream {}",
+            resp.status().as_str()
+        ));
+    }
     Ok(resp.bytes_stream().map_err(anyhow::Error::new))
 }
 
@@ -100,8 +107,7 @@ where
 pub async fn get_sse_service_id_stream(
     tuner_url: &str,
 ) -> Result<impl Stream<Item = u64>, anyhow::Error> {
-    let events_url = format!("{}/events", tuner_url);
-    let stream = get_sse_stream(&events_url).await?;
+    let stream = get_sse_stream(tuner_url).await?;
     convert_to_service_id_stream(stream).await
 }
 
@@ -135,7 +141,6 @@ where
 pub async fn get_sse_record_id_stream(
     tuner_url: &str,
 ) -> Result<impl Stream<Item = String>, anyhow::Error> {
-    let events_url = format!("{}/events", tuner_url);
-    let stream = get_sse_stream(&events_url).await?;
+    let stream = get_sse_stream(tuner_url).await?;
     convert_to_record_id_stream(stream).await
 }
