@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// 動作確認用テストメッセージ
+message ExampleMessage {
+    string name = 1;
+    int32 age = 2;
+    repeated string emails = 3;
+};
+
+// 全体に共通するルール
+// JetStream streamに入れるデータは ~~Message という名前にする
+// NATS KV Storeに入れるデータは ~~Data という名前にする
+
+// Mirakc SSE Eventの1個1個のメッセージ
+message MirakcEventMessage {
+    string tuner_url = 1;
+    string event = 2;
+    string data = 3;
+};
+
+// epg.programs-updated

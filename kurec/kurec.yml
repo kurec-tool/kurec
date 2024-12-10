@@ -1,0 +1,4 @@
+tuners:
+  tuner: http://tuner:40772
+nats:
+  url: nats:4222

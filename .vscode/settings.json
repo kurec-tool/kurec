@@ -4,6 +4,7 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "explicit"
   },
+  "rust-analyzer.procMacro.enable": true,
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome",
     "editor.formatOnSave": true
@@ -33,5 +34,8 @@
   },
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[proto]": {
+    "editor.defaultFormatter": "zxh404.vscode-proto3"
   }
 }

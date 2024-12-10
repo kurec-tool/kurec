@@ -1,0 +1,12 @@
+[package]
+name = "kurec-proto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = { version = "0.13.4", features = ["prost-derive"] }
+prost-build = "0.13.4"
+serde = { version = "1.0.215", features = ["derive"] }
+
+[build-dependencies]
+prost-build = "0.13.4"

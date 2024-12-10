@@ -1,4 +1,4 @@
 [workspace]
 
 resolver = "2"
-members = ["kurec-old", "kurec"]
+members = ["kurec-old", "kurec", "kurec-proto"]

@@ -1,3 +1,72 @@
-fn main() {
-    println!("Hello, world!");
+use clap::{Args, Parser, Subcommand};
+use kurec_config::KurecConfig;
+use tracing_subscriber::EnvFilter;
+
+mod adapter;
+mod domain;
+mod interface;
+mod kurec_config;
+
+#[derive(Clone, Debug, Parser)]
+#[clap(name = env!("CARGO_PKG_NAME"), version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
+struct Cli {
+    #[clap(subcommand)]
+    subcommand: SubCommands,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum SubCommands {
+    Events {
+        #[clap(index = 1)]
+        tuner_name: String,
+    },
+    Epg(EpgArgs),
+}
+
+#[derive(Clone, Debug, Args)]
+struct EpgArgs {
+    #[clap(subcommand)]
+    subcommand: EpgSubCommands,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum EpgSubCommands {
+    Collector,
+    Filter,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse();
+    let config = KurecConfig::get_config()?;
+
+    let subscriber = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env());
+
+    if config.json_log {
+        subscriber.json().init();
+    } else {
+        subscriber.with_ansi(config.color_log).init();
+    }
+
+    match cli.subcommand {
+        SubCommands::Events { tuner_name } => {
+            println!("Tuner name: {}", tuner_name);
+            let mirakc_adapter =
+                adapter::MirakcAdapter::try_new(config.clone(), &tuner_name).await?;
+            let nats_adapter = adapter::NatsAdapter::new(config.clone());
+            let epg_domain = domain::EventsDomain::new(mirakc_adapter, nats_adapter);
+            epg_domain.copy_events_to_jetstream().await?;
+            Ok(())
+        }
+        SubCommands::Epg(epg_args) => match epg_args.subcommand {
+            EpgSubCommands::Collector => {
+                println!("Collector");
+                Ok(())
+            }
+            EpgSubCommands::Filter => {
+                println!("Filter");
+                Ok(())
+            }
+        },
+    }
 }
