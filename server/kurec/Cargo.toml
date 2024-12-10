@@ -1,7 +1,10 @@
 [package]
 name = "kurec"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
 
 [dependencies]
 actix = "0.13.5"
@@ -12,14 +15,10 @@ async-nats = "0.38.0"
 awc = { version = "3.5.1", features = ["rustls"] }
 bytes = "1.9.0"
 clap = { version = "4.5.23", features = ["derive", "env"] }
-derivative = "2.2.0"
-eventsource-stream = "0.2.3"
-figment = { version = "0.10.19", features = ["env", "yaml"] }
 futures = "0.3.31"
-kurec-proto = { version = "0.1.0", path = "../kurec-proto" }
-prost = "0.13.4"
-reqwest = { version = "^0.11", features = ["json", "stream"] }
-serde = { version = "1.0.215", features = ["derive"] }
+kurec-adapter = { version = "0.0.1", path = "../kurec-adapter" }
+kurec-interface = { version = "0.0.1", path = "../kurec-interface" }
+kurec-proto = { version = "0.0.1", path = "../kurec-proto" }
 serde_json = "1.0.133"
 tokio = { version = "1.42.0", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1.41", features = ["async-await", "log"] }

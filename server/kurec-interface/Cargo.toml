@@ -1,0 +1,12 @@
+[package]
+name = "kurec-interface"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+derivative = "2.2.0"
+figment = { version = "0.10.19", features = ["env", "yaml"] }
+serde = "1.0.215"

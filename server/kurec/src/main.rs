@@ -1,11 +1,10 @@
 use clap::{Args, Parser, Subcommand};
-use kurec_config::KurecConfig;
+use kurec_adapter::{MirakcAdapter, NatsAdapter};
 use tracing_subscriber::EnvFilter;
 
-mod adapter;
+use kurec_interface::KurecConfig;
+
 mod domain;
-mod interface;
-mod kurec_config;
 
 #[derive(Clone, Debug, Parser)]
 #[clap(name = env!("CARGO_PKG_NAME"), version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
@@ -51,9 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.subcommand {
         SubCommands::Events { tuner_name } => {
             println!("Tuner name: {}", tuner_name);
-            let mirakc_adapter =
-                adapter::MirakcAdapter::try_new(config.clone(), &tuner_name).await?;
-            let nats_adapter = adapter::NatsAdapter::new(config.clone());
+            let mirakc_adapter = MirakcAdapter::try_new(config.clone(), &tuner_name).await?;
+            let nats_adapter = NatsAdapter::new(config.clone());
             let epg_domain = domain::EventsDomain::new(mirakc_adapter, nats_adapter);
             epg_domain.copy_events_to_jetstream().await?;
             Ok(())

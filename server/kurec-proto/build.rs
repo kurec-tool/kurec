@@ -5,6 +5,6 @@ fn main() -> Result<()> {
     prost_build
         // .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         // .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
-        .compile_protos(&["../proto/kurec.proto"], &["../proto/"])?;
+        .compile_protos(&["../../proto/kurec.proto"], &["../../proto/"])?;
     Ok(())
 }

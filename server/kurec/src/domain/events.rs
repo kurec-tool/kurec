@@ -1,4 +1,4 @@
-use crate::adapter::{MirakcAdapter, NatsAdapter};
+use kurec_adapter::{MirakcAdapter, NatsAdapter};
 
 #[derive(Clone, Debug)]
 pub struct EventsDomain {

@@ -1,4 +1,11 @@
 [workspace]
 
 resolver = "2"
-members = ["kurec-old", "kurec", "kurec-proto"]
+members = ["kurec-old", "server/kurec-proto", "server/kurec", "server/kurec-adapter", "server/kurec-interface"]
+
+[workspace.package]
+version = "0.0.1"
+authors = ["KuRec Team"]
+description = "KuRec - Simple, Easy, Secure and Safety Recording System"
+documentation = "https://kurec-tool.github.io"
+edition = "2021"

@@ -1,15 +1,11 @@
-use std::error::Error;
-
-use crate::kurec_config::KurecConfig;
-use bytes::Bytes;
-use eventsource_stream::{EventStream, Eventsource};
+use eventsource_stream::Eventsource;
 use futures::{future, Stream, StreamExt};
+use kurec_interface::KurecConfig;
 use kurec_proto::MirakcEventMessage;
 use serde::Deserialize;
 
 #[derive(Clone, Debug)]
 pub struct MirakcAdapter {
-    config: KurecConfig,
     url: String,
 }
 
@@ -41,9 +37,11 @@ impl MirakcAdapter {
             resp.current,
             resp.latest
         );
-        Ok(Self { config, url })
+        Ok(Self { url })
     }
 
+    // lifetimeのこと良く分からず警告潰しちゃってるのでちゃんと調べる
+    #[allow(clippy::needless_lifetimes)]
     pub async fn get_events_stream<'a>(
         &'a self,
     ) -> Result<impl Stream<Item = MirakcEventMessage> + 'a, anyhow::Error> {

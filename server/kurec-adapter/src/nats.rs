@@ -3,7 +3,7 @@ use bytes::Bytes;
 use futures::{Stream, StreamExt};
 use tokio::pin;
 
-use crate::kurec_config::KurecConfig;
+use kurec_interface::KurecConfig;
 use kurec_proto::*;
 
 #[derive(Clone, Debug)]

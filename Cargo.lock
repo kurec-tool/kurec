@@ -1631,7 +1631,7 @@ dependencies = [
 
 [[package]]
 name = "kurec"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "actix",
  "actix-rt",
@@ -1641,18 +1641,40 @@ dependencies = [
  "awc",
  "bytes",
  "clap",
- "derivative",
- "eventsource-stream",
- "figment",
  "futures",
+ "kurec-adapter",
+ "kurec-interface",
  "kurec-proto",
- "prost",
- "reqwest 0.11.27",
- "serde",
  "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "kurec-adapter"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "bytes",
+ "eventsource-stream",
+ "futures",
+ "kurec-interface",
+ "kurec-proto",
+ "reqwest 0.11.27",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "kurec-interface"
+version = "0.0.1"
+dependencies = [
+ "derivative",
+ "figment",
+ "serde",
 ]
 
 [[package]]
@@ -1688,7 +1710,7 @@ dependencies = [
 
 [[package]]
 name = "kurec-proto"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "prost",
  "prost-build",
