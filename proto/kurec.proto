@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package kurec;
+
 // 動作確認用テストメッセージ
 message ExampleMessage {
     string name = 1;
@@ -18,4 +20,9 @@ message MirakcEventMessage {
     string data = 3;
 };
 
-// epg.programs-updated
+// EPG更新したときの該当するProgram一覧を入れたメッセージ
+message EpgProgramsUpdatedData {
+    string tuner_url = 1;
+    string service_json = 2;
+    string programs_json = 3;
+};

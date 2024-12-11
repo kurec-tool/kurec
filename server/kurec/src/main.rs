@@ -1,5 +1,5 @@
 use clap::{Args, Parser, Subcommand};
-use kurec_adapter::{MirakcAdapter, NatsAdapter};
+use kurec_adapter::{MirakcAdapter, MirakcEventsAdapter, NatsAdapter};
 use tracing_subscriber::EnvFilter;
 
 use kurec_interface::KurecConfig;
@@ -50,14 +50,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.subcommand {
         SubCommands::Events { tuner_name } => {
             println!("Tuner name: {}", tuner_name);
-            let mirakc_adapter = MirakcAdapter::try_new(config.clone(), &tuner_name).await?;
+            let mirakc_adapter = MirakcEventsAdapter::try_new(config.clone(), &tuner_name).await?;
             let nats_adapter = NatsAdapter::new(config.clone());
-            let epg_domain = domain::EventsDomain::new(mirakc_adapter, nats_adapter);
-            epg_domain.copy_events_to_jetstream().await?;
+            let events_domain = domain::EventsDomain::new(mirakc_adapter, nats_adapter);
+            events_domain.copy_events_to_jetstream().await?;
             Ok(())
         }
         SubCommands::Epg(epg_args) => match epg_args.subcommand {
             EpgSubCommands::Collector => {
+                let mirakc_adapter = MirakcAdapter::new(config.clone());
+                let nats_adapter = NatsAdapter::new(config.clone());
                 println!("Collector");
                 Ok(())
             }

@@ -5,6 +5,7 @@ authors.workspace = true
 description.workspace = true
 documentation.workspace = true
 edition.workspace = true
+build = "build.rs"
 
 [dependencies]
 prost = { version = "0.13.4", features = ["prost-derive"] }
@@ -13,3 +14,4 @@ serde = { version = "1.0.215", features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.13.4"
+prost-validate-build = "0.2.6"

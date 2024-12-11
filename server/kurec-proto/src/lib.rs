@@ -1,6 +1,5 @@
 mod kurec_proto {
-    // なぜか_.rsになっちゃう
-    include!(concat!(env!("OUT_DIR"), "/_.rs"));
+    include!(concat!(env!("OUT_DIR"), "/kurec.rs"));
 }
 
 pub use kurec_proto::*;

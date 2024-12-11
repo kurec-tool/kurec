@@ -7,9 +7,6 @@ documentation.workspace = true
 edition.workspace = true
 
 [dependencies]
-actix = "0.13.5"
-actix-rt = "2.10.0"
-actix-web = "4.9.0"
 anyhow = "1.0.94"
 async-nats = "0.38.0"
 awc = { version = "3.5.1", features = ["rustls"] }
