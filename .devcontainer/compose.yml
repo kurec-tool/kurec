@@ -18,7 +18,7 @@ services:
       - NEXT_PUBLIC_MEILISEARCH_URL=http://localhost:7700
 
   tuner:
-    image: ghcr.io/kurec-tool/images/mirakc:0.0.11
+    image: ghcr.io/kurec-tool/images/mirakc:0.0.12
     volumes:
       - ./epg:/var/lib/mirakc/epg
       - ./config/mirakc-config.yml:/etc/mirakc/config.yml:ro
