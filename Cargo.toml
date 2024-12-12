@@ -1,7 +1,7 @@
 [workspace]
 
 resolver = "2"
-members = [ "packages/chrono-jst","server/kurec", "server/kurec-adapter", "server/kurec-interface", "server/t"]
+members = [ "server/kurec", "server/kurec-adapter", "server/kurec-interface"]
 
 [workspace.package]
 version = "0.0.1"

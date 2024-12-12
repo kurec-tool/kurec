@@ -477,15 +477,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chrono-jst"
-version = "0.0.1"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2472,10 +2463,6 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
-
-[[package]]
-name = "t"
-version = "0.0.1"
 
 [[package]]
 name = "tempfile"
