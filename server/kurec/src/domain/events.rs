@@ -1,6 +1,6 @@
 use futures::StreamExt;
 
-use kurec_adapter::{MirakcEventsAdapter, NatsAdapter};
+use kurec_adapter::{MirakcEventsAdapter, NatsAdapter, StreamType};
 
 #[derive(Clone, Debug)]
 pub struct EventsDomain {
@@ -20,10 +20,9 @@ impl EventsDomain {
         if let Ok(mut stream) = self.mirakc_adapter.get_events_stream().await {
             while let Some(ev) = stream.next().await {
                 tracing::debug!("event: {:?}", ev);
-                let base_name = ev.event.replace(".", "-").replace("_", "-");
                 let v = serde_json::to_vec(&ev)?;
                 self.nats_adapter
-                    .publish_to_stream(&base_name, v.into())
+                    .publish_to_stream(StreamType::SseEpgProgramsUpdated, v.into())
                     .await?;
             }
         }

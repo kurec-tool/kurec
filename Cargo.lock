@@ -1473,6 +1473,7 @@ dependencies = [
  "futures",
  "kurec-adapter",
  "kurec-interface",
+ "mirakc-client",
  "serde_json",
  "tokio",
  "tracing",
@@ -1505,6 +1506,7 @@ dependencies = [
  "chrono",
  "derivative",
  "figment",
+ "mirakc-client",
  "serde",
 ]
 

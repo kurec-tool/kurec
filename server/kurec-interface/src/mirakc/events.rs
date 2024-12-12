@@ -14,5 +14,5 @@ pub struct MirakcEventMessage {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EpgProgramsUpdatedMessageData {
-    pub service_id: u64,
+    pub service_id: i64,
 }
