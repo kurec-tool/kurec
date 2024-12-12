@@ -1,7 +1,6 @@
 use eventsource_stream::Eventsource;
 use futures::{future, Stream, StreamExt};
-use kurec_interface::KurecConfig;
-use kurec_proto::MirakcEventMessage;
+use kurec_interface::{KurecConfig, MirakcEventMessage};
 use serde::Deserialize;
 
 #[derive(Clone, Debug)]

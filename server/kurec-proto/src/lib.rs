@@ -3,7 +3,7 @@ mod kurec_proto {
 }
 
 pub use kurec_proto::*;
-pub use prost::Message;
+// pub use prost::Message;
 
 #[cfg(test)]
 mod tests {

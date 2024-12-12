@@ -3,6 +3,7 @@ use bytes::Bytes;
 
 use futures::{future, StreamExt, TryStreamExt};
 use kurec_interface::KurecConfig;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
 pub struct NatsAdapter {
@@ -72,8 +73,8 @@ impl NatsAdapter {
         f: F,
     ) -> Result<(), anyhow::Error>
     where
-        T: kurec_proto::Message + std::default::Default,
-        U: kurec_proto::Message + std::default::Default,
+        T: for<'a> Deserialize<'a>,
+        U: Serialize,
         F: Fn(T) -> Result<Option<U>, anyhow::Error>,
     {
         let from_subject_name = self.get_prefixed_name(from_subject_base_name);
@@ -99,11 +100,11 @@ impl NatsAdapter {
 
         let mut messages = consumer.messages().await?;
         while let Some(Ok(msg)) = messages.next().await {
-            let message: T = T::decode(msg.payload.clone())?;
+            let message: T = serde_json::from_slice(msg.payload.as_ref())?;
             match f(message) {
                 Ok(None) => continue,
                 Ok(Some(mapped)) => {
-                    jc.publish(to_subject_name.clone(), mapped.encode_to_vec().into())
+                    jc.publish(to_subject_name.clone(), serde_json::to_vec(&mapped)?.into())
                         .await
                         .map_err(|e| anyhow::anyhow!("publish error: {:?}", e))?;
                 }

@@ -1,5 +1,5 @@
 use kurec_adapter::{MirakcAdapter, NatsAdapter};
-use kurec_proto::MirakcEventMessage;
+use kurec_interface::{EpgProgramsUpdatedMessageData, MirakcEventMessage};
 
 const SSE_EPG_STREAM: &str = "sse-epg-programs-updated";
 const CONVERTED_STREAM: &str = "epg-converted";
@@ -22,9 +22,17 @@ impl EpgCollector {
             .filter_map_stream(
                 SSE_EPG_STREAM,
                 CONVERTED_STREAM,
-                |epg: MirakcEventMessage| -> Result<Option<MirakcEventMessage>, anyhow::Error> {
-                    dbg!(&epg);
-                    Ok(Some(epg))
+                |ev: MirakcEventMessage| -> Result<Option<MirakcEventMessage>, anyhow::Error> {
+                    let event_data =
+                        serde_json::from_str::<EpgProgramsUpdatedMessageData>(&ev.data)?;
+                    let service_id = event_data.service_id;
+
+                    // service取得
+                    self.mirakc_adapter
+                        .get_service(&ev.tuner_url, service_id)
+                        .await?;
+
+                    Ok(Some(todo!()))
                 },
             )
             .await?;

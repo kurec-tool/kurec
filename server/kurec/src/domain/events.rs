@@ -1,5 +1,4 @@
 use futures::StreamExt;
-use kurec_proto::Message;
 
 use kurec_adapter::{MirakcEventsAdapter, NatsAdapter};
 
@@ -22,7 +21,7 @@ impl EventsDomain {
             while let Some(ev) = stream.next().await {
                 tracing::debug!("event: {:?}", ev);
                 let base_name = ev.event.replace(".", "-").replace("_", "-");
-                let v = ev.encode_to_vec();
+                let v = serde_json::to_vec(&ev)?;
                 self.nats_adapter
                     .publish_to_stream(&base_name, v.into())
                     .await?;
