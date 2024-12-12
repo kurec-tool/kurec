@@ -31,6 +31,7 @@ struct EpgArgs {
 #[derive(Clone, Debug, Subcommand)]
 enum EpgSubCommands {
     Collector,
+    Converter,
     Filter,
 }
 
@@ -60,9 +61,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             EpgSubCommands::Collector => {
                 let mirakc_adapter = MirakcAdapter::new(config.clone());
                 let nats_adapter = NatsAdapter::new(config.clone());
-                let epg_collector_domain = domain::EpgCollector::new(mirakc_adapter, nats_adapter);
+                let epg_collector_domain = domain::EpgDomain::new(mirakc_adapter, nats_adapter);
                 println!("Collector");
                 epg_collector_domain.collect_epg_stream().await?;
+                Ok(())
+            }
+            EpgSubCommands::Converter => {
+                println!("Converter");
                 Ok(())
             }
             EpgSubCommands::Filter => {
