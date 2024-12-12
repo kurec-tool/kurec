@@ -27,10 +27,10 @@ impl EpgCollector {
                         serde_json::from_str::<EpgProgramsUpdatedMessageData>(&ev.data)?;
                     let service_id = event_data.service_id;
 
-                    // service取得
-                    self.mirakc_adapter
-                        .get_service(&ev.tuner_url, service_id)
-                        .await?;
+                    // // service取得
+                    // self.mirakc_adapter
+                    //     .get_service(&ev.tuner_url, service_id)
+                    //     .await?;
 
                     Ok(Some(todo!()))
                 },
