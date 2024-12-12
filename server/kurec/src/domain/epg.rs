@@ -46,10 +46,45 @@ impl EpgDomain {
     pub async fn collect_epg_stream(&self) -> Result<(), anyhow::Error> {
         let f = |ev| Self::collect_service_programs(self.mirakc_adapter.clone(), ev);
         self.nats_adapter
-            .filter_map_stream(
+            .filter_map_stream_async(
                 StreamType::SseEpgProgramsUpdated,
                 StreamType::EpgUpdated,
                 "collector",
+                f,
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn convert_epg_stream(&self) -> Result<(), anyhow::Error> {
+        let f = |data: EpgProgramsUpdatedMessage| -> Result<
+            Option<kurec_interface::ProgramDocumentsUpdatedMessage>,
+            anyhow::Error,
+        > {
+            let documents = data
+                .programs
+                .iter()
+                .map(|p| {
+                    kurec_interface::ProgramDocument::from_program_with_service(
+                        p.clone(),
+                        data.service.clone(),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let program_document_update = kurec_interface::ProgramDocumentsUpdatedMessage {
+                tuner_url: data.tuner_url,
+                service: data.service,
+                programs: documents,
+            };
+
+            Ok(Some(program_document_update))
+        };
+        self.nats_adapter
+            .filter_map_stream(
+                StreamType::EpgUpdated,
+                StreamType::EpgConverted,
+                "converter",
                 f,
             )
             .await?;

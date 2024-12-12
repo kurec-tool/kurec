@@ -22,7 +22,7 @@ impl EventsDomain {
                 tracing::debug!("event: {:?}", ev);
                 let v = serde_json::to_vec(&ev)?;
                 self.nats_adapter
-                    .publish_to_stream(StreamType::SseEpgProgramsUpdated, v.into())
+                    .publish_to_stream_by_event_name(&ev.event, v.into())
                     .await?;
             }
         }

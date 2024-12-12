@@ -6,3 +6,6 @@ pub use message::*;
 
 mod mirakc;
 pub use mirakc::*;
+
+mod document;
+pub use document::*;
