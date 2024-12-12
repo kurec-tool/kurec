@@ -1,7 +1,7 @@
 [workspace]
 
 resolver = "2"
-members = [ "server/kurec", "server/kurec-adapter", "server/kurec-interface"]
+members = [ "server/kurec", "server/kurec-adapter", "server/kurec-interface", "server/mirakc-client"]
 
 [workspace.package]
 version = "0.0.1"
