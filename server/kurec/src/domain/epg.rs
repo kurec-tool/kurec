@@ -3,12 +3,12 @@ use kurec_interface::{
     EpgProgramsUpdatedMessage, EpgProgramsUpdatedMessageData, MirakcEventMessage,
 };
 
-pub struct EpgCollector {
+pub struct EpgDomain {
     pub mirakc_adapter: MirakcAdapter,
     pub nats_adapter: NatsAdapter,
 }
 
-impl EpgCollector {
+impl EpgDomain {
     pub fn new(mirakc_adapter: MirakcAdapter, nats_adapter: NatsAdapter) -> Self {
         Self {
             mirakc_adapter,
