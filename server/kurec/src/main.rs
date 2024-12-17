@@ -1,5 +1,5 @@
 use clap::{Args, Parser, Subcommand};
-use kurec_adapter::{MirakcAdapter, MirakcEventsAdapter, NatsAdapter};
+use kurec_adapter::{MeilisearchAdapter, MirakcAdapter, MirakcEventsAdapter, NatsAdapter};
 use tracing_subscriber::EnvFilter;
 
 use kurec_interface::KurecConfig;
@@ -32,6 +32,7 @@ struct EpgArgs {
 enum EpgSubCommands {
     Collector,
     Converter,
+    Indexer,
     Filter,
 }
 
@@ -61,15 +62,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             EpgSubCommands::Collector => {
                 let mirakc_adapter = MirakcAdapter::new(config.clone());
                 let nats_adapter = NatsAdapter::new(config.clone());
-                let epg_domain = domain::EpgDomain::new(mirakc_adapter, nats_adapter);
+                let meilisearch_adapter = MeilisearchAdapter::new_async(config.clone()).await?;
+                let epg_domain =
+                    domain::EpgDomain::new(mirakc_adapter, nats_adapter, meilisearch_adapter);
                 epg_domain.collect_epg_stream().await?;
                 Ok(())
             }
             EpgSubCommands::Converter => {
                 let mirakc_adapter = MirakcAdapter::new(config.clone());
                 let nats_adapter = NatsAdapter::new(config.clone());
-                let epg_domain = domain::EpgDomain::new(mirakc_adapter, nats_adapter);
+                let meilisearch_adapter = MeilisearchAdapter::new_async(config.clone()).await?;
+                let epg_domain =
+                    domain::EpgDomain::new(mirakc_adapter, nats_adapter, meilisearch_adapter);
                 epg_domain.convert_epg_stream().await?;
+                Ok(())
+            }
+            EpgSubCommands::Indexer => {
+                let mirakc_adapter = MirakcAdapter::new(config.clone());
+                let nats_adapter = NatsAdapter::new(config.clone());
+                let meilisearch_adapter = MeilisearchAdapter::new_async(config.clone()).await?;
+                let epg_domain =
+                    domain::EpgDomain::new(mirakc_adapter, nats_adapter, meilisearch_adapter);
+                epg_domain.index_epg_stream().await?;
                 Ok(())
             }
             EpgSubCommands::Filter => {

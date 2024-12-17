@@ -22,6 +22,8 @@ pub struct KurecConfig {
     pub tuners: HashMap<String, String>,
 
     pub nats: NatsConfig,
+
+    pub meilisearch: MeilisearchConfig,
 }
 
 impl KurecConfig {
@@ -40,7 +42,8 @@ pub struct NatsConfig {
     pub url: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct MeilisearchConfig {
     pub url: String,
+    pub api_key: Option<String>,
 }

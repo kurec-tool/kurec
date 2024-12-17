@@ -1,28 +1,33 @@
 {
-	"name": "Rust",
-	"dockerComposeFile": "compose.yml",
-	"service": "devcontainer",
-	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"EditorConfig.EditorConfig",
-				"bierner.markdown-mermaid",
-				"biomejs.biome",
-				"mhutchie.git-graph",
-				"zxh404.vscode-proto3"
-			]
-		}
-	},
-	"remoteUser": "vscode",
-	"postCreateCommand": "/workspaces/kurec/.devcontainer/startup.sh",
-	"features": {
-		"ghcr.io/devcontainers/features/node:1": {
-			"nodeGypDependencies": true,
-			"installYarnUsingApt": true,
-			"version": "lts",
-			"pnpmVersion": "latest",
-			"nvmVersion": "latest"
-		}
-	}
+  "name": "Rust",
+  "dockerComposeFile": "compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "bierner.markdown-mermaid",
+        "biomejs.biome",
+        "mhutchie.git-graph",
+        "zxh404.vscode-proto3"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "/workspaces/kurec/.devcontainer/startup.sh",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": true,
+      "installYarnUsingApt": true,
+      "version": "lts",
+      "pnpmVersion": "latest",
+      "nvmVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest",
+      "tflint": "latest",
+      "terragrunt": "latest"
+    }
+  }
 }

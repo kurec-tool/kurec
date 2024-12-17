@@ -1,18 +1,25 @@
-use kurec_adapter::{MirakcAdapter, NatsAdapter, StreamType};
+use kurec_adapter::{MeilisearchAdapter, MeilisearchIndex, MirakcAdapter, NatsAdapter, StreamType};
 use kurec_interface::{
-    EpgProgramsUpdatedMessage, EpgProgramsUpdatedMessageData, MirakcEventMessage,
+    EpgProgramsUpdatedMessage, EpgProgramsUpdatedMessageData, MirakcEventMessage, ProgramDocument,
 };
+use tracing::debug;
 
 pub struct EpgDomain {
     pub mirakc_adapter: MirakcAdapter,
     pub nats_adapter: NatsAdapter,
+    pub meilisearch_adapter: MeilisearchAdapter,
 }
 
 impl EpgDomain {
-    pub fn new(mirakc_adapter: MirakcAdapter, nats_adapter: NatsAdapter) -> Self {
+    pub fn new(
+        mirakc_adapter: MirakcAdapter,
+        nats_adapter: NatsAdapter,
+        meilisearch_adapter: MeilisearchAdapter,
+    ) -> Self {
         Self {
             mirakc_adapter,
             nats_adapter,
+            meilisearch_adapter,
         }
     }
 
@@ -89,5 +96,30 @@ impl EpgDomain {
             )
             .await?;
         Ok(())
+    }
+
+    pub async fn index_epg_stream(&self) -> Result<(), anyhow::Error> {
+        let f = |doc: kurec_interface::ProgramDocumentsUpdatedMessage| async move {
+            let service_id = doc.service.id;
+            let docs = doc.programs.clone();
+            debug!(
+                "indexing programs for service_id: {} num of documents: {}",
+                service_id,
+                docs.len()
+            );
+            self.meilisearch_adapter
+                .update_documents(
+                    &MeilisearchIndex::Epg,
+                    |d: &ProgramDocument| d.service_id == service_id,
+                    &docs,
+                    Some("program_id"),
+                )
+                .await?;
+            Ok(())
+        };
+        self.nats_adapter
+            .stream_sink_async(StreamType::EpgConverted, "indexer", f)
+            .await?;
+        todo!()
     }
 }

@@ -7,26 +7,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProgramDocument {
     #[serde(rename = "タイトル")]
-    title: String,
-
-    #[serde(rename = "番組情報")]
-    description: String,
+    pub title: String,
 
     // TODO: extended
+    #[serde(rename = "番組情報")]
+    pub description: String,
+
     #[serde(rename = "放送局")]
-    channel: String,
+    pub channel: String,
 
     #[serde(rename = "ジャンル")]
-    genres: Vec<String>,
+    pub genres: Vec<String>,
 
     #[serde(rename = "開始時刻")]
-    start_at: DateTime<Utc>,
+    pub start_at: DateTime<Utc>,
 
     #[serde(rename = "終了時刻")]
-    end_at: DateTime<Utc>,
+    pub end_at: DateTime<Utc>,
 
     #[serde(rename = "放送時間")]
-    duration: Duration,
+    pub duration: Duration,
+
+    // 元の形式
+    pub program_id: i64,
+    pub service_id: i64,
 }
 
 impl ProgramDocument {
@@ -58,6 +62,8 @@ impl ProgramDocument {
             start_at,
             end_at,
             duration,
+            program_id: program.id,
+            service_id: service.id,
         }
     }
 }

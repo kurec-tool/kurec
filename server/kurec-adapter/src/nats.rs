@@ -216,4 +216,44 @@ impl NatsAdapter {
 
         todo!()
     }
+
+    // fはErrを返せばエラーで終了する、Ok(None)を返せば次のメッセージを待つ、Ok(Some(v))を返せばvをpublishする
+    pub async fn stream_sink_async<T, F, Fut>(
+        &self,
+        from: StreamType,
+        consumer_name: &str,
+        f: F,
+    ) -> Result<(), anyhow::Error>
+    where
+        T: for<'a> Deserialize<'a>,
+        F: Fn(T) -> Fut,
+        Fut: Future<Output = Result<(), anyhow::Error>>,
+    {
+        let jc = self.connect().await?;
+        let from_stream = self.get_or_create_stream(&jc, &from).await?;
+        let consumer: PullConsumer = from_stream
+            .get_or_create_consumer(
+                "kurec-hogehoge-consumer", // この名前の意味は？
+                async_nats::jetstream::consumer::pull::Config {
+                    durable_name: Some(self.get_prefixed_consumer_name(&from, consumer_name)),
+                    // TODO: Config調整
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let mut messages = consumer.messages().await?;
+        while let Some(Ok(msg)) = messages.next().await {
+            let message: T = serde_json::from_slice(msg.payload.as_ref())?;
+            match f(message).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+            msg.ack()
+                .await
+                .map_err(|e| anyhow::anyhow!("ack error: {:?}", e))?;
+        }
+
+        todo!()
+    }
 }

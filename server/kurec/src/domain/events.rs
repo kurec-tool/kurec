@@ -1,6 +1,6 @@
 use futures::StreamExt;
 
-use kurec_adapter::{MirakcEventsAdapter, NatsAdapter, StreamType};
+use kurec_adapter::{MirakcEventsAdapter, NatsAdapter};
 
 #[derive(Clone, Debug)]
 pub struct EventsDomain {

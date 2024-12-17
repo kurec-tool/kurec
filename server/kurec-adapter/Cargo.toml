@@ -13,12 +13,14 @@ bytes = "1.9.0"
 eventsource-stream = "0.2.3"
 futures = "0.3.31"
 kurec-interface = { version = "0.0.1", path = "../kurec-interface" }
+meilisearch-sdk = "0.27.1"
 mirakc-client = { version = "3.3.0-de.0", path = "../mirakc-client" }
 reqwest = { version = "^0.11", features = ["json", "stream"] }
 serde = "1.0.215"
 serde_json = "1.0.133"
 tokio = { version = "1.42.0", features = ["rt", "macros", "rt-multi-thread", "test-util"] }
 tracing = "0.1.41"
+uuid = "1.11.0"
 
 [dev-dependencies]
 mockito = "1.6.1"

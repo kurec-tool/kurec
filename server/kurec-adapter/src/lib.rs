@@ -6,3 +6,6 @@ pub use mirakc::*;
 
 mod nats;
 pub use nats::*;
+
+mod meilisearch;
+pub use meilisearch::*;
