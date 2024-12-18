@@ -38,9 +38,10 @@ const LogoText = styled(Typography)(({ theme }) => ({
   margin: '8px',
   marginBottom: '7px',
   fontSize: '25px',
-  color: theme.palette.mode === 'dark' ? '#0a0a0a' : '#f0f0f0',
+  color: '#fac8b0',
   backgroundColor: theme.palette.primary[300],
   display: 'inline',
+  textShadow: '2px 2px 4px rgba(20, 20, 20, 0.5)',
 }));
 
 const HeaderBarBox = styled(Box)(({ theme }) => ({
