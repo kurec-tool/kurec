@@ -44,6 +44,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      react-infinite-scroll-hook:
+        specifier: ^5.0.1
+        version: 5.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-instantsearch:
         specifier: ^7.13.9
         version: 7.13.9(algoliasearch@5.16.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3090,6 +3093,12 @@ packages:
     peerDependencies:
       react: ^18.3.1
 
+  react-infinite-scroll-hook@5.0.1:
+    resolution: {integrity: sha512-fn6+8BAZLQ9C1fvO5kPicGjDR2WHxK7rP4aaSWuaJkvtoJjYuudGJ9wjgPox7dghKm5Xj9cpKFycM86/wAJ3ig==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
   react-instantsearch-core@7.13.9:
     resolution: {integrity: sha512-xPCLbDErcrEuu9EGZJclsSTPmrIucQdBxqP3OiQSgh8xeRL7juQgqITukTqbfarloC3gRiZFWbd/NtAb+SmJ2g==}
     peerDependencies:
@@ -3108,6 +3117,12 @@ packages:
       algoliasearch: '>= 3.1 < 6'
       react: '>= 16.8.0 < 19'
       react-dom: '>= 16.8.0 < 19'
+
+  react-intersection-observer-hook@3.0.1:
+    resolution: {integrity: sha512-nehzFUV+jVY49tc9FOm4yJHrmFFtCmsBZKiN1rUUB2675CMBf6kKu1ekuTqvCnmh4XG7RFP3bMyAevfqfV94xw==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -5431,7 +5446,7 @@ snapshots:
 
   '@types/react-transition-group@4.4.11':
     dependencies:
-      '@types/react': 19.0.1
+      '@types/react': 18.3.14
 
   '@types/react@18.3.14':
     dependencies:
@@ -6997,6 +7012,12 @@ snapshots:
       react: 18.3.1
       scheduler: 0.23.2
 
+  react-infinite-scroll-hook@5.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      react-intersection-observer-hook: 3.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+
   react-instantsearch-core@7.13.9(algoliasearch@5.16.0)(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.0
@@ -7020,6 +7041,11 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-instantsearch-core: 7.13.9(algoliasearch@5.16.0)(react@18.3.1)
+
+  react-intersection-observer-hook@3.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   react-is@16.13.1: {}
 

@@ -4,7 +4,8 @@ import {
   type InstantMeiliSearchInstance,
   instantMeiliSearch,
 } from '@meilisearch/instant-meilisearch';
-import { Card, Typography } from '@mui/joy';
+import { Card, List, ListItem, Typography } from '@mui/joy';
+import useInfiniteScroll from 'react-infinite-scroll-hook';
 import { InfiniteHits, SearchBox, useInfiniteHits } from 'react-instantsearch';
 import { InstantSearchNext } from 'react-instantsearch-nextjs';
 import 'instantsearch.css/themes/satellite.css';
@@ -38,42 +39,42 @@ function Hit({
 
 const CustomInfiniteHits = () => {
   const { items, isLastPage, showMore } = useInfiniteHits();
-  // スクロールイベントで次のページをロード
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
-    const handleScroll = () => {
-      const nearBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
+    setHasNextPage(!isLastPage);
+  }, [isLastPage]);
 
-      console.log('loading more?', nearBottom, isLastPage);
-      if (nearBottom && !isLastPage) {
-        showMore();
-      }
-    };
-
-    console.log('add event listener');
-    document.body.addEventListener('scroll', handleScroll);
-
-    return () => {
-      console.log('remove event listener');
-      document.body.removeEventListener('scroll', handleScroll);
-    };
-  }, [isLastPage, showMore]);
+  const [sentryRef] = useInfiniteScroll({
+    loading,
+    hasNextPage,
+    onLoadMore: showMore,
+    disabled: false,
+    rootMargin: '0px 0px 100px 0px',
+  });
 
   return (
-    <div>
-      {items.map((hit) => (
-        <Card key={hit.program_id}>
-          <Typography level="title-lg">{hit.タイトル}</Typography>
-          <Typography level="body-sm">
-            {hit.放送局} {hit.開始時刻.toString()}～{hit.終了時刻.toString()}{' '}
-            {hit.ジャンル.join(',')}
-          </Typography>
-          <Typography level="body-md">{hit.番組情報}</Typography>
-          <Typography level="body-xs">{hit.program_id}</Typography>
-        </Card>
+    <List>
+      {items.map((item) => (
+        <ListItem key={item.program_id}>
+          <Card>
+            <Typography level="title-lg">{item.タイトル}</Typography>
+            <Typography level="body-sm">
+              {item.放送局} {item.開始時刻.toString()}～
+              {item.終了時刻.toString()} {item.ジャンル.join(',')}
+            </Typography>
+            <Typography level="body-md">{item.番組情報}</Typography>
+            <Typography level="body-xs">{item.program_id}</Typography>
+          </Card>
+        </ListItem>
       ))}
-      {isLastPage && <p>No more results</p>}
-    </div>
+      {(loading || hasNextPage) && (
+        <ListItem ref={sentryRef}>
+          <Typography>Loading...</Typography>
+        </ListItem>
+      )}
+    </List>
   );
 };
 
@@ -94,8 +95,8 @@ export default function Home() {
       {searchClient && (
         <InstantSearchNext indexName="kurec-epg" searchClient={searchClient}>
           <DefaultLayout searchComponent={<SearchBox />}>
-            <InfiniteHits hitComponent={Hit} />
-            {/* 上手く行かなかったので一旦コメントアウト: <CustomInfiniteHits /> */}
+            {/* <InfiniteHits hitComponent={Hit} /> */}
+            <CustomInfiniteHits />
           </DefaultLayout>
         </InstantSearchNext>
       )}
