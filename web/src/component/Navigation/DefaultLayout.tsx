@@ -10,6 +10,7 @@ import {
 import React from 'react';
 import SideMenu from './SideMenu';
 
+import { Search } from '@mui/icons-material';
 import { Cherry_Bomb_One } from 'next/font/google';
 import Image from 'next/image';
 import KuRecIconImage from './KuRec-icon-transparent.webp';
@@ -52,13 +53,14 @@ const HeaderBarBox = styled(Box)(({ theme }) => ({
 
 // レイアウト本体
 
-const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+const DefaultLayout: React.FC<{
+  children: React.ReactNode;
+  searchComponent?: JSX.Element;
+}> = ({ children, searchComponent }) => {
   const [opened, setOpened] = React.useState(false);
 
   return (
-    <Box sx={{ height: '100vh' }}>
+    <Box sx={{ height: '100vh', overflow: 'auto' }}>
       <Drawer open={opened} onClose={() => setOpened(false)} size="sm">
         <ModalClose />
         <h1>さいどばー</h1>
@@ -83,8 +85,9 @@ const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
         >
           <Menu />
         </IconButton>
-        <LogoIcon src={KuRecIconImage} alt="KuRec アイコン" />
+        {/* ロゴ要らないのでは説: <LogoIcon src={KuRecIconImage} alt="KuRec アイコン" /> */}
         <LogoText>KuRec</LogoText>
+        {searchComponent}
       </HeaderBarBox>
       <Box padding={1}>{children}</Box>
     </Box>
