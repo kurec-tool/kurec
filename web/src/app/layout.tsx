@@ -17,6 +17,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" suppressHydrationWarning={true}>
+      <head>
+        <link rel="icon" href="/favicon.png" />
+        {/* favicon.icoは書かずに置いておく */}
+      </head>
       <body>
         <CssBaseline />
         <InitColorSchemeScript defaultMode="system" />

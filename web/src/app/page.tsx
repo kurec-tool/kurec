@@ -1,10 +1,33 @@
 'use client';
 import DefaultLayout from '@/component/Navigation/DefaultLayout';
-import { Box } from '@mui/joy';
+import { Box, Typography, styled } from '@mui/joy';
+import { Cherry_Bomb_One } from 'next/font/google';
+
+const LogoTextFont = Cherry_Bomb_One({
+  subsets: ['latin'],
+  weight: ['400'],
+  display: 'block',
+  variable: '--font-logo-text',
+  fallback: ['sans-serif'],
+});
+
+const LogoText = styled(Typography)(({ theme }) => ({
+  ...LogoTextFont.style,
+  letterSpacing: '3px',
+  margin: '50px',
+  fontSize: '180px',
+  color: '#fac8b0',
+  backgroundColor: theme.palette.primary[300],
+  display: 'inline',
+  textShadow: '2px 2px 4px rgba(20, 20, 20, 0.5)',
+}));
 
 export default function Home() {
   return (
     <DefaultLayout>
+      <Box sx={{ backgroundColor: 'primary.300' }}>
+        <LogoText>R</LogoText>
+      </Box>
       あいうえおととと
       <Box>
         {' '}
