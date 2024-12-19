@@ -101,7 +101,7 @@ function CustomSearchBox() {
   );
 }
 
-export default function Home() {
+export default function EpgSearch() {
   const [searchClient, setSearchClient] =
     useState<InstantMeiliSearchInstance>();
 
