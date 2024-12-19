@@ -93,6 +93,7 @@ const DefaultLayout: React.FC<{
           position: 'sticky',
           top: 0,
           zIndex: 1100,
+          paddingRight: '12px',
         }}
       >
         <IconButton
@@ -109,7 +110,7 @@ const DefaultLayout: React.FC<{
         <LogoText>KuRec</LogoText>
         {searchComponent}
       </HeaderBarBox>
-      <Box padding={1}>{children}</Box>
+      {children}
     </Box>
   );
 };

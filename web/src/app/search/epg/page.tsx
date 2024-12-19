@@ -4,12 +4,28 @@ import {
   type InstantMeiliSearchInstance,
   instantMeiliSearch,
 } from '@meilisearch/instant-meilisearch';
-import { Card, List, ListItem, Typography } from '@mui/joy';
+import {
+  Box,
+  Button,
+  Card,
+  Chip,
+  Input,
+  List,
+  ListItem,
+  Typography,
+} from '@mui/joy';
 import useInfiniteScroll from 'react-infinite-scroll-hook';
-import { SearchBox, useInfiniteHits } from 'react-instantsearch';
+import {
+  SearchBox,
+  useInfiniteHits,
+  useInstantSearch,
+  useSearchBox,
+} from 'react-instantsearch';
 import { InstantSearchNext } from 'react-instantsearch-nextjs';
 import 'instantsearch.css/themes/satellite.css';
-import { useEffect, useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import { useCallback, useEffect, useState } from 'react';
 
 const CustomInfiniteHits = () => {
   const { items, isLastPage, showMore } = useInfiniteHits();
@@ -35,7 +51,7 @@ const CustomInfiniteHits = () => {
       )}
       {items.map((item) => (
         <ListItem key={item.program_id}>
-          <Card>
+          <Card sx={{ width: '100%' }}>
             <Typography level="title-lg">{item.タイトル}</Typography>
             <Typography level="body-sm">
               {item.放送局} {item.開始時刻.toString()}～
@@ -53,6 +69,38 @@ const CustomInfiniteHits = () => {
   );
 };
 
+function CustomSearchBox() {
+  const { clear, query, refine } = useSearchBox();
+  const status = useInstantSearch();
+
+  const [inputValue, setInputValue] = useState(query);
+
+  const handleAdd = useCallback(() => {
+    console.log('追加！:', inputValue);
+  }, [inputValue]);
+
+  return (
+    <Box>
+      <Input
+        placeholder="検索..."
+        startDecorator={<SearchIcon />}
+        endDecorator={
+          inputValue && (
+            <Chip onClick={handleAdd} startDecorator={<AddIcon />}>
+              ルールに追加
+            </Chip>
+          )
+        }
+        autoFocus={true}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          refine(e.target.value);
+        }}
+      />
+    </Box>
+  );
+}
+
 export default function Home() {
   const [searchClient, setSearchClient] =
     useState<InstantMeiliSearchInstance>();
@@ -69,7 +117,7 @@ export default function Home() {
     <>
       {searchClient && (
         <InstantSearchNext indexName="kurec-epg" searchClient={searchClient}>
-          <DefaultLayout searchComponent={<SearchBox autoFocus />}>
+          <DefaultLayout searchComponent={<CustomSearchBox />}>
             {/* <InfiniteHits hitComponent={Hit} /> */}
             <CustomInfiniteHits />
           </DefaultLayout>
