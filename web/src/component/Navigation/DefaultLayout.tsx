@@ -3,6 +3,10 @@ import {
   Box,
   Drawer,
   IconButton,
+  List,
+  ListItem,
+  MenuItem,
+  MenuList,
   ModalClose,
   Typography,
   styled,
@@ -13,6 +17,7 @@ import SideMenu from './SideMenu';
 import { Search } from '@mui/icons-material';
 import { Cherry_Bomb_One } from 'next/font/google';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import KuRecIconImage from './KuRec-icon-transparent.webp';
 
 // ヘッダーバー要素
@@ -36,7 +41,7 @@ const LogoText = styled(Typography)(({ theme }) => ({
   ...LogoTextFont.style,
   letterSpacing: '3px',
   margin: '8px',
-  marginBottom: '7px',
+  marginTop: '4px',
   fontSize: '25px',
   color: '#fac8b0',
   backgroundColor: theme.palette.primary[300],
@@ -46,6 +51,11 @@ const LogoText = styled(Typography)(({ theme }) => ({
 
 const HeaderBarBox = styled(Box)(({ theme }) => ({
   backgroundColor: theme.palette.primary[300],
+  height: '48px',
+}));
+
+const Sidebar = styled(Box)(({ theme }) => ({
+  padding: '12px',
 }));
 
 // サイドバー要素
@@ -58,13 +68,22 @@ const DefaultLayout: React.FC<{
   children: React.ReactNode;
   searchComponent?: JSX.Element;
 }> = ({ children, searchComponent }) => {
+  const router = useRouter();
   const [opened, setOpened] = React.useState(false);
 
   return (
     <Box sx={{ height: '100vh', overflow: 'auto' }}>
       <Drawer open={opened} onClose={() => setOpened(false)} size="sm">
         <ModalClose />
-        <h1>さいどばー</h1>
+        <Sidebar>
+          <Typography level="title-md">メニュー</Typography>
+          <List>
+            <ListItem onClick={() => router.push('/')}>ホーム</ListItem>
+            <ListItem onClick={() => router.push('/search/epg')}>
+              番組表検索
+            </ListItem>
+          </List>
+        </Sidebar>
       </Drawer>
       <HeaderBarBox
         sx={{

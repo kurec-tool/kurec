@@ -70,9 +70,7 @@ const CustomInfiniteHits = () => {
         </ListItem>
       ))}
       {(loading || hasNextPage) && (
-        <ListItem ref={sentryRef}>
-          <Typography>Loading...</Typography>
-        </ListItem>
+        <ListItem ref={sentryRef}>Now Loading...</ListItem>
       )}
     </List>
   );
