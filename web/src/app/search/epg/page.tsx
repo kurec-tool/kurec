@@ -6,36 +6,10 @@ import {
 } from '@meilisearch/instant-meilisearch';
 import { Card, List, ListItem, Typography } from '@mui/joy';
 import useInfiniteScroll from 'react-infinite-scroll-hook';
-import { InfiniteHits, SearchBox, useInfiniteHits } from 'react-instantsearch';
+import { SearchBox, useInfiniteHits } from 'react-instantsearch';
 import { InstantSearchNext } from 'react-instantsearch-nextjs';
 import 'instantsearch.css/themes/satellite.css';
-import { useEffect, useRef, useState } from 'react';
-
-function Hit({
-  hit,
-}: {
-  hit: {
-    program_id: string;
-    タイトル: string;
-    ジャンル: string[];
-    番組情報: string;
-    放送局: string;
-    開始時刻: Date;
-    終了時刻: Date;
-  };
-}) {
-  return (
-    <Card>
-      <Typography level="title-lg">{hit.タイトル}</Typography>
-      <Typography level="body-sm">
-        {hit.放送局} {hit.開始時刻.toString()}～{hit.終了時刻.toString()}{' '}
-        {hit.ジャンル.join(',')}
-      </Typography>
-      <Typography level="body-md">{hit.番組情報}</Typography>
-      <Typography level="body-xs">{hit.program_id}</Typography>
-    </Card>
-  );
-}
+import { useEffect, useState } from 'react';
 
 const CustomInfiniteHits = () => {
   const { items, isLastPage, showMore } = useInfiniteHits();
@@ -56,6 +30,9 @@ const CustomInfiniteHits = () => {
 
   return (
     <List>
+      {items.length === 0 && !loading && (
+        <ListItem>該当する番組が見つかりませんでした</ListItem>
+      )}
       {items.map((item) => (
         <ListItem key={item.program_id}>
           <Card>
@@ -92,7 +69,7 @@ export default function Home() {
     <>
       {searchClient && (
         <InstantSearchNext indexName="kurec-epg" searchClient={searchClient}>
-          <DefaultLayout searchComponent={<SearchBox />}>
+          <DefaultLayout searchComponent={<SearchBox autoFocus />}>
             {/* <InfiniteHits hitComponent={Hit} /> */}
             <CustomInfiniteHits />
           </DefaultLayout>
