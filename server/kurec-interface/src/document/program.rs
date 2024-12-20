@@ -27,8 +27,9 @@ pub struct ProgramDocument {
     #[serde(rename = "終了時刻")]
     pub end_at: DateTime<Utc>,
 
+    // 放送時間は分単位にする
     #[serde(rename = "放送時間")]
-    pub duration: Duration,
+    pub duration: i64,
 
     // 元の形式
     pub program_id: i64,
@@ -72,7 +73,7 @@ impl ProgramDocument {
                 .collect(),
             start_at,
             end_at,
-            duration,
+            duration: duration.num_minutes(),
             program_id: program.id,
             service_id: service.id,
         }
