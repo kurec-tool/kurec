@@ -72,6 +72,7 @@ impl Default for MeilisearchConfig {
                     "放送局".to_string(),
                     "ジャンル".to_string(),
                     "放送時間".to_string(),
+                    "公式サイト等".to_string(),
                 ],
                 sortable_attributes: vec!["開始時刻".to_string()],
             },

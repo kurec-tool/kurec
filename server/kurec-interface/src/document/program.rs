@@ -1,4 +1,5 @@
 use chrono::{DateTime, Duration, TimeZone, Utc};
+use linkify::{LinkFinder, LinkKind};
 use mirakc_client::models::MirakurunProgramGenresInner;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +32,9 @@ pub struct ProgramDocument {
     #[serde(rename = "放送時間")]
     pub duration: i64,
 
+    #[serde(rename = "公式サイト等")]
+    pub urls: Vec<String>,
+
     // 元の形式
     pub program_id: i64,
     pub service_id: i64,
@@ -52,6 +56,12 @@ impl ProgramDocument {
                 .join("\n"),
             None => "".to_string(),
         };
+        let mut finder = LinkFinder::new();
+        finder.kinds(&[LinkKind::Url]);
+        let urls = finder
+            .links(&extended)
+            .map(|link| link.as_str().to_string())
+            .collect::<Vec<_>>();
 
         Self {
             title: program
@@ -74,6 +84,7 @@ impl ProgramDocument {
             start_at,
             end_at,
             duration: duration.num_minutes(),
+            urls,
             program_id: program.id,
             service_id: service.id,
         }

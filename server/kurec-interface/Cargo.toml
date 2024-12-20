@@ -10,6 +10,7 @@ edition.workspace = true
 chrono = { version = "0.4.39", features = ["serde"] }
 derivative = "2.2.0"
 figment = { version = "0.10.19", features = ["env", "yaml"] }
+linkify = "0.10.0"
 mirakc-client = { version = "3.3.0-de.0", path = "../mirakc-client" }
 serde = "1.0.215"
 serde_json = { version = "1.0.133", features = ["indexmap", "preserve_order"] }
