@@ -16,3 +16,9 @@ pub struct ProgramDocumentsUpdatedMessage {
     pub service: MirakurunService,
     pub programs: Vec<ProgramDocument>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OgpRequestMessage {
+    pub url: String,
+    pub hash: String,
+}

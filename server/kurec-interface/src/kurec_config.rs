@@ -13,6 +13,9 @@ pub struct KurecConfig {
     #[derivative(Default(value = "\"kurec\".to_string()"))]
     pub prefix: String,
 
+    #[derivative(Default(value = "300"))]
+    pub ogp_width: u32,
+
     #[derivative(Default(value = "true"))]
     pub color_log: bool,
 
@@ -49,6 +52,7 @@ pub struct MeilisearchConfig {
     pub epg: MeilisearchIndexConfig,
 }
 
+// TODO: KurecConfigじゃなくてkurec-interface/src/document/program.rsに定義を移動する
 impl Default for MeilisearchConfig {
     fn default() -> Self {
         Self {
@@ -73,6 +77,7 @@ impl Default for MeilisearchConfig {
                     "ジャンル".to_string(),
                     "放送時間".to_string(),
                     "公式サイト等".to_string(),
+                    "ogp_url_hash".to_string(),
                 ],
                 sortable_attributes: vec!["開始時刻".to_string()],
             },

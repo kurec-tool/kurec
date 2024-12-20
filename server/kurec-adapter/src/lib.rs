@@ -9,3 +9,6 @@ pub use nats::*;
 
 mod meilisearch;
 pub use meilisearch::*;
+
+mod ogp;
+pub use ogp::*;

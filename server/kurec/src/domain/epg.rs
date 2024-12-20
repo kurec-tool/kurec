@@ -1,8 +1,10 @@
+use std::any;
+
 use kurec_adapter::{MeilisearchAdapter, MeilisearchIndex, MirakcAdapter, NatsAdapter, StreamType};
 use kurec_interface::{
     EpgProgramsUpdatedMessage, EpgProgramsUpdatedMessageData, MirakcEventMessage, ProgramDocument,
 };
-use tracing::debug;
+use tracing::{debug, error};
 
 pub struct EpgDomain {
     pub mirakc_adapter: MirakcAdapter,
@@ -64,10 +66,7 @@ impl EpgDomain {
     }
 
     pub async fn convert_epg_stream(&self) -> Result<(), anyhow::Error> {
-        let f = |data: EpgProgramsUpdatedMessage| -> Result<
-            Option<kurec_interface::ProgramDocumentsUpdatedMessage>,
-            anyhow::Error,
-        > {
+        let f = |data: EpgProgramsUpdatedMessage| async move {
             let documents = data
                 .programs
                 .iter()
@@ -79,6 +78,19 @@ impl EpgDomain {
                 })
                 .collect::<Vec<_>>();
 
+            for doc in &documents {
+                if let Some(ogp_url) = doc.ogp_url.clone() {
+                    let request = kurec_interface::OgpRequestMessage {
+                        url: ogp_url.clone(),
+                        hash: doc.ogp_url_hash.clone().unwrap(),
+                    };
+                    let payload = serde_json::to_vec(&request)?;
+                    self.nats_adapter
+                        .publish_to_stream(StreamType::OgpRequest, payload.into())
+                        .await?;
+                }
+            }
+
             let program_document_update = kurec_interface::ProgramDocumentsUpdatedMessage {
                 tuner_url: data.tuner_url,
                 service: data.service,
@@ -88,7 +100,7 @@ impl EpgDomain {
             Ok(Some(program_document_update))
         };
         self.nats_adapter
-            .filter_map_stream(
+            .filter_map_stream_async(
                 StreamType::EpgUpdated,
                 StreamType::EpgConverted,
                 "converter",
@@ -120,6 +132,6 @@ impl EpgDomain {
         self.nats_adapter
             .stream_sink_async(StreamType::EpgConverted, "indexer", f)
             .await?;
-        todo!()
+        Err(anyhow::Error::msg("unreachable?"))
     }
 }

@@ -1,5 +1,7 @@
 use clap::{Args, Parser, Subcommand};
-use kurec_adapter::{MeilisearchAdapter, MirakcAdapter, MirakcEventsAdapter, NatsAdapter};
+use kurec_adapter::{
+    MeilisearchAdapter, MirakcAdapter, MirakcEventsAdapter, NatsAdapter, OgpAdapter,
+};
 use tracing_subscriber::EnvFilter;
 
 use kurec_interface::KurecConfig;
@@ -20,6 +22,7 @@ enum SubCommands {
         tuner_name: String,
     },
     Epg(EpgArgs),
+    Ogp {},
 }
 
 #[derive(Clone, Debug, Args)]
@@ -91,5 +94,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             }
         },
+        SubCommands::Ogp {} => {
+            let nats_adapter = NatsAdapter::new(config.clone());
+            let ogp_adapter = OgpAdapter::new(config.clone());
+            let ogp_domain = domain::OgpDomain::new(config.clone(), nats_adapter, ogp_adapter);
+            ogp_domain.collect_ogp_stream().await?;
+            Ok(())
+        }
     }
 }

@@ -2,6 +2,7 @@ use chrono::{DateTime, Duration, TimeZone, Utc};
 use linkify::{LinkFinder, LinkKind};
 use mirakc_client::models::MirakurunProgramGenresInner;
 use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 
 // Meilisearchのドキュメントの型
 
@@ -35,6 +36,9 @@ pub struct ProgramDocument {
     #[serde(rename = "公式サイト等")]
     pub urls: Vec<String>,
 
+    pub ogp_url: Option<String>,
+    pub ogp_url_hash: Option<String>,
+
     // 元の形式
     pub program_id: i64,
     pub service_id: i64,
@@ -63,6 +67,20 @@ impl ProgramDocument {
             .map(|link| link.as_str().to_string())
             .collect::<Vec<_>>();
 
+        let ogp_url = if urls.is_empty() {
+            None
+        } else {
+            Some(urls[0].clone())
+        };
+        let ogp_url_hash = match ogp_url.clone() {
+            Some(ogp_url) => {
+                let mut hasher = Sha1::new();
+                hasher.update(ogp_url.as_bytes());
+                Some(format!("{:x}", hasher.finalize()))
+            }
+            None => None,
+        };
+
         Self {
             title: program
                 .name
@@ -84,6 +102,8 @@ impl ProgramDocument {
             start_at,
             end_at,
             duration: duration.num_minutes(),
+            ogp_url,
+            ogp_url_hash,
             urls,
             program_id: program.id,
             service_id: service.id,
