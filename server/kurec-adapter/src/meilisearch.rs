@@ -1,4 +1,4 @@
-use kurec_interface::KurecConfig;
+use kurec_interface::{KurecConfig, MeilisearchIndexConfig};
 use meilisearch_sdk::{
     client::{Client, SwapIndexes},
     documents::DocumentsQuery,
@@ -16,6 +16,11 @@ impl MeilisearchIndex {
             MeilisearchIndex::Epg => "epg",
         }
     }
+    fn get_index_config(&self, config: &KurecConfig) -> MeilisearchIndexConfig {
+        match self {
+            MeilisearchIndex::Epg => config.meilisearch.epg.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -27,19 +32,36 @@ impl MeilisearchAdapter {
     pub async fn new_async(config: KurecConfig) -> Result<Self, anyhow::Error> {
         let me = Self { config };
         let client = me.get_client()?;
-        match client
-            .get_index(&me.get_prefixed_index_name(&MeilisearchIndex::Epg))
-            .await
-        {
-            Ok(_) => {}
-            Err(_) => {
-                client
-                    .create_index(
-                        &me.get_prefixed_index_name(&MeilisearchIndex::Epg),
-                        Some("program_id"),
-                    )
-                    .await
-                    .unwrap();
+        let indexes = [MeilisearchIndex::Epg];
+        for index in indexes.iter() {
+            let index_name = me.get_prefixed_index_name(&MeilisearchIndex::Epg);
+            let config = index.get_index_config(&me.config);
+            match client.get_index(&index_name).await {
+                Ok(_) => {}
+                Err(_) => {
+                    let task = client
+                        .create_index(&index_name, Some("program_id"))
+                        .await
+                        .unwrap(); // unwrapにすることでindex作れないようなエラーなら落とす
+                    task.wait_for_completion(&client, None, None).await.unwrap();
+                    let index = client.get_index(&index_name).await.unwrap();
+                    index
+                        .set_searchable_attributes(config.searchable_attributes.clone())
+                        .await
+                        .unwrap();
+                    index
+                        .set_displayed_attributes(config.displayed_attributes.clone())
+                        .await
+                        .unwrap();
+                    index
+                        .set_filterable_attributes(config.filterable_attributes.clone())
+                        .await
+                        .unwrap();
+                    index
+                        .set_sortable_attributes(config.sortable_attributes.clone())
+                        .await
+                        .unwrap();
+                }
             }
         }
         Ok(me)
@@ -97,7 +119,25 @@ impl MeilisearchAdapter {
             .wait_for_completion(&client, None, None)
             .await
             .unwrap();
+        let config = index_name.get_index_config(&self.config);
         let tmp_index = client.get_index(&tmp_index_name).await.unwrap();
+        tmp_index
+            .set_searchable_attributes(config.searchable_attributes.clone())
+            .await
+            .unwrap();
+        tmp_index
+            .set_displayed_attributes(config.displayed_attributes)
+            .await
+            .unwrap();
+        tmp_index
+            .set_filterable_attributes(config.filterable_attributes)
+            .await
+            .unwrap();
+        tmp_index
+            .set_sortable_attributes(config.sortable_attributes)
+            .await
+            .unwrap();
+
         let resp = index
             .get_documents_with::<T>(DocumentsQuery::new(&index).with_limit(1))
             .await

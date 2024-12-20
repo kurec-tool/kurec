@@ -42,8 +42,49 @@ pub struct NatsConfig {
     pub url: String,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MeilisearchConfig {
     pub url: String,
     pub api_key: Option<String>,
+    pub epg: MeilisearchIndexConfig,
+}
+
+impl Default for MeilisearchConfig {
+    fn default() -> Self {
+        Self {
+            url: "http://meilisearch:7700".to_string(),
+            api_key: None,
+            epg: MeilisearchIndexConfig {
+                index_base_name: "epg".to_string(),
+                primary_key: "program_id".to_string(),
+                filterable_attributes: vec!["ジャンル".to_string(), "放送局".to_string()],
+                searchable_attributes: vec![
+                    "タイトル".to_string(),
+                    "番組情報".to_string(),
+                    "その他情報".to_string(),
+                ],
+                displayed_attributes: vec![
+                    "タイトル".to_string(),
+                    "番組情報".to_string(),
+                    "その他情報".to_string(),
+                    "開始時刻".to_string(),
+                    "終了時刻".to_string(),
+                    "放送局".to_string(),
+                    "ジャンル".to_string(),
+                    "放送時間".to_string(),
+                ],
+                sortable_attributes: vec!["開始時刻".to_string()],
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MeilisearchIndexConfig {
+    pub index_base_name: String,
+    pub primary_key: String,
+    pub filterable_attributes: Vec<String>,
+    pub searchable_attributes: Vec<String>,
+    pub displayed_attributes: Vec<String>,
+    pub sortable_attributes: Vec<String>,
 }

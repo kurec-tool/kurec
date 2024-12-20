@@ -4,19 +4,11 @@ import {
   type InstantMeiliSearchInstance,
   instantMeiliSearch,
 } from '@meilisearch/instant-meilisearch';
-import {
-  Box,
-  Button,
-  Card,
-  Chip,
-  Input,
-  List,
-  ListItem,
-  Typography,
-} from '@mui/joy';
+import { Box, Card, Chip, Input, List, ListItem, Typography } from '@mui/joy';
 import useInfiniteScroll from 'react-infinite-scroll-hook';
 import {
-  SearchBox,
+  Highlight,
+  RefinementList,
   useInfiniteHits,
   useInstantSearch,
   useSearchBox,
@@ -52,12 +44,21 @@ const CustomInfiniteHits = () => {
       {items.map((item) => (
         <ListItem key={item.program_id}>
           <Card sx={{ width: '100%' }}>
-            <Typography level="title-lg">{item.タイトル}</Typography>
+            <Typography level="title-lg">
+              <Highlight attribute="タイトル" hit={item} />
+            </Typography>
             <Typography level="body-sm">
               {item.放送局} {item.開始時刻.toString()}～
               {item.終了時刻.toString()} {item.ジャンル.join(',')}
             </Typography>
-            <Typography level="body-md">{item.番組情報}</Typography>
+            <Typography level="body-md">
+              <Highlight attribute="番組情報" hit={item} />
+            </Typography>
+            <Typography level="body-sm">
+              {(item.その他情報 as string).split('\n').map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </Typography>
             <Typography level="body-xs">{item.program_id}</Typography>
           </Card>
         </ListItem>
@@ -69,11 +70,12 @@ const CustomInfiniteHits = () => {
   );
 };
 
-function CustomSearchBox() {
+function CustomSearchBox({
+  inputValue,
+  setInputValue,
+}: { inputValue: string; setInputValue: (v: string) => void }) {
   const { clear, query, refine } = useSearchBox();
   const status = useInstantSearch();
-
-  const [inputValue, setInputValue] = useState(query);
 
   const handleAdd = useCallback(() => {
     console.log('追加！:', inputValue);
@@ -96,7 +98,17 @@ function CustomSearchBox() {
           setInputValue(e.target.value);
           refine(e.target.value);
         }}
+        value={inputValue}
       />
+    </Box>
+  );
+}
+
+function GenreFilter() {
+  return (
+    <Box>
+      <Typography level="title-md">ジャンル</Typography>
+      <RefinementList attribute="ジャンル" limit={255} searchable={true} />
     </Box>
   );
 }
@@ -104,22 +116,37 @@ function CustomSearchBox() {
 export default function EpgSearch() {
   const [searchClient, setSearchClient] =
     useState<InstantMeiliSearchInstance>();
+  const [inputValue, setInputValue] = useState('');
 
   useEffect(() => {
-    const { searchClient } = instantMeiliSearch(
-      // biome-ignore lint/style/noNonNullAssertion: <explanation>
-      process.env.NEXT_PUBLIC_MEILISEARCH_URL!,
-      process.env.NEXT_PUBLIC_MEILISEARCH_KEY,
-    );
+    const { searchClient, meiliSearchInstance, setMeiliSearchParams } =
+      instantMeiliSearch(
+        // biome-ignore lint/style/noNonNullAssertion: <explanation>
+        process.env.NEXT_PUBLIC_MEILISEARCH_URL!,
+        process.env.NEXT_PUBLIC_MEILISEARCH_KEY,
+      );
+
     setSearchClient(searchClient);
   }, []);
+
   return (
     <>
       {searchClient && (
         <InstantSearchNext indexName="kurec-epg" searchClient={searchClient}>
-          <DefaultLayout searchComponent={<CustomSearchBox />}>
-            {/* <InfiniteHits hitComponent={Hit} /> */}
-            <CustomInfiniteHits />
+          <DefaultLayout
+            searchComponent={
+              <CustomSearchBox
+                inputValue={inputValue}
+                setInputValue={setInputValue}
+              />
+            }
+          >
+            <Box>
+              <GenreFilter />
+            </Box>
+            <Box>
+              <CustomInfiniteHits />
+            </Box>
           </DefaultLayout>
         </InstantSearchNext>
       )}

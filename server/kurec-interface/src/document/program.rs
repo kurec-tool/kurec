@@ -9,9 +9,11 @@ pub struct ProgramDocument {
     #[serde(rename = "タイトル")]
     pub title: String,
 
-    // TODO: extended
     #[serde(rename = "番組情報")]
     pub description: String,
+
+    #[serde(rename = "その他情報")]
+    pub extended: String,
 
     #[serde(rename = "放送局")]
     pub channel: String,
@@ -41,16 +43,25 @@ impl ProgramDocument {
         let start_at = unix_millis_to_datetime(program.start_at);
         let end_at = unix_millis_to_datetime(program.start_at + program.duration);
         let duration = Duration::milliseconds(program.duration);
+        let extended = match program.extended.unwrap_or_default().as_object() {
+            Some(ext) => ext
+                .iter()
+                .map(|(k, v)| format!("{}: {}", k, v.as_str().unwrap_or_default()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+            None => "".to_string(),
+        };
 
         Self {
             title: program
                 .name
-                .unwrap_or_else(|| Some("不明な番組".to_string()))
-                .unwrap_or_else(|| "不明な番組".to_string()),
+                .unwrap_or_else(|| Some("＜不明な番組＞".to_string()))
+                .unwrap_or_else(|| "＜不明な番組＞".to_string()),
             description: program
                 .description
-                .unwrap_or_else(|| Some("不明".to_string()))
-                .unwrap_or_else(|| "不明".to_string()),
+                .unwrap_or_else(|| Some("＜不明＞".to_string()))
+                .unwrap_or_else(|| "＜不明＞".to_string()),
+            extended,
             channel: service.name,
             genres: program
                 .genres
