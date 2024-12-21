@@ -32,9 +32,21 @@ importers:
       '@mui/joy':
         specifier: 5.0.0-beta.48
         version: 5.0.0-beta.48(@emotion/react@11.13.5(@types/react@18.3.14)(react@18.3.1))(@emotion/styled@11.13.5(@emotion/react@11.13.5(@types/react@18.3.14)(react@18.3.1))(@types/react@18.3.14)(react@18.3.1))(@types/react@18.3.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@nats-io/jetstream':
+        specifier: 3.0.0-35
+        version: 3.0.0-35
+      '@nats-io/kv':
+        specifier: 3.0.0-29
+        version: 3.0.0-29
+      '@nats-io/transport-node':
+        specifier: 3.0.0-33
+        version: 3.0.0-33
       instantsearch.css:
         specifier: ^8.5.1
         version: 8.5.1
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
       next:
         specifier: 14.2.20
         version: 14.2.20(@babel/core@7.26.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -78,6 +90,9 @@ importers:
       '@storybook/test':
         specifier: ^8.4.7
         version: 8.4.7(storybook@8.4.7)
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: ^20
         version: 20.17.9
@@ -1297,6 +1312,27 @@ packages:
       '@types/react':
         optional: true
 
+  '@nats-io/jetstream@3.0.0-35':
+    resolution: {integrity: sha512-oJdNge4IoNoA3BqZPU9hdX+4okLW2Tn+JAvxeRAV+Nh6J78/8+3O/moyhbz1AszqjakgdeEVTUF3GUa1F/fCZw==}
+
+  '@nats-io/kv@3.0.0-29':
+    resolution: {integrity: sha512-B/paLctTa3tS/CB+xThS7MUfcn3x3BKWuacgHsvXxlTXXfKJx7rnfcdCyMVRYg+UuLHLR8gS2E/BPVSo1jodxw==}
+
+  '@nats-io/nats-core@3.0.0-48':
+    resolution: {integrity: sha512-IGT2vGgDxPAXrGQqzpD27EYMoIUjU+Y3AOgecLIIouews0qv9Wh2vJ10QmRSdElVaDL6VZTY+pyU3BJUFhD4kQ==}
+
+  '@nats-io/nkeys@2.0.0-3':
+    resolution: {integrity: sha512-ars24TseiM1v5JTdSl9lgFV5ayoq1nqYD5apDn3LoWZM5BFGve11cam2N6F/VVOENCZzuAkLtw/uTN5HDutkmA==}
+    engines: {node: '>=16.0.0'}
+
+  '@nats-io/nuid@2.0.1-2':
+    resolution: {integrity: sha512-oXJiWXH87FjcPAXVVkoY+o7z9YFuOvsVlUlvB4h/QsoC1hp63lB18YOMHmKxVNO7BzvwzJh3SKLlIlsQrEwaxg==}
+    engines: {node: '>= 18.x'}
+
+  '@nats-io/transport-node@3.0.0-33':
+    resolution: {integrity: sha512-eq3X6Z1pcdIWUZ57jKZay1J+RTQmvaNts2+GywPZVDX6uE/c8CQkdlqY+0SCUfbtiPjEt4TDtFs00IBvV84Q8w==}
+    engines: {node: '>= 18.0.0'}
+
   '@next/env@14.2.20':
     resolution: {integrity: sha512-JfDpuOCB0UBKlEgEy/H6qcBSzHimn/YWjUHzKl1jMeUO+QVRdzmTTl8gFJaNO87c8DXmVKhFCtwxQ9acqB3+Pw==}
 
@@ -1639,6 +1675,9 @@ packages:
 
   '@types/html-minifier-terser@6.1.0':
     resolution: {integrity: sha512-oh/6byDPnL1zeNXFrDXFLyZjkr1MsBG667IM792caf1L2UPOOMf65NFzjUH/ltyfwjAGfs1rsX1eftK0jC/KIg==}
+
+  '@types/js-yaml@4.0.9':
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -3489,6 +3528,9 @@ packages:
   tween-functions@1.2.0:
     resolution: {integrity: sha512-PZBtLYcCLtEcjL14Fzb1gSxPBeL7nWvGhO5ZFPGqziCcr8uvHp0NDmdjBchp6KHL+tExcg0m3NISmKxhU394dA==}
 
+  tweetnacl@1.0.3:
+    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
+
   type-fest@2.19.0:
     resolution: {integrity: sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA==}
     engines: {node: '>=12.20'}
@@ -4955,6 +4997,32 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.14
 
+  '@nats-io/jetstream@3.0.0-35':
+    dependencies:
+      '@nats-io/nats-core': 3.0.0-48
+
+  '@nats-io/kv@3.0.0-29':
+    dependencies:
+      '@nats-io/jetstream': 3.0.0-35
+      '@nats-io/nats-core': 3.0.0-48
+
+  '@nats-io/nats-core@3.0.0-48':
+    dependencies:
+      '@nats-io/nkeys': 2.0.0-3
+      '@nats-io/nuid': 2.0.1-2
+
+  '@nats-io/nkeys@2.0.0-3':
+    dependencies:
+      tweetnacl: 1.0.3
+
+  '@nats-io/nuid@2.0.1-2': {}
+
+  '@nats-io/transport-node@3.0.0-33':
+    dependencies:
+      '@nats-io/nats-core': 3.0.0-48
+      '@nats-io/nkeys': 2.0.0-3
+      '@nats-io/nuid': 2.0.1-2
+
   '@next/env@14.2.20': {}
 
   '@next/swc-darwin-arm64@14.2.20':
@@ -5421,6 +5489,8 @@ snapshots:
   '@types/hogan.js@3.0.5': {}
 
   '@types/html-minifier-terser@6.1.0': {}
+
+  '@types/js-yaml@4.0.9': {}
 
   '@types/json-schema@7.0.15': {}
 
@@ -7417,6 +7487,8 @@ snapshots:
   tty-browserify@0.0.1: {}
 
   tween-functions@1.2.0: {}
+
+  tweetnacl@1.0.3: {}
 
   type-fest@2.19.0: {}
 
