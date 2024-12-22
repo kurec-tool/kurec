@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": []
+    "ignore": ["**/types/**/*.ts"]
   },
   "formatter": {
     "enabled": true,

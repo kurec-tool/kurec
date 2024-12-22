@@ -9,3 +9,6 @@ pub use mirakc::*;
 
 mod document;
 pub use document::*;
+
+mod kvs;
+pub use kvs::*;

@@ -3,10 +3,11 @@ use linkify::{LinkFinder, LinkKind};
 use mirakc_client::models::MirakurunProgramGenresInner;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
+use typeshare::typeshare;
 
 // Meilisearchのドキュメントの型
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[typeshare]
 pub struct ProgramDocument {
     #[serde(rename = "タイトル")]
     pub title: String,
@@ -24,13 +25,16 @@ pub struct ProgramDocument {
     pub genres: Vec<String>,
 
     #[serde(rename = "開始時刻")]
+    #[typeshare(serialized_as = "string")]
     pub start_at: DateTime<Utc>,
 
     #[serde(rename = "終了時刻")]
+    #[typeshare(serialized_as = "string")]
     pub end_at: DateTime<Utc>,
 
     // 放送時間は分単位にする
     #[serde(rename = "放送時間")]
+    #[typeshare(serialized_as = "number")]
     pub duration: i64,
 
     #[serde(rename = "公式サイト等")]
@@ -40,7 +44,9 @@ pub struct ProgramDocument {
     pub ogp_url_hash: Option<String>,
 
     // 元の形式
+    #[typeshare(serialized_as = "number")]
     pub program_id: i64,
+    #[typeshare(serialized_as = "number")]
     pub service_id: i64,
 }
 
