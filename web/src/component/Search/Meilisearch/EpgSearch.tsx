@@ -113,25 +113,23 @@ function CustomSearchBox({
   const status = useInstantSearch();
 
   return (
-    <Box>
-      <Input
-        placeholder="検索..."
-        startDecorator={<SearchIcon />}
-        endDecorator={
-          inputValue && (
-            <Chip onClick={handleAddAction} startDecorator={<AddIcon />}>
-              ルールに追加
-            </Chip>
-          )
-        }
-        autoFocus={true}
-        onChange={(e) => {
-          setInputValue(e.target.value);
-          refine(e.target.value);
-        }}
-        value={inputValue}
-      />
-    </Box>
+    <Input
+      placeholder="検索..."
+      startDecorator={<SearchIcon />}
+      endDecorator={
+        inputValue && (
+          <Chip onClick={handleAddAction}>
+            <AddIcon />
+          </Chip>
+        )
+      }
+      autoFocus={true}
+      onChange={(e) => {
+        setInputValue(e.target.value);
+        refine(e.target.value);
+      }}
+      value={inputValue}
+    />
   );
 }
 
@@ -184,11 +182,35 @@ function CustomRefinementList(props: RefinementListProps) {
   );
 }
 
+export class EpgSearchQuery {
+  private query: string;
+  private refinementList: {
+    [key: string]: string[];
+  };
+  constructor(query: string, refinementList: { [key: string]: string[] }) {
+    this.query = query;
+    this.refinementList = refinementList;
+  }
+  toQueryObject() {
+    const filterString = Object.entries(this.refinementList)
+      .map(([key, value]) => {
+        return `${key} IN [ ${value.map((v) => `"${v}"`).join(', ')} ]`;
+      })
+      .map((q) => `( ${q} )`)
+      .join(' AND ');
+    return {
+      query: this.query,
+      filter: filterString,
+    };
+  }
+}
+
 type EpgSearchComponentProps = {
   searchClient: InstantMeiliSearchInstance;
   inputValue: string;
   setInputValue: (v: string) => void;
-  handleAddAction: () => void; // Add Rule
+  handleAddAction: (query: EpgSearchQuery) => void; // Add Rule
+  indexName: string;
 };
 
 export default function EpgSearchComponent({
@@ -196,13 +218,23 @@ export default function EpgSearchComponent({
   inputValue,
   setInputValue,
   handleAddAction,
+  indexName,
 }: EpgSearchComponentProps) {
+  const [query, setQuery] = useState<EpgSearchQuery>(
+    new EpgSearchQuery('', {}),
+  );
+
   return (
     <InstantSearchNext
-      indexName="kurec-epg"
+      indexName={indexName}
       searchClient={searchClient}
       onStateChange={(params) => {
-        console.log({ params });
+        setQuery(
+          new EpgSearchQuery(
+            params.uiState[indexName].query ?? '',
+            params.uiState[indexName].refinementList ?? {},
+          ),
+        );
         params.setUiState(params.uiState);
       }}
     >
@@ -211,7 +243,7 @@ export default function EpgSearchComponent({
           <CustomSearchBox
             inputValue={inputValue}
             setInputValue={setInputValue}
-            handleAddAction={handleAddAction}
+            handleAddAction={() => handleAddAction(query)}
           />
         }
       >
