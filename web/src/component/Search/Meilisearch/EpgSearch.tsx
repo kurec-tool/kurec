@@ -22,10 +22,12 @@ import {
 } from 'react-instantsearch';
 import { InstantSearchNext } from 'react-instantsearch-nextjs';
 import 'instantsearch.css/themes/satellite.css';
-import { PanoramaSharp } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import { useEffect, useState } from 'react';
+import { useDebounce } from 'react-use';
+
+const debounceTimeout = 200;
 
 const CustomInfiniteHits = () => {
   const { items, isLastPage, showMore } = useInfiniteHits();
@@ -111,6 +113,13 @@ function CustomSearchBox({
 }) {
   const { clear, query, refine } = useSearchBox();
   const status = useInstantSearch();
+  const [, cancel] = useDebounce(
+    () => {
+      refine(inputValue);
+    },
+    debounceTimeout,
+    [inputValue],
+  );
 
   return (
     <Input
@@ -126,7 +135,6 @@ function CustomSearchBox({
       autoFocus={true}
       onChange={(e) => {
         setInputValue(e.target.value);
-        refine(e.target.value);
       }}
       value={inputValue}
     />
@@ -223,6 +231,16 @@ export default function EpgSearchComponent({
   const [query, setQuery] = useState<EpgSearchQuery>(
     new EpgSearchQuery('', {}),
   );
+  const [updateUiState, setUpdateUiState] = useState<() => void>(() => {});
+  const [, cancel] = useDebounce(
+    () => {
+      if (updateUiState) {
+        updateUiState();
+      }
+    },
+    debounceTimeout,
+    [updateUiState],
+  );
 
   return (
     <InstantSearchNext
@@ -235,7 +253,7 @@ export default function EpgSearchComponent({
             params.uiState[indexName].refinementList ?? {},
           ),
         );
-        params.setUiState(params.uiState);
+        setUpdateUiState(() => params.setUiState(params.uiState));
       }}
     >
       <DefaultLayout

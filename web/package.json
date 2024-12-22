@@ -27,7 +27,8 @@
     "react-dom": "^18.3.1",
     "react-infinite-scroll-hook": "^5.0.1",
     "react-instantsearch": "^7.13.9",
-    "react-instantsearch-nextjs": "^0.3.19"
+    "react-instantsearch-nextjs": "^0.3.19",
+    "react-use": "^17.6.0"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.2",
