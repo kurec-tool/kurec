@@ -55,8 +55,8 @@ const CustomInfiniteHits = () => {
         const startDateTime = new Date(item.開始時刻);
         const endDateTime = new Date(item.終了時刻);
         const startDate = `${startDateTime.getMonth() + 1}/${startDateTime.getDate()}`;
-        const startTime = `${startDateTime.getHours()}:${startDateTime.getMinutes()}`;
-        const endTime = `${endDateTime.getHours()}:${endDateTime.getMinutes()}`;
+        const startTime = `${startDateTime.getHours().toString().padStart(2, '0')}:${startDateTime.getMinutes().toString().padStart(2, '0')}`;
+        const endTime = `${endDateTime.getHours().toString().padStart(2, '0')}:${endDateTime.getMinutes().toString().padStart(2, '0')}`;
 
         return (
           <ListItem key={item.objectID}>
