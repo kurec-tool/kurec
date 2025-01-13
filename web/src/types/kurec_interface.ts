@@ -20,6 +20,7 @@ export interface ProgramDocument {
 	ジャンル: string[];
 	開始時刻: string;
 	終了時刻: string;
+	放送曜日: string;
 	放送時間: number;
 	公式サイト等: string[];
 	ogp_url?: string;
