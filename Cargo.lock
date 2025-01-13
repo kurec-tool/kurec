@@ -1805,6 +1805,7 @@ dependencies = [
  "serde_with",
  "sha1",
  "typeshare",
+ "url",
 ]
 
 [[package]]

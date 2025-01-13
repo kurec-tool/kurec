@@ -70,9 +70,38 @@ impl ProgramDocument {
             None => "".to_string(),
         };
         let mut finder = LinkFinder::new();
+        finder.url_must_have_scheme(false);
         finder.kinds(&[LinkKind::Url]);
         let urls = finder
-            .links(&extended)
+            .links(&extended.replace("　", " "))
+            .filter(|link| link.kind() == &LinkKind::Url)
+            .filter(|link| {
+                let link_with_scheme = if link.as_str().starts_with("http") {
+                    link.as_str().to_string()
+                } else {
+                    format!("https://{}", link.as_str())
+                };
+                let url = match url::Url::parse(link_with_scheme.as_str()) {
+                    Ok(url) => url,
+                    Err(_) => return false,
+                };
+                let host = url.host_str().unwrap_or_default();
+                // SNSはOGP持ってないので除外する
+                // TODO: アイコンとかトップイメージで代用出来ないか？
+                if [
+                    "x.com",
+                    "twitter.com",
+                    "tiktok.com",
+                    "instagram.com",
+                    "www.instagram.com",
+                    "facebook.com",
+                ]
+                .contains(&host)
+                {
+                    return false;
+                }
+                true
+            })
             .map(|link| link.as_str().to_string())
             .collect::<Vec<_>>();
 
@@ -90,7 +119,9 @@ impl ProgramDocument {
             None => None,
         };
         let day_of_weeks = ["月", "火", "水", "木", "金", "土", "日"];
-        let day_of_week = day_of_weeks[start_at.weekday() as usize];
+        let day_of_week = day_of_weeks[start_at
+            .with_timezone(&chrono::FixedOffset::east_opt(9 * 3600).unwrap())
+            .weekday() as usize];
 
         Self {
             title: program

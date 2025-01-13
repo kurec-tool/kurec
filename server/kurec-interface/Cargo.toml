@@ -17,3 +17,4 @@ serde_json = { version = "1.0.133", features = ["indexmap", "preserve_order"] }
 serde_with = { version = "3.11.0", features = ["chrono", "indexmap", "json"] }
 sha1 = "0.10.6"
 typeshare = "1.0.4"
+url = "2.5.4"
