@@ -76,8 +76,8 @@ const CustomInfiniteHits = () => {
                     <Highlight attribute="タイトル" hit={item} />
                   </Typography>
                   <Typography level="body-sm">
-                    {item.放送局} {startDate} {startTime}～{endTime}{' '}
-                    {item.ジャンル.join(', ')}
+                    {item.放送局} {startDate} {item.放送曜日} {startTime}～
+                    {endTime} {item.ジャンル.join(', ')}
                   </Typography>
                 </Box>
               </Stack>
