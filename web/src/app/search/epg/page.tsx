@@ -7,6 +7,7 @@ import {
   instantMeiliSearch,
 } from '@meilisearch/instant-meilisearch';
 import { useCallback, useEffect, useState } from 'react';
+import { addRule } from './server';
 
 export default function EpgSearch() {
   const [searchClient, setSearchClient] =
@@ -25,10 +26,11 @@ export default function EpgSearch() {
   }, []);
 
   const handleAddAction = useCallback(
-    (query: EpgSearchQuery) => {
+    async (query: EpgSearchQuery) => {
       console.log(
         `Add action inputValue: ${inputValue} query: ${JSON.stringify(query.toQueryObject())}`,
       );
+      await addRule(query.toQueryObject());
     },
     [inputValue],
   );
