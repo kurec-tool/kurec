@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use linkify::{LinkFinder, LinkKind};
 use mirakc_client::models::MirakurunProgramGenresInner;
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,9 @@ pub struct ProgramDocument {
     #[serde(rename = "終了時刻")]
     #[typeshare(serialized_as = "string")]
     pub end_at: DateTime<Utc>,
+
+    #[serde(rename = "放送曜日")]
+    pub day_of_week: String,
 
     // 放送時間は分単位にする
     #[serde(rename = "放送時間")]
@@ -86,6 +89,8 @@ impl ProgramDocument {
             }
             None => None,
         };
+        let day_of_weeks = ["月", "火", "水", "木", "金", "土", "日"];
+        let day_of_week = day_of_weeks[start_at.weekday() as usize];
 
         Self {
             title: program
@@ -107,6 +112,7 @@ impl ProgramDocument {
                 .collect(),
             start_at,
             end_at,
+            day_of_week: day_of_week.to_string(),
             duration: duration.num_minutes(),
             ogp_url,
             ogp_url_hash,
