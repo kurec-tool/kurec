@@ -61,18 +61,24 @@ impl Default for MeilisearchConfig {
             epg: MeilisearchIndexConfig {
                 index_base_name: "epg".to_string(),
                 primary_key: "program_id".to_string(),
-                filterable_attributes: vec!["ジャンル".to_string(), "放送局".to_string()],
+                filterable_attributes: vec![
+                    "ジャンル".to_string(),
+                    "放送局".to_string(),
+                    "放送曜日".to_string(),
+                ],
                 searchable_attributes: vec![
                     "タイトル".to_string(),
                     "番組情報".to_string(),
                     "その他情報".to_string(),
                 ],
                 displayed_attributes: vec![
+                    "program_id".to_string(),
                     "タイトル".to_string(),
                     "番組情報".to_string(),
                     "その他情報".to_string(),
                     "開始時刻".to_string(),
                     "終了時刻".to_string(),
+                    "放送曜日".to_string(),
                     "放送局".to_string(),
                     "ジャンル".to_string(),
                     "放送時間".to_string(),
