@@ -68,6 +68,9 @@ const CustomInfiniteHits = () => {
                       src={`http://localhost:3000/api/ogp/${item.ogp_url_hash}`}
                       alt="公式サイト画像"
                       style={{ maxWidth: '150px', display: 'inline' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   </Box>
                 )}
