@@ -321,7 +321,7 @@ impl NatsAdapter {
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
             Ok(kv) => kv,
-            Err(e) => jc
+            Err(_) => jc
                 .create_key_value(jetstream::kv::Config {
                     bucket,
                     ..Default::default()
@@ -344,7 +344,7 @@ impl NatsAdapter {
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
             Ok(kv) => kv,
-            Err(e) => jc
+            Err(_) => jc
                 .create_key_value(jetstream::kv::Config {
                     bucket,
                     ..Default::default()
@@ -367,7 +367,7 @@ impl NatsAdapter {
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
             Ok(kv) => kv,
-            Err(e) => jc
+            Err(_) => jc
                 .create_key_value(jetstream::kv::Config {
                     bucket,
                     ..Default::default()

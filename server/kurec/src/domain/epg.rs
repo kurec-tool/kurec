@@ -1,10 +1,8 @@
-use std::any;
-
 use kurec_adapter::{MeilisearchAdapter, MeilisearchIndex, MirakcAdapter, NatsAdapter, StreamType};
 use kurec_interface::{
     EpgProgramsUpdatedMessage, EpgProgramsUpdatedMessageData, MirakcEventMessage, ProgramDocument,
 };
-use tracing::{debug, error};
+use tracing::debug;
 
 pub struct EpgDomain {
     pub mirakc_adapter: MirakcAdapter,
