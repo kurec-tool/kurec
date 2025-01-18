@@ -7,6 +7,7 @@ import {
   instantMeiliSearch,
 } from '@meilisearch/instant-meilisearch';
 import { useCallback, useEffect, useState } from 'react';
+import { uuidv7 } from 'uuidv7';
 import { addRule } from './server';
 
 export default function EpgSearch() {
@@ -30,9 +31,23 @@ export default function EpgSearch() {
       console.log(
         `Add action inputValue: ${inputValue} query: ${JSON.stringify(query.toQueryObject())}`,
       );
-      await addRule(query.toQueryObject());
+      await addRule({
+        id: uuidv7().toString(),
+        isIgnore: false, // TODO: ignoreルールも書けるようにする
+        ...query.toQueryObject(),
+      });
     },
     [inputValue],
+  );
+
+  const handleAddIndividualAction = useCallback(async (programId: number) => {
+    console.log('handleAddIndividualAction', programId);
+  }, []);
+  const handleIgnoreIndividualAction = useCallback(
+    async (programId: number) => {
+      console.log('handleIgnoreIndividualAction', programId);
+    },
+    [],
   );
 
   return (
@@ -44,6 +59,8 @@ export default function EpgSearch() {
           inputValue={inputValue}
           setInputValue={setInputValue}
           handleAddAction={handleAddAction}
+          onAddIndividual={handleAddIndividualAction}
+          onIgnoreIndividual={handleIgnoreIndividualAction}
         />
       )}
     </>

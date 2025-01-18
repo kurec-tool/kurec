@@ -29,7 +29,8 @@
     "react-infinite-scroll-hook": "^5.0.1",
     "react-instantsearch": "^7.13.9",
     "react-instantsearch-nextjs": "^0.3.19",
-    "react-use": "^17.6.0"
+    "react-use": "^17.6.0",
+    "uuidv7": "^1.0.2"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.2",

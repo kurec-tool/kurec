@@ -3,11 +3,16 @@ import DefaultLayout from '@/component/Navigation/DefaultLayout';
 import type { InstantMeiliSearchInstance } from '@meilisearch/instant-meilisearch';
 import {
   Box,
+  Button,
   Card,
   Chip,
+  Dropdown,
   Input,
   List,
   ListItem,
+  Menu,
+  MenuButton,
+  MenuItem,
   Stack,
   Typography,
 } from '@mui/joy';
@@ -22,14 +27,19 @@ import {
 } from 'react-instantsearch';
 import { InstantSearchNext } from 'react-instantsearch-nextjs';
 import 'instantsearch.css/themes/satellite.css';
+import { AddCircle } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
+import ErrorIcon from '@mui/icons-material/Error';
 import SearchIcon from '@mui/icons-material/Search';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'react-use';
 
 const debounceTimeout = 200;
 
-const CustomInfiniteHits = () => {
+const CustomInfiniteHits = (props: {
+  onAddIndividual: (programId: number) => void;
+  onIgnoreIndividual: (programId: number) => void;
+}) => {
   const { items, isLastPage, showMore } = useInfiniteHits();
   const [hasNextPage, setHasNextPage] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -93,7 +103,26 @@ const CustomInfiniteHits = () => {
                   <p key={line}>{line}</p>
                 ))}
               </Typography> */}
-              <Typography level="body-xs">{item.program_id}</Typography>
+              <Box>
+                <Dropdown>
+                  <MenuButton>録画/無視</MenuButton>
+                  <Menu>
+                    <MenuItem
+                      onClick={() => props.onAddIndividual(item.program_id)}
+                    >
+                      🔴 個別録画
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => props.onIgnoreIndividual(item.program_id)}
+                    >
+                      ❗ 個別無視
+                    </MenuItem>
+                  </Menu>
+                </Dropdown>
+                <Typography level="body-xs" display="inline-block">
+                  {item.program_id}
+                </Typography>
+              </Box>
             </Card>
           </ListItem>
         );
@@ -222,6 +251,8 @@ type EpgSearchComponentProps = {
   setInputValue: (v: string) => void;
   handleAddAction: (query: EpgSearchQuery) => void; // Add Rule
   indexName: string;
+  onAddIndividual: (programId: number) => void;
+  onIgnoreIndividual: (programId: number) => void;
 };
 
 export default function EpgSearchComponent({
@@ -230,6 +261,8 @@ export default function EpgSearchComponent({
   setInputValue,
   handleAddAction,
   indexName,
+  onAddIndividual,
+  onIgnoreIndividual,
 }: EpgSearchComponentProps) {
   const [query, setQuery] = useState<EpgSearchQuery>(
     new EpgSearchQuery('', {}),
@@ -283,7 +316,10 @@ export default function EpgSearchComponent({
           />
         </Box>
         <Box>
-          <CustomInfiniteHits />
+          <CustomInfiniteHits
+            onAddIndividual={onAddIndividual}
+            onIgnoreIndividual={onIgnoreIndividual}
+          />
         </Box>
       </DefaultLayout>
     </InstantSearchNext>

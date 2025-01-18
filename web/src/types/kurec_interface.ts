@@ -3,9 +3,21 @@
 */
 
 
+export interface IndividualRule {
+	programId: number;
+	serviceId: number;
+	isIgnore: boolean;
+}
+
+export interface IndividualRules {
+	rules: IndividualRule[];
+}
+
 export interface MeilisearchRule {
+	id: string;
 	query: string;
 	filter: string;
+	isIgnore: boolean;
 }
 
 export interface MeilisearchRules {
