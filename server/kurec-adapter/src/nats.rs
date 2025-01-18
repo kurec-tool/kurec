@@ -31,6 +31,7 @@ impl StreamType {
 pub enum KvsType {
     Ogp,
     UrlHash,
+    EpgConverted,
 }
 
 impl KvsType {
@@ -38,6 +39,7 @@ impl KvsType {
         match self {
             KvsType::Ogp => "ogp",
             KvsType::UrlHash => "url-hash",
+            KvsType::EpgConverted => "epg-converted",
         }
     }
 }
@@ -379,5 +381,34 @@ impl NatsAdapter {
 
         kv.put(key, bytes).await.unwrap();
         Ok(())
+    }
+
+    pub async fn kv_get_bytes(&self, kvs_type: KvsType, key: &str) -> Result<Bytes, anyhow::Error> {
+        let jc = self.connect().await.unwrap();
+        let bucket = self.get_prefixed_kvs_name(kvs_type);
+        let kv = match jc.get_key_value(&bucket).await {
+            Ok(kv) => kv,
+            Err(_) => jc
+                .create_key_value(jetstream::kv::Config {
+                    bucket,
+                    ..Default::default()
+                })
+                .await
+                .unwrap(),
+        };
+        match kv.get(key).await.unwrap() {
+            Some(v) => Ok(v),
+            None => Err(anyhow::anyhow!("key not found")),
+        }
+    }
+
+    pub async fn kv_get_decoded<T: for<'a> Deserialize<'a>>(
+        &self,
+        kvs_type: KvsType,
+        key: &str,
+    ) -> Result<T, anyhow::Error> {
+        let bytes = self.kv_get_bytes(kvs_type, key).await?;
+        let v: T = serde_json::from_slice(bytes.as_ref()).unwrap();
+        Ok(v)
     }
 }

@@ -2,7 +2,7 @@ use kurec_adapter::{MeilisearchAdapter, MeilisearchIndex, MirakcAdapter, NatsAda
 use kurec_interface::{
     EpgProgramsUpdatedMessage, EpgProgramsUpdatedMessageData, MirakcEventMessage, ProgramDocument,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 pub struct EpgDomain {
     pub mirakc_adapter: MirakcAdapter,
@@ -88,14 +88,21 @@ impl EpgDomain {
                         .await?;
                 }
             }
+            let service_id = data.service.id;
 
-            let program_document_update = kurec_interface::ProgramDocumentsUpdatedMessage {
+            let index_updated = kurec_interface::IndexUpdatedMessage {
                 tuner_url: data.tuner_url,
                 service: data.service,
-                programs: documents,
             };
+            self.nats_adapter
+                .kv_put_bytes(
+                    kurec_adapter::KvsType::EpgConverted,
+                    &format!("{}", service_id),
+                    &serde_json::to_vec(&documents)?,
+                )
+                .await?;
 
-            Ok(Some(program_document_update))
+            Ok(Some(index_updated))
         };
         self.nats_adapter
             .filter_map_stream_async(
@@ -109,9 +116,16 @@ impl EpgDomain {
     }
 
     pub async fn index_epg_stream(&self) -> Result<(), anyhow::Error> {
-        let f = |doc: kurec_interface::ProgramDocumentsUpdatedMessage| async move {
-            let service_id = doc.service.id;
-            let docs = doc.programs.clone();
+        let f = |msg: kurec_interface::IndexUpdatedMessage| async move {
+            let service_id = msg.service.id;
+            info!("indexing programs for service_id: {}", service_id);
+            let docs: Vec<ProgramDocument> = self
+                .nats_adapter
+                .kv_get_decoded(
+                    kurec_adapter::KvsType::EpgConverted,
+                    &format!("{}", service_id),
+                )
+                .await?;
             debug!(
                 "indexing programs for service_id: {} num of documents: {}",
                 service_id,
