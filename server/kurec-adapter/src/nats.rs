@@ -14,6 +14,7 @@ pub enum StreamType {
     EpgUpdated,
     EpgConverted,
     OgpRequest,
+    RuleUpdated,
 }
 
 impl StreamType {
@@ -23,6 +24,7 @@ impl StreamType {
             StreamType::EpgUpdated => "epg-updated",
             StreamType::EpgConverted => "epg-converted",
             StreamType::OgpRequest => "ogp-request",
+            StreamType::RuleUpdated => "rule-updated",
         }
     }
 }

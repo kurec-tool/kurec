@@ -19,3 +19,10 @@ pub struct OgpRequestMessage {
     pub url: String,
     pub hash: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+pub enum RuleUpdatedMessage {
+    RuleUpdated,
+    EpgUpdated { tuner_url: String, service_id: i64 },
+}

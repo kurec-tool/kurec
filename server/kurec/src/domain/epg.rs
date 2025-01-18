@@ -139,6 +139,13 @@ impl EpgDomain {
                     Some("program_id"),
                 )
                 .await?;
+            let message = serde_json::to_vec(&kurec_interface::RuleUpdatedMessage::EpgUpdated {
+                tuner_url: msg.tuner_url,
+                service_id,
+            })?;
+            self.nats_adapter
+                .publish_to_stream(StreamType::RuleUpdated, message.into())
+                .await?;
             Ok(())
         };
         self.nats_adapter
