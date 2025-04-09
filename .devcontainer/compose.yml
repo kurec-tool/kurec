@@ -21,7 +21,7 @@ services:
 
   tuner:
     build:
-      context: ./mirakc-docker
+      context: ../mirakc-docker
     init: true
     volumes:
       - ./epg:/var/lib/mirakc/epg
