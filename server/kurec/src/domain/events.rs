@@ -1,7 +1,8 @@
 use futures::StreamExt;
 
 use kurec_adapter::{MirakcEventsAdapter, NatsAdapter, StreamType};
-use tracing::info;
+use kurec_interface::MirakcEventMessage;
+use tracing::{debug, info};
 
 #[derive(Clone, Debug)]
 pub struct EventsDomain {
@@ -37,24 +38,26 @@ impl EventsDomain {
     }
 
     pub async fn split_records_saved(&self) -> Result<(), anyhow::Error> {
-        let f = |msg: kurec_interface::RecordingRecordSavedMessage| async move {
+        let f = |msg: MirakcEventMessage| async move {
+            debug!("received msg data:{}", msg.data);
+            let data: kurec_interface::RecordingRecordSaved = serde_json::from_str(&msg.data)?;
             info!(
                 "splitting records_saved for record_id: {} status: {:?}",
-                msg.record_id, msg.recording_status
+                data.record_id, data.recording_status
             );
-            let stream = match msg.recording_status {
-                kurec_interface::RecordingStatus::Recording => StreamType::RecordingRecording,
-                kurec_interface::RecordingStatus::Finished => StreamType::RecordingFinishied,
-                kurec_interface::RecordingStatus::Canceled => StreamType::RecordingCanceled,
-                kurec_interface::RecordingStatus::Failed => StreamType::RecordingFailed,
+            let stream = match data.recording_status {
+                kurec_interface::RecordingStatus::Recording => StreamType::RecordRecording,
+                kurec_interface::RecordingStatus::Finished => StreamType::RecordFinishied,
+                kurec_interface::RecordingStatus::Canceled => StreamType::RecordCanceled,
+                kurec_interface::RecordingStatus::Failed => StreamType::RecordFailed,
             };
             self.nats_adapter
-                .publish_to_stream(stream, msg.record_id.clone().into())
+                .publish_to_stream(stream, data.record_id.clone().into())
                 .await?;
             Ok(())
         };
         self.nats_adapter
-            .stream_sink_async(StreamType::RecordingRecordSaved, "splitter", f)
+            .stream_sink_async(StreamType::SseRecordingRecordSaved, "splitter", f)
             .await?;
         Ok(())
     }

@@ -9,6 +9,7 @@ pub struct EpgProgramsUpdatedMessage {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum RecordingStatus {
     Recording,
     Finished,
@@ -19,7 +20,7 @@ pub enum RecordingStatus {
 // mirakcのメッセージがそのまま流れてくるのでcamelCase
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RecordingRecordSavedMessage {
+pub struct RecordingRecordSaved {
     pub record_id: String,
     pub recording_status: RecordingStatus,
 }

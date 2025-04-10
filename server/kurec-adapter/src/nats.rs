@@ -28,11 +28,10 @@ pub enum StreamType {
     OgpRequest,
     RuleUpdated,
     ScheduleUpdated,
-    RecordingRecordSaved,
-    RecordingRecording,
-    RecordingFinishied,
-    RecordingCanceled,
-    RecordingFailed,
+    RecordRecording,
+    RecordFinishied,
+    RecordCanceled,
+    RecordFailed,
 }
 
 #[derive(Clone, Debug, AsRefStr, EnumIter)]
@@ -157,10 +156,11 @@ impl NatsAdapter {
             subject_name,
             payload.len()
         );
+        // 2段階に分けてるのはデバッグ用。まとめてawait?.await?でも良さそう
         let resp = jc.publish(subject_name, payload).await.unwrap();
         tracing::debug!("published: {:?}", resp);
         let resp2 = resp.await.unwrap();
-        tracing::debug!("sequence: {}", resp2.sequence);
+        tracing::debug!("ack awaited: {:?}", resp2);
         Ok(())
     }
 
