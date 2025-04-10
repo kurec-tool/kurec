@@ -19,6 +19,7 @@ mirakc-client = { version = "3.3.0-de.0", path = "../mirakc-client" }
 reqwest = { version = "^0.11", features = ["json", "stream"] }
 serde = "1.0.215"
 serde_json = "1.0.133"
+strum = { version = "0.27.1", features = ["derive"] }
 tokio = { version = "1.42.0", features = ["rt", "macros", "rt-multi-thread", "test-util"] }
 tracing = "0.1.41"
 uuid = "1.11.0"

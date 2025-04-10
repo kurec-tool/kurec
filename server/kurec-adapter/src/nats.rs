@@ -6,46 +6,41 @@ use bytes::Bytes;
 use futures::StreamExt;
 use kurec_interface::KurecConfig;
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, EnumIter, IntoEnumIterator};
 use tracing::debug;
 
-#[derive(Clone, Debug)]
+// TODO: mirakcのイベント種別全部列挙しなきゃ・・・
+#[derive(Clone, Debug, EnumIter, AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
 pub enum StreamType {
     SseEpgProgramsUpdated,
+    SseTunerStatusChanged,
+    SseRecordingStarted,
+    SseRecordingStopped,
+    SseRecordingFailed,
+    SseRecordingRescheduled,
+    SseRecordingRecordSaved,
+    SseRecordingRecordRemoved,
+    SseRecordingRecordBroken,
+    SseOnairProramChanged,
     EpgUpdated,
     EpgConverted,
     OgpRequest,
     RuleUpdated,
     ScheduleUpdated,
+    RecordingRecordSaved,
+    RecordingRecording,
+    RecordingFinishied,
+    RecordingCanceled,
+    RecordingFailed,
 }
 
-impl StreamType {
-    fn as_str(&self) -> &str {
-        match self {
-            StreamType::SseEpgProgramsUpdated => "epg-programs-updated",
-            StreamType::EpgUpdated => "epg-updated",
-            StreamType::EpgConverted => "epg-converted",
-            StreamType::OgpRequest => "ogp-request",
-            StreamType::RuleUpdated => "rule-updated",
-            StreamType::ScheduleUpdated => "schedule-updated",
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, AsRefStr, EnumIter)]
+#[strum(serialize_all = "kebab-case")]
 pub enum KvsType {
     Ogp,
     UrlHash,
     EpgConverted,
-}
-
-impl KvsType {
-    fn as_str(&self) -> &str {
-        match self {
-            KvsType::Ogp => "ogp",
-            KvsType::UrlHash => "url-hash",
-            KvsType::EpgConverted => "epg-converted",
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -62,14 +57,14 @@ impl NatsAdapter {
 
     fn get_prefixed_subject_name_by_event_name(&self, event_name: &str) -> String {
         format!(
-            "{}-{}",
+            "{}-sse-{}",
             self.config.prefix,
             event_name.replace(".", "-").replace("_", "-")
         )
     }
 
     fn get_prefixed_subject_name_by_stream_type(&self, stream_type: &StreamType) -> String {
-        format!("{}-{}", self.config.prefix, stream_type.as_str())
+        format!("{}-{}", self.config.prefix, stream_type.as_ref())
     }
 
     fn get_prefixed_consumer_name(&self, stream_type: &StreamType, consumer_name: &str) -> String {
@@ -80,8 +75,8 @@ impl NatsAdapter {
         )
     }
 
-    fn get_prefixed_kvs_name(&self, kvs_type: KvsType) -> String {
-        format!("{}-{}", self.config.prefix, kvs_type.as_str())
+    fn get_prefixed_kvs_name(&self, kvs_type: &KvsType) -> String {
+        format!("{}-{}", self.config.prefix, kvs_type.as_ref())
     }
 
     async fn connect(&self) -> Result<jetstream::Context, anyhow::Error> {
@@ -97,7 +92,7 @@ impl NatsAdapter {
         jc: &jetstream::Context,
         stream_type: &StreamType,
     ) -> Result<Stream, anyhow::Error> {
-        // TODO: ConfigをKuRecConfigから取得する
+        // TODO: ConfigをKuRecConfigから取得する・・・いらないかな？
         let stream = jc
             .get_or_create_stream(jetstream::stream::Config {
                 name: self.get_prefixed_subject_name_by_stream_type(stream_type),
@@ -196,7 +191,7 @@ impl NatsAdapter {
             .await
             .unwrap();
         // publishする方はstream使わなくて良いが、Config設定する必要があるのでget_or_create_streamを使う
-        let _ = self.get_or_create_stream(&jc, &to).await.unwrap();
+        let stream = self.get_or_create_stream(&jc, &to).await.unwrap();
 
         let to_subject_name = self.get_prefixed_subject_name_by_stream_type(&to);
         let mut messages = consumer.messages().await.unwrap();
@@ -322,7 +317,11 @@ impl NatsAdapter {
         todo!()
     }
 
-    pub async fn kv_exists_key(&self, kvs_type: KvsType, key: &str) -> Result<bool, anyhow::Error> {
+    pub async fn kv_exists_key(
+        &self,
+        kvs_type: &KvsType,
+        key: &str,
+    ) -> Result<bool, anyhow::Error> {
         let jc = self.connect().await.unwrap();
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
@@ -342,12 +341,12 @@ impl NatsAdapter {
 
     pub async fn kv_put_str(
         &self,
-        kvs_type: KvsType,
+        kvs_type: &KvsType,
         key: &str,
         value: &str,
     ) -> Result<(), anyhow::Error> {
         let jc = self.connect().await.unwrap();
-        let bucket = self.get_prefixed_kvs_name(kvs_type);
+        let bucket = self.get_prefixed_kvs_name(&kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
             Ok(kv) => kv,
             Err(_) => jc
@@ -365,7 +364,7 @@ impl NatsAdapter {
 
     pub async fn kv_put_bytes<T: AsRef<[u8]>>(
         &self,
-        kvs_type: KvsType,
+        kvs_type: &KvsType,
         key: &str,
         value: T,
     ) -> Result<(), anyhow::Error> {
@@ -387,7 +386,11 @@ impl NatsAdapter {
         Ok(())
     }
 
-    pub async fn kv_get_bytes(&self, kvs_type: KvsType, key: &str) -> Result<Bytes, anyhow::Error> {
+    pub async fn kv_get_bytes(
+        &self,
+        kvs_type: &KvsType,
+        key: &str,
+    ) -> Result<Bytes, anyhow::Error> {
         let jc = self.connect().await.unwrap();
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
@@ -408,7 +411,7 @@ impl NatsAdapter {
 
     pub async fn kv_get_decoded<T: for<'a> Deserialize<'a>>(
         &self,
-        kvs_type: KvsType,
+        kvs_type: &KvsType,
         key: &str,
     ) -> Result<T, anyhow::Error> {
         let bytes = self.kv_get_bytes(kvs_type, key).await?;
@@ -416,7 +419,7 @@ impl NatsAdapter {
         Ok(v)
     }
 
-    pub async fn kv_get_keys(&self, kvs_type: KvsType) -> Result<Vec<String>, anyhow::Error> {
+    pub async fn kv_get_keys(&self, kvs_type: &KvsType) -> Result<Vec<String>, anyhow::Error> {
         let jc = self.connect().await.unwrap();
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
@@ -437,11 +440,12 @@ impl NatsAdapter {
         Ok(key_list)
     }
 
-    pub async fn kv_get_all_bytes(&self, kvs_type: KvsType) -> Result<Vec<Bytes>, anyhow::Error> {
+    pub async fn kv_get_all_bytes(&self, kvs_type: &KvsType) -> Result<Vec<Bytes>, anyhow::Error> {
         let jc = self.connect().await.unwrap();
         let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
             Ok(kv) => kv,
+            // TODO: 作成しないようにしても良いかも
             Err(_) => jc
                 .create_key_value(jetstream::kv::Config {
                     bucket,
@@ -462,7 +466,7 @@ impl NatsAdapter {
 
     pub async fn kv_get_all_decoded<T: for<'a> Deserialize<'a>>(
         &self,
-        kvs_type: KvsType,
+        kvs_type: &KvsType,
     ) -> Result<Vec<T>, anyhow::Error> {
         let bytes_list = self.kv_get_all_bytes(kvs_type).await?;
         let mut values_list: Vec<T> = Vec::new();
@@ -471,5 +475,28 @@ impl NatsAdapter {
             values_list.push(v);
         }
         Ok(values_list)
+    }
+
+    pub async fn initialize(&self) -> Result<(), anyhow::Error> {
+        let jc = self.connect().await.unwrap();
+        for stream_type in StreamType::iter() {
+            let _ = self.get_or_create_stream(&jc, &stream_type).await?;
+        }
+        for kvs_type in KvsType::iter() {
+            let _ = match jc
+                .get_key_value(self.get_prefixed_kvs_name(&kvs_type))
+                .await
+            {
+                Ok(kv) => kv,
+                Err(_) => {
+                    jc.create_key_value(jetstream::kv::Config {
+                        bucket: self.get_prefixed_kvs_name(&kvs_type),
+                        ..Default::default()
+                    })
+                    .await?
+                }
+            };
+        }
+        Ok(())
     }
 }

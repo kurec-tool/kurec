@@ -16,7 +16,7 @@ services:
       - MINIO_URL=http://minio:9000
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=password
-      - RUST_LOG=debug
+      - RUST_LOG=debug,async_nats=warn
       - NEXT_PUBLIC_MEILISEARCH_URL=http://localhost:7700
 
   tuner:

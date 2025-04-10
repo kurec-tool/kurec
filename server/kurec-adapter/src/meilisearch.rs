@@ -4,18 +4,15 @@ use meilisearch_sdk::{
     documents::DocumentsQuery,
 };
 use serde::{de::DeserializeOwned, Serialize};
+use strum::{AsRefStr, EnumIter, IntoEnumIterator};
 use tracing::debug;
 
+#[derive(Clone, Debug, EnumIter, AsRefStr)]
 pub enum MeilisearchIndex {
     Epg,
 }
 
 impl MeilisearchIndex {
-    fn as_str(&self) -> &str {
-        match self {
-            MeilisearchIndex::Epg => "epg",
-        }
-    }
     fn get_index_config(&self, config: &KurecConfig) -> MeilisearchIndexConfig {
         match self {
             MeilisearchIndex::Epg => config.meilisearch.epg.clone(),
@@ -76,7 +73,7 @@ impl MeilisearchAdapter {
     }
 
     fn get_prefixed_index_name(&self, index: &MeilisearchIndex) -> String {
-        format!("{}-{}", self.config.prefix, index.as_str())
+        format!("{}-{}", self.config.prefix, index.as_ref())
     }
 
     async fn get_index(
@@ -181,6 +178,43 @@ impl MeilisearchAdapter {
         task.wait_for_completion(&client, None, Some(std::time::Duration::from_secs(60)))
             .await
             .unwrap();
+        Ok(())
+    }
+
+    pub async fn initialize(&self) -> Result<(), anyhow::Error> {
+        let client = self.get_client()?;
+        let indexes = MeilisearchIndex::iter();
+        for index in indexes {
+            let index_name = self.get_prefixed_index_name(&index);
+            let config = index.get_index_config(&self.config);
+            match client.get_index(&index_name).await {
+                Ok(_) => {}
+                Err(_) => {
+                    let task = client
+                        .create_index(&index_name, Some("program_id"))
+                        .await
+                        .unwrap();
+                    task.wait_for_completion(&client, None, None).await.unwrap();
+                    let index = client.get_index(&index_name).await.unwrap();
+                    index
+                        .set_searchable_attributes(config.searchable_attributes.clone())
+                        .await
+                        .unwrap();
+                    index
+                        .set_displayed_attributes(config.displayed_attributes.clone())
+                        .await
+                        .unwrap();
+                    index
+                        .set_filterable_attributes(config.filterable_attributes.clone())
+                        .await
+                        .unwrap();
+                    index
+                        .set_sortable_attributes(config.sortable_attributes.clone())
+                        .await
+                        .unwrap();
+                }
+            }
+        }
         Ok(())
     }
 }

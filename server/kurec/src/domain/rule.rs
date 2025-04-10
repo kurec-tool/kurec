@@ -23,7 +23,7 @@ impl RuleDomain {
             // 一旦RuleUpdatedもEpgUpdatedも同じ処理を行う
             let epgs: Vec<ProgramDocument> = self
                 .nats_adapter
-                .kv_get_all_decoded(kurec_adapter::KvsType::EpgConverted)
+                .kv_get_all_decoded(&kurec_adapter::KvsType::EpgConverted)
                 .await
                 .unwrap();
 

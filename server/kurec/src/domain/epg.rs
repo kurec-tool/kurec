@@ -96,7 +96,7 @@ impl EpgDomain {
             };
             self.nats_adapter
                 .kv_put_bytes(
-                    kurec_adapter::KvsType::EpgConverted,
+                    &kurec_adapter::KvsType::EpgConverted,
                     &format!("{}", service_id),
                     &serde_json::to_vec(&documents)?,
                 )
@@ -122,7 +122,7 @@ impl EpgDomain {
             let docs: Vec<ProgramDocument> = self
                 .nats_adapter
                 .kv_get_decoded(
-                    kurec_adapter::KvsType::EpgConverted,
+                    &kurec_adapter::KvsType::EpgConverted,
                     &format!("{}", service_id),
                 )
                 .await?;

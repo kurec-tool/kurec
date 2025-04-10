@@ -23,7 +23,7 @@ impl OgpDomain {
             debug!("event: {:?}", ev);
             if self
                 .nats_adapter
-                .kv_exists_key(KvsType::Ogp, &ev.hash)
+                .kv_exists_key(&KvsType::Ogp, &ev.hash)
                 .await
                 .unwrap()
             {
@@ -35,12 +35,12 @@ impl OgpDomain {
                 .await;
             if let Ok(Some(ogp)) = ogp {
                 self.nats_adapter
-                    .kv_put_bytes(KvsType::Ogp, &ev.hash, &*ogp)
+                    .kv_put_bytes(&KvsType::Ogp, &ev.hash, &*ogp)
                     .await
                     .unwrap();
             }
             self.nats_adapter
-                .kv_put_str(KvsType::UrlHash, &ev.hash, &ev.url)
+                .kv_put_str(&KvsType::UrlHash, &ev.hash, &ev.url)
                 .await
                 .unwrap();
             Ok(())

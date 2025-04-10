@@ -1,15 +1,16 @@
 use futures::StreamExt;
 
-use kurec_adapter::{MirakcEventsAdapter, NatsAdapter};
+use kurec_adapter::{MirakcEventsAdapter, NatsAdapter, StreamType};
+use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct EventsDomain {
-    mirakc_adapter: MirakcEventsAdapter,
+    mirakc_adapter: Option<MirakcEventsAdapter>,
     nats_adapter: NatsAdapter,
 }
 
 impl EventsDomain {
-    pub fn new(mirakc_adapter: MirakcEventsAdapter, nats_adapter: NatsAdapter) -> Self {
+    pub fn new(mirakc_adapter: Option<MirakcEventsAdapter>, nats_adapter: NatsAdapter) -> Self {
         Self {
             mirakc_adapter,
             nats_adapter,
@@ -17,7 +18,13 @@ impl EventsDomain {
     }
 
     pub async fn copy_events_to_jetstream(&self) -> Result<(), anyhow::Error> {
-        if let Ok(mut stream) = self.mirakc_adapter.get_events_stream().await {
+        if let Ok(mut stream) = self
+            .mirakc_adapter
+            .clone()
+            .unwrap()
+            .get_events_stream()
+            .await
+        {
             while let Some(ev) = stream.next().await {
                 tracing::debug!("event: {:?}", ev);
                 let v = serde_json::to_vec(&ev)?;
@@ -26,7 +33,29 @@ impl EventsDomain {
                     .await?;
             }
         }
+        Ok(())
+    }
 
+    pub async fn split_records_saved(&self) -> Result<(), anyhow::Error> {
+        let f = |msg: kurec_interface::RecordingRecordSavedMessage| async move {
+            info!(
+                "splitting records_saved for record_id: {} status: {:?}",
+                msg.record_id, msg.recording_status
+            );
+            let stream = match msg.recording_status {
+                kurec_interface::RecordingStatus::Recording => StreamType::RecordingRecording,
+                kurec_interface::RecordingStatus::Finished => StreamType::RecordingFinishied,
+                kurec_interface::RecordingStatus::Canceled => StreamType::RecordingCanceled,
+                kurec_interface::RecordingStatus::Failed => StreamType::RecordingFailed,
+            };
+            self.nats_adapter
+                .publish_to_stream(stream, msg.record_id.clone().into())
+                .await?;
+            Ok(())
+        };
+        self.nats_adapter
+            .stream_sink_async(StreamType::RecordingRecordSaved, "splitter", f)
+            .await?;
         Ok(())
     }
 }

@@ -17,13 +17,26 @@ struct Cli {
 
 #[derive(Clone, Debug, Subcommand)]
 enum SubCommands {
-    Events {
-        #[clap(index = 1)]
-        tuner_name: String,
-    },
+    Initialize {},
+    Events(EventsArgs),
     Epg(EpgArgs),
     Ogp {},
     Rule {},
+}
+
+#[derive(Clone, Debug, Args)]
+struct EventsArgs {
+    #[clap(subcommand)]
+    subcommand: EventsSubCommands,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum EventsSubCommands {
+    Receiver {
+        #[clap(index = 1)]
+        tuner_name: String,
+    },
+    SavedSplitter,
 }
 
 #[derive(Clone, Debug, Args)]
@@ -53,14 +66,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     match cli.subcommand {
-        SubCommands::Events { tuner_name } => {
-            println!("Tuner name: {}", tuner_name);
-            let mirakc_adapter = MirakcEventsAdapter::try_new(config.clone(), &tuner_name).await?;
+        SubCommands::Initialize {} => {
             let nats_adapter = NatsAdapter::new(config.clone());
-            let events_domain = domain::EventsDomain::new(mirakc_adapter, nats_adapter);
-            events_domain.copy_events_to_jetstream().await?;
+            let initialize_domain = domain::InitializeDomain::new(nats_adapter);
+            initialize_domain.initialize().await?;
             Ok(())
         }
+        SubCommands::Events(events_args) => match events_args.subcommand {
+            EventsSubCommands::Receiver { tuner_name } => {
+                println!("Tuner name: {}", tuner_name);
+                let mirakc_adapter =
+                    MirakcEventsAdapter::try_new(config.clone(), &tuner_name).await?;
+                let nats_adapter = NatsAdapter::new(config.clone());
+                let events_domain = domain::EventsDomain::new(Some(mirakc_adapter), nats_adapter);
+                events_domain.copy_events_to_jetstream().await?;
+                Ok(())
+            }
+            EventsSubCommands::SavedSplitter => {
+                // Splitter
+                let nats_adapter = NatsAdapter::new(config.clone());
+                let events_domain = domain::EventsDomain::new(None, nats_adapter);
+                events_domain.split_records_saved().await?;
+                Ok(())
+            }
+        },
         SubCommands::Epg(epg_args) => match epg_args.subcommand {
             EpgSubCommands::Collector => {
                 let mirakc_adapter = MirakcAdapter::new(config.clone());

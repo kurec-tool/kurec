@@ -9,6 +9,22 @@ pub struct EpgProgramsUpdatedMessage {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum RecordingStatus {
+    Recording,
+    Finished,
+    Canceled,
+    Failed,
+}
+
+// mirakcのメッセージがそのまま流れてくるのでcamelCase
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordingRecordSavedMessage {
+    pub record_id: String,
+    pub recording_status: RecordingStatus,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct IndexUpdatedMessage {
     pub tuner_url: String,
     pub service: MirakurunService,
