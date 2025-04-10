@@ -15,6 +15,7 @@ pub enum StreamType {
     EpgConverted,
     OgpRequest,
     RuleUpdated,
+    ScheduleUpdated,
 }
 
 impl StreamType {
@@ -25,6 +26,7 @@ impl StreamType {
             StreamType::EpgConverted => "epg-converted",
             StreamType::OgpRequest => "ogp-request",
             StreamType::RuleUpdated => "rule-updated",
+            StreamType::ScheduleUpdated => "schedule-updated",
         }
     }
 }
@@ -412,5 +414,62 @@ impl NatsAdapter {
         let bytes = self.kv_get_bytes(kvs_type, key).await?;
         let v: T = serde_json::from_slice(bytes.as_ref()).unwrap();
         Ok(v)
+    }
+
+    pub async fn kv_get_keys(&self, kvs_type: KvsType) -> Result<Vec<String>, anyhow::Error> {
+        let jc = self.connect().await.unwrap();
+        let bucket = self.get_prefixed_kvs_name(kvs_type);
+        let kv = match jc.get_key_value(&bucket).await {
+            Ok(kv) => kv,
+            Err(_) => jc
+                .create_key_value(jetstream::kv::Config {
+                    bucket,
+                    ..Default::default()
+                })
+                .await
+                .unwrap(),
+        };
+        let mut keys = kv.keys().await.unwrap();
+        let mut key_list: Vec<String> = Vec::new();
+        while let Some(key) = keys.next().await {
+            key_list.push(key.unwrap());
+        }
+        Ok(key_list)
+    }
+
+    pub async fn kv_get_all_bytes(&self, kvs_type: KvsType) -> Result<Vec<Bytes>, anyhow::Error> {
+        let jc = self.connect().await.unwrap();
+        let bucket = self.get_prefixed_kvs_name(kvs_type);
+        let kv = match jc.get_key_value(&bucket).await {
+            Ok(kv) => kv,
+            Err(_) => jc
+                .create_key_value(jetstream::kv::Config {
+                    bucket,
+                    ..Default::default()
+                })
+                .await
+                .unwrap(),
+        };
+        let mut keys = kv.keys().await.unwrap();
+        let mut values_list: Vec<Bytes> = Vec::new();
+        while let Some(key) = keys.next().await {
+            let key = key.unwrap();
+            let entry = kv.entry(&key).await.unwrap();
+            values_list.push(entry.unwrap().value);
+        }
+        Ok(values_list)
+    }
+
+    pub async fn kv_get_all_decoded<T: for<'a> Deserialize<'a>>(
+        &self,
+        kvs_type: KvsType,
+    ) -> Result<Vec<T>, anyhow::Error> {
+        let bytes_list = self.kv_get_all_bytes(kvs_type).await?;
+        let mut values_list: Vec<T> = Vec::new();
+        for bytes in bytes_list {
+            let v: T = serde_json::from_slice(bytes.as_ref()).unwrap();
+            values_list.push(v);
+        }
+        Ok(values_list)
     }
 }

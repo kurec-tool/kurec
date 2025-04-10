@@ -23,6 +23,7 @@ enum SubCommands {
     },
     Epg(EpgArgs),
     Ogp {},
+    Rule {},
 }
 
 #[derive(Clone, Debug, Args)]
@@ -36,7 +37,6 @@ enum EpgSubCommands {
     Collector,
     Converter,
     Indexer,
-    Filter,
 }
 
 #[tokio::main]
@@ -89,16 +89,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 epg_domain.index_epg_stream().await?;
                 Ok(())
             }
-            EpgSubCommands::Filter => {
-                println!("Filter");
-                Ok(())
-            }
         },
         SubCommands::Ogp {} => {
             let nats_adapter = NatsAdapter::new(config.clone());
             let ogp_adapter = OgpAdapter::new(config.clone());
             let ogp_domain = domain::OgpDomain::new(config.clone(), nats_adapter, ogp_adapter);
             ogp_domain.collect_ogp_stream().await?;
+            Ok(())
+        }
+        SubCommands::Rule {} => {
+            let nats_adapter = NatsAdapter::new(config.clone());
+            let meilisearch_adapter = MeilisearchAdapter::new_async(config.clone()).await?;
+            let rule_domain = domain::RuleDomain::new(nats_adapter, meilisearch_adapter);
+            println!("Rule");
             Ok(())
         }
     }

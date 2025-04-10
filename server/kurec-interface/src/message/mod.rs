@@ -26,3 +26,6 @@ pub enum RuleUpdatedMessage {
     RuleUpdated,
     EpgUpdated { tuner_url: String, service_id: i64 },
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ScheduleUpdatedMessage {}
