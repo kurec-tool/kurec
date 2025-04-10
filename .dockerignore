@@ -1,0 +1,7 @@
+Dockerfile
+compose.yml
+node_modules
+target
+.dockerignore
+recorded
+.devcontainer

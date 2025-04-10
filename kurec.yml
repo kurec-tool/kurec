@@ -1,4 +1,6 @@
 tuners:
-  - tuner
-nats_host: nats
-meilisearch_host: meilisearch
+  tuner: http://tuner:40772
+nats:
+  url: nats:4222
+meilisearch:
+  url: http://meilisearch:7700

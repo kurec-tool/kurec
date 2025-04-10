@@ -177,7 +177,10 @@ impl MeilisearchAdapter {
             .await
             .unwrap();
         let task = client.delete_index(tmp_index.uid).await.unwrap();
-        task.wait_for_completion(&client, None, None).await.unwrap();
+        // TODO: interval, timeoutの設定ファイル化
+        task.wait_for_completion(&client, None, Some(std::time::Duration::from_secs(60)))
+            .await
+            .unwrap();
         Ok(())
     }
 }

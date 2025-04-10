@@ -18,8 +18,7 @@ export default function EpgSearch() {
   useEffect(() => {
     const { searchClient, meiliSearchInstance, setMeiliSearchParams } =
       instantMeiliSearch(
-        // biome-ignore lint/style/noNonNullAssertion: <explanation>
-        process.env.NEXT_PUBLIC_MEILISEARCH_URL!,
+        `http://${location.hostname}:7700`, //process.env.NEXT_PUBLIC_MEILISEARCH_URL!,
         process.env.NEXT_PUBLIC_MEILISEARCH_KEY,
       );
 

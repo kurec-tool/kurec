@@ -1,0 +1,147 @@
+services:
+  # ビルド用
+  kurec-build:
+    build:
+      context: .
+    image: kurec:latest
+
+  events:
+    image: kurec:latest
+    volumes:
+      - ./kurec.yml:/app/kurec.yml:ro
+    command: ["kurec", "events", "tuner"]
+    restart: unless-stopped
+    depends_on:
+      - tuner
+
+  epg-collector:
+    image: kurec:latest
+    volumes:
+      - ./kurec.yml:/app/kurec.yml:ro
+    command: ["kurec", "epg", "collector"]
+    restart: unless-stopped
+    depends_on:
+      - nats
+
+  epg-converter:
+    image: kurec:latest
+    volumes:
+      - ./kurec.yml:/app/kurec.yml:ro
+    command: ["kurec", "epg", "converter"]
+    restart: unless-stopped
+    depends_on:
+      - nats
+
+  epg-indexer:
+    image: kurec:latest
+    volumes:
+      - ./kurec.yml:/app/kurec.yml:ro
+    command: ["kurec", "epg", "indexer"]
+    restart: unless-stopped
+    depends_on:
+      - nats
+      - meilisearch
+
+  ogp:
+    image: kurec:latest
+    volumes:
+      - ./kurec.yml:/app/kurec.yml:ro
+    command: ["kurec", "ogp"]
+    restart: unless-stopped
+    depends_on:
+      - nats
+
+# TODO: kurec rule
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - KUREC_CONFIG_PATH=/app/kurec.yml
+      - NEXT_PUBLIC_MEILISEARCH_URL=http://tv-dev.local:7700
+    volumes:
+      - ./kurec.yml:/app/kurec.yml:ro
+    restart: unless-stopped
+    depends_on:
+      - nats
+      - meilisearch
+
+  nats:
+    image: nats:latest
+    ports:
+      - "8222:8222"
+      - "4222:4222"
+    volumes:
+      - ./.devcontainer/config/nats-server.conf:/nats/conf/nats-server.conf:ro
+      - nats-data:/data:rw
+    command: [ "--js", "-m", "8222", "-c", "/nats/conf/nats-server.conf" ]
+
+  meilisearch:
+    image: getmeili/meilisearch:prototype-japanese-13
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili-data:/data.ms:rw
+    environment:
+      - MEILI_DB_PATH=/data.ms
+      - MEILI_LOG_LEVEL=warn
+
+  tuner:
+    build:
+      context: ./mirakc-docker
+    init: true
+    restart: unless-stopped
+    devices:
+      - /dev/bus/usb
+      - /dev/px4video0
+      - /dev/px4video1
+      - /dev/px4video2
+      - /dev/px4video3
+    ports:
+      - 40772:40772
+    volumes:
+      - mirakc-config:/etc/mirakc
+      - mirakc-epg:/var/lib/mirakc/epg
+      - ./recorded:/recorded
+      - /var/run/pcscd:/var/run/pcscd
+    environment:
+      TZ: Asia/Tokyo
+      RUST_LOG: info
+
+  samba:
+    image: ghcr.io/servercontainers/samba
+    volumes:
+      - ./recorded:/recorded
+    network_mode: host
+    environment:
+      AVAHI_name: tv-dev-container
+      SAMBA_VOLUME_CONFIG_guest: |
+        [Videos]
+        path = /recorded
+        read only = yes
+        guest ok = yes
+        browseable = yes
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+
+volumes:
+  mirakc-config:
+    name: mirakc_config
+    driver: local
+  mirakc-epg:
+    name: mirakc_epg
+    driver: local
+  nats-data:
+    name: nats_data
+    driver: local
+  meili-data:
+    name: meili_data
+    driver: local
+  ts-state:
+    name: ts_state
+    driver: local
