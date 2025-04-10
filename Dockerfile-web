@@ -1,0 +1,26 @@
+# Use the official Node.js image as the base image
+FROM node:23-bookworm-slim
+
+# Set the working directory
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+# Copy package.json and package-lock.json
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY web/package.json web/package.json
+
+# Install dependencies
+RUN pnpm install
+
+# Copy the rest of the application code
+COPY web ./web
+
+# Build the Next.js application
+RUN pnpm run -F web build
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Start the Next.js application
+CMD ["pnpm", "run", "-F", "web", "start"]
