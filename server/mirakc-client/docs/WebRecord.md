@@ -5,7 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **content** | [**models::WebContentInfo**](WebContentInfo.md) | Information about the content. | 
-**id** | **i64** | The record ID. | 
+**id** | **String** | The record ID. | 
 **program** | [**models::MirakurunProgram**](MirakurunProgram.md) | Metadata of the TV program. | 
 **recording** | [**models::WebRecordingInfo**](WebRecordingInfo.md) | Information about the recording. | 
 **service** | [**models::MirakurunService**](MirakurunService.md) | Metadata of the service. | 

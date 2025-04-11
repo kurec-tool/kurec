@@ -1,13 +1,13 @@
-# \RecordingrecordersApi
+# \RecordingRecordersApi
 
 All URIs are relative to */api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**get_recorder**](RecordingrecordersApi.md#get_recorder) | **GET** /recording/recorders/{program_id} | Gets a recorder.
-[**get_recorders**](RecordingrecordersApi.md#get_recorders) | **GET** /recording/recorders | Lists recorders.
-[**start_recording**](RecordingrecordersApi.md#start_recording) | **POST** /recording/recorders | Starts recording immediately.
-[**stop_recording**](RecordingrecordersApi.md#stop_recording) | **DELETE** /recording/recorders/{program_id} | Stops recording.
+[**get_recorder**](RecordingRecordersApi.md#get_recorder) | **GET** /recording/recorders/{program_id} | Gets a recorder.
+[**get_recorders**](RecordingRecordersApi.md#get_recorders) | **GET** /recording/recorders | Lists recorders.
+[**start_recording**](RecordingRecordersApi.md#start_recording) | **POST** /recording/recorders | Starts recording immediately.
+[**stop_recording**](RecordingRecordersApi.md#stop_recording) | **DELETE** /recording/recorders/{program_id} | Stops recording.
 
 
 

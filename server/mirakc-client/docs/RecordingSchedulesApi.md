@@ -1,14 +1,14 @@
-# \RecordingschedulesApi
+# \RecordingSchedulesApi
 
 All URIs are relative to */api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**create_recording_schedule**](RecordingschedulesApi.md#create_recording_schedule) | **POST** /recording/schedules | Books a recording schedule.
-[**delete_recording_schedule**](RecordingschedulesApi.md#delete_recording_schedule) | **DELETE** /recording/schedules/{program_id} | Deletes a recording schedule.
-[**delete_recording_schedules**](RecordingschedulesApi.md#delete_recording_schedules) | **DELETE** /recording/schedules | Clears recording schedules.
-[**get_recording_schedule**](RecordingschedulesApi.md#get_recording_schedule) | **GET** /recording/schedules/{program_id} | Gets a recording schedule.
-[**get_recording_schedules**](RecordingschedulesApi.md#get_recording_schedules) | **GET** /recording/schedules | Lists recording schedules.
+[**create_recording_schedule**](RecordingSchedulesApi.md#create_recording_schedule) | **POST** /recording/schedules | Books a recording schedule.
+[**delete_recording_schedule**](RecordingSchedulesApi.md#delete_recording_schedule) | **DELETE** /recording/schedules/{program_id} | Deletes a recording schedule.
+[**delete_recording_schedules**](RecordingSchedulesApi.md#delete_recording_schedules) | **DELETE** /recording/schedules | Clears recording schedules.
+[**get_recording_schedule**](RecordingSchedulesApi.md#get_recording_schedule) | **GET** /recording/schedules/{program_id} | Gets a recording schedule.
+[**get_recording_schedules**](RecordingSchedulesApi.md#get_recording_schedules) | **GET** /recording/schedules | Lists recording schedules.
 
 
 

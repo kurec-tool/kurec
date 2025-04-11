@@ -1,12 +1,12 @@
-# \RecordingrecordsApi
+# \RecordingRecordsApi
 
 All URIs are relative to */api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**get_record**](RecordingrecordsApi.md#get_record) | **GET** /recording/records/{id} | Gets metadata of a record.
-[**get_records**](RecordingrecordsApi.md#get_records) | **GET** /recording/records | Lists records.
-[**remove_record**](RecordingrecordsApi.md#remove_record) | **DELETE** /recording/records/{id} | Removes a record.
+[**get_record**](RecordingRecordsApi.md#get_record) | **GET** /recording/records/{id} | Gets metadata of a record.
+[**get_records**](RecordingRecordsApi.md#get_records) | **GET** /recording/records | Lists records.
+[**remove_record**](RecordingRecordsApi.md#remove_record) | **DELETE** /recording/records/{id} | Removes a record.
 
 
 
@@ -70,7 +70,7 @@ No authorization required
 > remove_record(id, purge)
 Removes a record.
 
-The record cannot be removed while it's recording.  Firstly stop the recording, then remove.  The record can be removed even while streaming its content.  In this case, the streaming will stop once the buffered data has been sent.  The content file of the record is removed together with the record if the `purge` query parameter is specified.  A `recording.record-removed` event will be sent if the record is removed successfully.  A `recording.content-removed` event will be sent if the content file of the record is removed successfully.
+The record cannot be removed while it's recording.  Firstly stop the recording, then remove.  The record can be removed even while streaming its content.  In this case, the streaming will stop once the buffered data has been sent.  The content file of the record is removed together with the record if the `purge` query parameter is specified.  The log file is also removed if it exists.  A `recording.record-removed` event will be sent if the record is removed successfully.  A `recording.content-removed` event will be sent if the content file of the record is removed successfully.
 
 ### Parameters
 

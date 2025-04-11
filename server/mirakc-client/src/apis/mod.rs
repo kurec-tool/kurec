@@ -90,19 +90,40 @@ pub fn parse_deep_object(prefix: &str, value: &serde_json::Value) -> Vec<(String
     unimplemented!("Only objects are supported with style=deepObject")
 }
 
+/// Internal use only
+/// A content type supported by this client.
+#[allow(dead_code)]
+enum ContentType {
+    Json,
+    Text,
+    Unsupported(String)
+}
+
+impl From<&str> for ContentType {
+    fn from(content_type: &str) -> Self {
+        if content_type.starts_with("application") && content_type.contains("json") {
+            return Self::Json;
+        } else if content_type.starts_with("text/plain") {
+            return Self::Text;
+        } else {
+            return Self::Unsupported(content_type.to_string());
+        }
+    }
+}
+
 pub mod channels_api;
-pub mod channelsservicesstream_api;
-pub mod channelsstream_api;
+pub mod channels_services_stream_api;
+pub mod channels_stream_api;
 pub mod iptv_api;
 pub mod onair_api;
 pub mod programs_api;
-pub mod programsstream_api;
-pub mod recordingrecorders_api;
-pub mod recordingrecords_api;
-pub mod recordingrecordsstream_api;
-pub mod recordingschedules_api;
+pub mod programs_stream_api;
+pub mod recording_recorders_api;
+pub mod recording_records_api;
+pub mod recording_records_stream_api;
+pub mod recording_schedules_api;
 pub mod services_api;
-pub mod servicesstream_api;
+pub mod services_stream_api;
 pub mod status_api;
 pub mod stream_api;
 pub mod tuners_api;

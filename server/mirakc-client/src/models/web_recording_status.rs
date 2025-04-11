@@ -11,40 +11,35 @@
 use crate::models;
 use serde::{Deserialize, Serialize};
 
-/// 
+/// WebRecordingStatus : A recording status.
+/// A recording status.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub enum RecordingScheduleState {
-    #[serde(rename = "scheduled")]
-    Scheduled,
-    #[serde(rename = "tracking")]
-    Tracking,
+pub enum WebRecordingStatus {
     #[serde(rename = "recording")]
     Recording,
-    #[serde(rename = "rescheduling")]
-    Rescheduling,
     #[serde(rename = "finished")]
     Finished,
+    #[serde(rename = "canceled")]
+    Canceled,
     #[serde(rename = "failed")]
     Failed,
 
 }
 
-impl std::fmt::Display for RecordingScheduleState {
+impl std::fmt::Display for WebRecordingStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::Scheduled => write!(f, "scheduled"),
-            Self::Tracking => write!(f, "tracking"),
             Self::Recording => write!(f, "recording"),
-            Self::Rescheduling => write!(f, "rescheduling"),
             Self::Finished => write!(f, "finished"),
+            Self::Canceled => write!(f, "canceled"),
             Self::Failed => write!(f, "failed"),
         }
     }
 }
 
-impl Default for RecordingScheduleState {
-    fn default() -> RecordingScheduleState {
-        Self::Scheduled
+impl Default for WebRecordingStatus {
+    fn default() -> WebRecordingStatus {
+        Self::Recording
     }
 }
 

@@ -1,11 +1,11 @@
-# \ChannelsstreamApi
+# \ChannelsStreamApi
 
 All URIs are relative to */api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**check_channel_stream**](ChannelsstreamApi.md#check_channel_stream) | **HEAD** /channels/{type}/{channel}/stream | 
-[**get_channel_stream**](ChannelsstreamApi.md#get_channel_stream) | **GET** /channels/{type}/{channel}/stream | Gets a media stream of a channel.
+[**check_channel_stream**](ChannelsStreamApi.md#check_channel_stream) | **HEAD** /channels/{type}/{channel}/stream | 
+[**get_channel_stream**](ChannelsStreamApi.md#get_channel_stream) | **GET** /channels/{type}/{channel}/stream | Gets a media stream of a channel.
 
 
 

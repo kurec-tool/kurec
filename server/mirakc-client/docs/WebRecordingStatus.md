@@ -1,11 +1,14 @@
-# RecordingStatus
+# WebRecordingStatus
 
 ## Enum Variants
 
-| Name | Description |
+| Name | Value |
 |---- | -----|
-| RecordingStatusOneOf | A recording status. |
-| String | A recording status. |
+| Recording | recording |
+| Finished | finished |
+| Canceled | canceled |
+| Failed | failed |
+
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 
