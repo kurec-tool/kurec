@@ -1,20 +1,21 @@
 {
-	"name": "kurec",
-	"version": "0.0.1",
-	"description": "",
-	"main": "index.js",
-	"scripts": {
-		"web": "pnpm -F \"web\""
-	},
-	"keywords": [],
-	"author": "",
-	"private": true,
-	"engines": {
-		"pnpm": ">=9.15.0",
-		"npm": "please_use_npm_instead"
-	},
-	"packageManager": "pnpm@9.15.0",
-	"devDependencies": {
-		"@biomejs/biome": "1.9.4"
-	}
+  "name": "kurec",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "web": "pnpm -F \"web\""
+  },
+  "keywords": [],
+  "author": "",
+  "private": true,
+  "engines": {
+    "pnpm": ">=9.15.0",
+    "npm": "please_use_npm_instead"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "concurrently": "^9.1.2"
+  }
 }

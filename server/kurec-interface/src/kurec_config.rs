@@ -7,6 +7,8 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::{StorageConfig, StorageType};
+
 #[derive(Derivative, Debug, Clone, Deserialize, Serialize)]
 #[derivative(Default)]
 pub struct KurecConfig {
@@ -27,6 +29,10 @@ pub struct KurecConfig {
     pub nats: NatsConfig,
 
     pub meilisearch: MeilisearchConfig,
+
+    pub encoder: EncoderConfig,
+
+    pub storage: StorageConfig,
 }
 
 impl KurecConfig {
@@ -99,4 +105,47 @@ pub struct MeilisearchIndexConfig {
     pub searchable_attributes: Vec<String>,
     pub displayed_attributes: Vec<String>,
     pub sortable_attributes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EncoderOutput {
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub storage: StorageType,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EncoderConfig {
+    pub script: String,
+    pub outputs: Vec<EncoderOutput>,
+}
+
+impl Default for EncoderConfig {
+    fn default() -> Self {
+        Self {
+            script: "ffmpeg -i input.ts -c:a copy output.mp4".to_string(),
+            outputs: vec![
+                EncoderOutput {
+                    name: "output.mp4".to_string(),
+                    description: "MP4(H.264)".to_string(),
+                    type_: "video/mp4".to_string(),
+                    storage: StorageType::Local,
+                },
+                EncoderOutput {
+                    name: "input.ts".to_string(),
+                    description: "元TS".to_string(),
+                    type_: "video/MP2T".to_string(),
+                    storage: StorageType::Local,
+                },
+                EncoderOutput {
+                    name: "metadata.json".to_string(),
+                    description: "メタデータ".to_string(),
+                    type_: "application/json".to_string(),
+                    storage: StorageType::Local,
+                },
+            ],
+        }
+    }
 }

@@ -4,3 +4,25 @@ nats:
   url: nats:4222
 meilisearch:
   url: http://meilisearch:7700
+encoder:
+  # shebang行(#!/bin/bash)、set -xe の後にscriptの中身をくっつけて実行してくれる
+  script: |
+    ffmpeg -i input.ts output.mp4
+  outputs:
+    - name: output.mp4
+      description: H.264 mp4
+      type: video/mp4
+      storage: local1
+    - name: input.ts
+      description: 元TS
+      type: viddeo/mp2t
+      storage: local1
+    - name: metadata.json
+      description: メタデータ
+      type: application/json
+      storage: local1
+    # TODO: 字幕とか付けたらそれも入れる
+storage:
+  - name: local1
+    type: local
+    directory: /videos

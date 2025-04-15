@@ -29,9 +29,10 @@ pub enum StreamType {
     RuleUpdated,
     ScheduleUpdated,
     RecordRecording,
-    RecordFinishied,
+    RecordFinished,
     RecordCanceled,
     RecordFailed,
+    EncodeResult,
 }
 
 #[derive(Clone, Debug, AsRefStr, EnumIter)]
@@ -233,6 +234,7 @@ impl NatsAdapter {
         F: Fn(T) -> Fut,
         Fut: Future<Output = Result<Option<U>, anyhow::Error>>,
     {
+        debug!("filter_map NATS subject: {:?} -> {:?}", &from, &to);
         let jc = self.connect().await.unwrap();
         let from_stream = self.get_or_create_stream(&jc, &from).await.unwrap();
         let consumer: PullConsumer = from_stream

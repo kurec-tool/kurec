@@ -1,0 +1,26 @@
+layout {
+  pane command="pnpm" {
+    args "run" "-F" "web" "dev"
+  }
+  pane command="cargo" {
+    args "run" "events" "receiver" "tuner"
+  }
+  pane command="cargo" {
+    args "run" "epg" "collector"
+  }
+  pane command="cargo" {
+    args "run" "epg" "converter"
+  }
+  pane command="cargo" {
+    args "run" "epg" "indexer"
+  }
+  pane command="cargo" {
+    args "run" "ogp"
+  }
+  pane command="cargo" {
+    args "run" "events" "saved-splitter"
+  }
+  pane command="cargo" {
+    args "run" "encoder"
+  }
+}

@@ -12,3 +12,6 @@ pub use rule::*;
 
 mod initialize;
 pub use initialize::*;
+
+mod encoder;
+pub use encoder::*;

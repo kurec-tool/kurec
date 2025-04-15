@@ -12,3 +12,6 @@ pub use document::*;
 
 mod kvs;
 pub use kvs::*;
+
+mod storage;
+pub use storage::*;

@@ -22,6 +22,7 @@ enum SubCommands {
     Epg(EpgArgs),
     Ogp {},
     Rule {},
+    Encoder {},
 }
 
 #[derive(Clone, Debug, Args)]
@@ -131,6 +132,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let meilisearch_adapter = MeilisearchAdapter::new_async(config.clone()).await?;
             let rule_domain = domain::RuleDomain::new(nats_adapter, meilisearch_adapter);
             println!("Rule");
+            Ok(())
+        }
+        SubCommands::Encoder {} => {
+            let nats_adapter = NatsAdapter::new(config.clone());
+            let meilisearch_adapter = MeilisearchAdapter::new_async(config.clone()).await?;
+            let mirakc_adapter = MirakcAdapter::new(config.clone());
+            let encoder_domain = domain::EncoderDomain::new(
+                mirakc_adapter,
+                nats_adapter,
+                meilisearch_adapter,
+                config,
+            );
+            encoder_domain.encode_recorded().await?;
             Ok(())
         }
     }

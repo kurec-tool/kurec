@@ -12,3 +12,4 @@ mc admin policy attach "${MINIO_ALIAS}_admin" readwrite --user $MINIO_USER
 mc alias set $MINIO_ALIAS $MINIO_URL $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
 cargo install typeshare-cli
+cargo install zellij

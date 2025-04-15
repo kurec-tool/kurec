@@ -47,12 +47,16 @@ impl EventsDomain {
             );
             let stream = match data.recording_status {
                 kurec_interface::RecordingStatus::Recording => StreamType::RecordRecording,
-                kurec_interface::RecordingStatus::Finished => StreamType::RecordFinishied,
+                kurec_interface::RecordingStatus::Finished => StreamType::RecordFinished,
                 kurec_interface::RecordingStatus::Canceled => StreamType::RecordCanceled,
                 kurec_interface::RecordingStatus::Failed => StreamType::RecordFailed,
             };
+            let msg = kurec_interface::RecordingStatusMessage {
+                tuner_url: msg.tuner_url,
+                record_id: data.record_id.clone(),
+            };
             self.nats_adapter
-                .publish_to_stream(stream, data.record_id.clone().into())
+                .publish_to_stream(stream, serde_json::to_vec(&msg)?.into())
                 .await?;
             Ok(())
         };
