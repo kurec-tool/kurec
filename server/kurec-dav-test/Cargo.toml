@@ -1,0 +1,12 @@
+[package]
+name = "kurec-dav-test"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+actix-web = "4"
+dav-server = { version = "0.7.0", features = ["actix-compat", "actix-web"] }
+env_logger = "0.11.8"
