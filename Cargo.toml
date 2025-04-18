@@ -1,7 +1,16 @@
 [workspace]
 
 resolver = "2"
-members = [ "server/kurec", "server/kurec-adapter", "server/kurec-interface", "server/mirakc-client"]
+members = [
+  # old implementation
+  "server/kurec",
+  "server/kurec-adapter",
+  "server/kurec-interface",
+  "server/mirakc-client",
+  # new implementation
+  "rust/libs/kurec_shared",
+  "rust/libs/infra/stream", "rust/libs/infra/stream_macro",
+]
 
 [workspace.package]
 version = "0.0.1"
