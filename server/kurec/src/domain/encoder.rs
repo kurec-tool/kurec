@@ -4,8 +4,8 @@ use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
-use tracing::warn;
 use tracing::debug;
+use tracing::warn;
 
 pub struct EncoderDomain {
     mirakc_adapter: MirakcAdapter,
