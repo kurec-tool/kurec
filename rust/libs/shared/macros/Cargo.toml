@@ -21,3 +21,10 @@ syn = { version = "2.0.100", features = ["full"] }
 [dev-dependencies]
 serde = { version = "1.0.219", features = ["derive"] }
 trybuild = "1.0.104"
+anyhow = "1.0.98"
+async-trait = "0.1.88"
+futures = "0.3.31"
+thiserror = "1.0.58"
+tokio = { version = "1.36.0", features = ["full", "test-util"] }
+tokio-util = { version = "0.7.10", features = ["full"] }
+infra_jetstream = { path = "../../infra/jetstream" }

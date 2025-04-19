@@ -1,7 +1,13 @@
-use anyhow::Result;
+use anyhow;
+use futures::future::BoxFuture;
+use infra_jetstream::{JetStreamCtx, JsPublisher, JsSubscriber};
 use serde::{Deserialize, Serialize};
 use shared_core::error_handling::ClassifyError;
-use shared_macros::{event, stream_worker};
+use shared_core::stream_worker::StreamWorker;
+use shared_macros::event;
+use std::result::Result;
+use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 // 入力イベント: EPG更新イベント
 #[event(stream = "epg", subject = "epg.update")]
@@ -46,9 +52,9 @@ impl ClassifyError for EpgProcessError {
 }
 
 // EPGイベント処理関数
-// #[stream_worker]マクロにより、この関数はStreamWorkerに変換される
-#[stream_worker]
-pub async fn process_epg_event(event: EpgUpdateEvent) -> Result<RecordingScheduleEvent, EpgProcessError> {
+pub async fn process_epg_event(
+    event: EpgUpdateEvent,
+) -> Result<RecordingScheduleEvent, EpgProcessError> {
     // 番組情報のバリデーション
     if event.start_time >= event.end_time {
         return Err(EpgProcessError::InvalidProgram(format!(
@@ -72,4 +78,33 @@ pub async fn process_epg_event(event: EpgUpdateEvent) -> Result<RecordingSchedul
 
     // 録画予約イベントを返す
     Ok(recording_event)
+}
+
+// ワーカーを実行する関数
+pub async fn process_epg_event_worker(
+    js_ctx: &JetStreamCtx,
+    shutdown: CancellationToken,
+) -> anyhow::Result<()> {
+    // サブスクライバーとパブリッシャーを作成
+    let subscriber = Arc::new(JsSubscriber::<EpgUpdateEvent>::from_event_type(
+        js_ctx.clone(),
+    ));
+
+    let publisher = Arc::new(JsPublisher::<RecordingScheduleEvent>::from_event_type(
+        js_ctx.clone(),
+    ));
+
+    // ハンドラ関数をラップ
+    let handler = |event: EpgUpdateEvent| -> BoxFuture<'static, Result<RecordingScheduleEvent, EpgProcessError>> {
+        Box::pin(async move {
+            process_epg_event(event).await
+        })
+    };
+
+    // StreamWorkerを構築して実行
+    StreamWorker::new(subscriber, publisher, handler)
+        .durable_auto()
+        .run(shutdown)
+        .await
+        .map_err(|e| anyhow::anyhow!("Worker error: {}", e))
 }

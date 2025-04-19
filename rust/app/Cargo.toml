@@ -22,4 +22,4 @@ tracing = "0.1.40"
 # 内部依存関係
 shared_core = { path = "../libs/shared/core" }
 shared_macros = { path = "../libs/shared/macros" }
-shared_infra_jetstream = { path = "../libs/infra/jetstream" }
+infra_jetstream = { path = "../libs/infra/jetstream" }

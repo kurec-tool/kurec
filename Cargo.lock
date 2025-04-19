@@ -2024,6 +2024,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "kurec-app"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures",
+ "humantime",
+ "infra_jetstream",
+ "inventory",
+ "serde",
+ "serde_json",
+ "shared_core",
+ "shared_macros",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "kurec-interface"
 version = "0.0.1"
 dependencies = [
@@ -3577,14 +3597,21 @@ dependencies = [
 name = "shared_macros"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "ctor",
+ "futures",
  "heck 0.4.1",
  "humantime",
+ "infra_jetstream",
  "proc-macro2",
  "quote",
  "serde",
  "shared_core",
  "syn 2.0.100",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-util",
  "trybuild",
 ]
 

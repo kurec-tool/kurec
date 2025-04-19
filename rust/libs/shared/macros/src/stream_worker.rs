@@ -104,32 +104,31 @@ pub fn stream_worker_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
         quote! { .durable_auto() }
     };
 
+    // 関数名を連結するためのアイデンティファイアを作成
+    let worker_fn_name = syn::Ident::new(&format!("{}_worker", fn_name), fn_name.span());
+
     // StreamWorkerを構築して実行するコードを生成
     let expanded = quote! {
         // 元の関数をそのまま保持
         #input_fn
 
         // ワーカーを実行する関数を生成
-        #fn_vis async fn #fn_name _worker(
-            js_ctx: &shared_infra::jetstream::JetStreamCtx,
+        #fn_vis async fn #worker_fn_name(
+            js_ctx: &infra_jetstream::JetStreamCtx,
             shutdown: tokio_util::sync::CancellationToken
         ) -> anyhow::Result<()> {
             use std::sync::Arc;
-            use shared_core::event_metadata::HasStreamDef;
+            use shared_core::event_metadata::Event;
             use shared_core::stream_worker::StreamWorker;
-            use shared_infra::jetstream::{JsPublisher, JsSubscriber};
+            use infra_jetstream::{JsPublisher, JsSubscriber};
 
             // サブスクライバーとパブリッシャーを作成
-            let subscriber = Arc::new(JsSubscriber::<#input_type>::new(
+            let subscriber = Arc::new(JsSubscriber::<#input_type>::from_event_type(
                 js_ctx.clone(),
-                <#input_type as HasStreamDef>::stream_name(),
-                <#input_type as HasStreamDef>::stream_subject(),
             ));
 
-            let publisher = Arc::new(JsPublisher::<#output_type>::new(
+            let publisher = Arc::new(JsPublisher::<#output_type>::from_event_type(
                 js_ctx.clone(),
-                <#output_type as HasStreamDef>::stream_name(),
-                <#output_type as HasStreamDef>::stream_subject(),
             ));
 
             // ハンドラ関数をラップ
