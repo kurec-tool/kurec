@@ -7,3 +7,4 @@ pnpx  @openapitools/openapi-generator-cli generate \
     -o server/mirakc-client \
     --skip-validate-spec \
     --package-name mirakc-client
+cargo fmt -p mirakc-client
