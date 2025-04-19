@@ -13,3 +13,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 RUN curl -sf https://binaries.nats.dev/nats-io/natscli/nats@latest | sh && mv nats /usr/local/bin/nats
 
 COPY  --from=minio /usr/bin/mc /usr/local/bin/mc
+
+USER vscode
+RUN cargo install typeshare-cli
+RUN cargo install zellij

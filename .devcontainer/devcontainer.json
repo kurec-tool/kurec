@@ -12,7 +12,8 @@
         "biomejs.biome",
         "mhutchie.git-graph",
         "zxh404.vscode-proto3",
-        "kdl-org.kdl"
+        "kdl-org.kdl",
+        "saoudrizwan.claude-dev"
       ]
     }
   },
@@ -21,6 +22,7 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   }
 }
