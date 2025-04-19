@@ -1,4 +1,8 @@
+pub use inventory;
+use serde::{de::DeserializeOwned, Serialize};
 use std::time::Duration;
+
+pub trait Event: Serialize + DeserializeOwned + HasStreamDef + Send + Sync + 'static {}
 
 /// デフォルト構成を持つ JetStream ストリーム定義
 #[derive(Debug)]
@@ -24,8 +28,3 @@ pub trait HasStreamDef {
 
 // 全てのStreamDefはinventory経由で収集される（#[event]で登録）
 inventory::collect!(StreamDef);
-
-/// human-duration文字列を `Duration` に変換するユーティリティ
-pub fn parse_duration(s: Option<&str>) -> Option<Duration> {
-    s.and_then(|text| humantime::parse_duration(text).ok())
-}

@@ -8,8 +8,10 @@ members = [
   "server/kurec-interface",
   "server/mirakc-client",
   # new implementation
-  "rust/libs/kurec_shared",
-  "rust/libs/infra/stream", "rust/libs/infra/stream_macro",
+  "rust/libs/shared/core",
+  "rust/libs/shared/macros",
+  "rust/libs/domain",
+  "rust/libs/infra/jetstream",
 ]
 
 [workspace.package]

@@ -19,17 +19,8 @@
   "remoteUser": "vscode",
   "postCreateCommand": "/workspaces/kurec/.devcontainer/startup.sh",
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "nodeGypDependencies": true,
-      "installYarnUsingApt": true,
-      "version": "lts",
-      "pnpmVersion": "latest",
-      "nvmVersion": "latest"
-    },
-    "ghcr.io/devcontainers/features/terraform:1": {
-      "version": "latest",
-      "tflint": "latest",
-      "terragrunt": "latest"
-    }
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/terraform:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   }
 }

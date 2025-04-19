@@ -1,0 +1,13 @@
+error: custom attribute panicked
+ --> tests/ui/macro_fail.rs:3:1
+  |
+3 | #[event(subject = "foo.bar")] // ← stream が無いのでコンパイル失敗
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: stream is required
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/ui/macro_fail.rs:4:16
+  |
+4 | pub struct Bad;
+  |                ^ consider adding a `main` function to `$DIR/tests/ui/macro_fail.rs`
