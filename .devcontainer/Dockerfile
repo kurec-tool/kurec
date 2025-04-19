@@ -15,5 +15,6 @@ RUN curl -sf https://binaries.nats.dev/nats-io/natscli/nats@latest | sh && mv na
 COPY  --from=minio /usr/bin/mc /usr/local/bin/mc
 
 USER vscode
+ENV CARGO_HOME=/home/vscode/.cargo
 RUN cargo install typeshare-cli
 RUN cargo install zellij
