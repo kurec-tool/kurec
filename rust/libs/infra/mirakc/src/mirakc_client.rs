@@ -21,9 +21,7 @@ impl MirakcClient {
     pub async fn get_version(&self) -> Result<mirakc_client::models::Version> {
         version_api::check_version(&self.config)
             .await
-            .context("Failed to get mirakc version")
-            .map_err(Into::into)
-    }
+            .context("Failed to get mirakc version")}
 
     // 将来的に他のAPIメソッドを追加...
 }
