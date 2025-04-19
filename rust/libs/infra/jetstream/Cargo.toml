@@ -1,0 +1,18 @@
+[package]
+name = "infra_jetstream"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.98"
+async-nats = "0.40.0"
+inventory = "0.3.20"
+shared_core = { version = "0.0.1", path = "../../shared/core" }
+shared_macros = { version = "0.0.1", path = "../../shared/macros" }
+
+[dev-dependencies]
+testcontainers = "0.23.3"
+tokio = { version = "1.44.2", features = ["macros", "rt-multi-thread"] }
