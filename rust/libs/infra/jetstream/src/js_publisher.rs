@@ -1,5 +1,4 @@
 use anyhow::Result;
-use async_nats::subject::ToSubject;
 use async_trait::async_trait;
 use shared_core::event_metadata::Event;
 use shared_core::event_publisher::EventPublisher;
