@@ -1,6 +1,6 @@
+use crate::models::version::Version;
 use anyhow::Result;
 use async_trait::async_trait;
-use crate::models::version::Version;
 
 /// mirakcバージョンリポジトリのインターフェース
 #[async_trait]

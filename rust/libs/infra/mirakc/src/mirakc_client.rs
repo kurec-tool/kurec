@@ -14,14 +14,17 @@ impl MirakcClient {
         let mut config = Configuration::new();
         // base_pathはデフォルトで "/api" なので、完全なURLを構築
         config.base_path = format!("{}/api", base_url);
-        Self { config: Arc::new(config) }
+        Self {
+            config: Arc::new(config),
+        }
     }
 
     /// バージョン情報を取得
     pub async fn get_version(&self) -> Result<mirakc_client::models::Version> {
         version_api::check_version(&self.config)
             .await
-            .context("Failed to get mirakc version")}
+            .context("Failed to get mirakc version")
+    }
 
     // 将来的に他のAPIメソッドを追加...
 }

@@ -115,7 +115,7 @@ mod tests {
         assert_eq!(current.major, 1);
         assert_eq!(current.minor, 2);
         assert_eq!(current.patch, 3);
-        
+
         // プレリリース部分を文字列として検証
         assert!(current.pre.len() > 0);
         assert_eq!(current.pre.to_string(), "dev.4");

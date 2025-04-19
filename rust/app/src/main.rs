@@ -72,49 +72,59 @@ async fn main() -> Result<()> {
                     eprintln!("EPG worker error: {}", e);
                 }
             });
-        },
+        }
         WorkerType::CheckVersion { mirakc_url } => {
             println!("mirakcバージョンを確認中: {}...", mirakc_url);
-            
+
             // バージョンリポジトリとユースケースを作成
             let version_repo = infra_mirakc::repositories::domain_version_repository::DomainVersionRepositoryImpl::new(&mirakc_url);
-            let version_usecase = domain::usecases::version_usecase::VersionUseCase::new(version_repo);
-            
+            let version_usecase =
+                domain::usecases::version_usecase::VersionUseCase::new(version_repo);
+
             // バージョン状態を取得
             match version_usecase.get_version_status().await {
                 Ok((version, status)) => {
                     println!("現在のバージョン: {}", version.current);
                     println!("最新バージョン: {}", version.latest);
-                    
+
                     match status {
                         domain::models::version::VersionStatus::UpToDate => {
                             println!("✅ mirakcは最新バージョンです");
-                        },
+                        }
                         domain::models::version::VersionStatus::PatchUpdate => {
                             println!("⚠️ パッチアップデートが利用可能です");
-                        },
+                        }
                         domain::models::version::VersionStatus::MinorUpdate => {
                             println!("⚠️ マイナーアップデートが利用可能です");
-                        },
+                        }
                         domain::models::version::VersionStatus::MajorUpdate => {
                             println!("⚠️ メジャーアップデートが利用可能です");
-                        },
+                        }
                         domain::models::version::VersionStatus::Development => {
                             println!("🔧 開発版を使用中です");
-                            
+
                             // 開発版と最新版の比較情報も表示
                             if let Ok((current, latest)) = version.parse_versions() {
-                                if current.major != latest.major || current.minor != latest.minor || current.patch != latest.patch {
-                                    println!("  開発版のベースバージョン: {}.{}.{}", current.major, current.minor, current.patch);
-                                    println!("  最新安定版: {}.{}.{}", latest.major, latest.minor, latest.patch);
+                                if current.major != latest.major
+                                    || current.minor != latest.minor
+                                    || current.patch != latest.patch
+                                {
+                                    println!(
+                                        "  開発版のベースバージョン: {}.{}.{}",
+                                        current.major, current.minor, current.patch
+                                    );
+                                    println!(
+                                        "  最新安定版: {}.{}.{}",
+                                        latest.major, latest.minor, latest.patch
+                                    );
                                 }
                             }
-                        },
+                        }
                     }
-                    
+
                     // 正常終了
                     shutdown.cancel();
-                },
+                }
                 Err(e) => {
                     eprintln!("mirakcバージョン確認エラー: {}", e);
                     std::process::exit(1);
