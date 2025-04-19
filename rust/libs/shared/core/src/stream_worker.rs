@@ -34,7 +34,7 @@ where
     _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a, I, O, E> StreamNext<'a, I, O, E>
+impl<I, O, E> StreamNext<'_, I, O, E>
 where
     I: Event,
     O: Event,
@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<'a, I, O, E> Clone for StreamNext<'a, I, O, E>
+impl<I, O, E> Clone for StreamNext<'_, I, O, E>
 where
     I: Event,
     O: Event,

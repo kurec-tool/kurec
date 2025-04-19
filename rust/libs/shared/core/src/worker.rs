@@ -32,7 +32,7 @@ where
     _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a, E, Ctx> Next<'a, E, Ctx>
+impl<E, Ctx> Next<'_, E, Ctx>
 where
     E: Event,
     Ctx: Clone + Send + Sync + 'static,
@@ -98,7 +98,7 @@ where
     }
 }
 
-impl<'a, E, Ctx> Clone for Next<'a, E, Ctx>
+impl<E, Ctx> Clone for Next<'_, E, Ctx>
 where
     E: Event,
     Ctx: Clone + Send + Sync + 'static,
