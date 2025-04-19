@@ -1,6 +1,5 @@
-use std::sync::Arc;
 
-use kurec_adapter::{MeilisearchAdapter, MirakcAdapter, NatsAdapter, StreamType};
+use kurec_adapter::{MeilisearchAdapter, NatsAdapter, StreamType};
 use kurec_interface::{ProgramDocument, RuleUpdatedMessage, ScheduleUpdatedMessage};
 use tracing::debug;
 

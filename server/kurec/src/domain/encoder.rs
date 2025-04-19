@@ -1,14 +1,11 @@
-use awc::cookie::time::serde;
 use kurec_adapter::{MeilisearchAdapter, MirakcAdapter, NatsAdapter};
-use std::env;
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 use tracing::warn;
-use tracing::{debug, info};
+use tracing::debug;
 
 pub struct EncoderDomain {
     mirakc_adapter: MirakcAdapter,
