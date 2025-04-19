@@ -18,21 +18,24 @@
 
 ---
 
-## ⚙️ shared-core（ports & metadata）
+## ⚙️ shared-core（コア機能）
 
 ```
 shared/core/
 ├─ src/
-│  ├── ports/
-│  │    ├─ event.rs            ← `pub trait Event` マーカー
-│  │    ├─ event_publisher.rs  ← `pub trait EventPublisher`
-│  │    └─ event_subscriber.rs ← `pub trait EventSubscriber`, `AckHandle`
-│  └── event_metadata.rs       ← `StreamDef` / `HasStreamDef` / `parse_duration`
+│  ├── error_handling.rs       ← `pub trait ClassifyError`, `ErrorAction`
+│  ├── event_metadata.rs       ← `pub trait Event`, `StreamDef` / `HasStreamDef`
+│  ├── event_publisher.rs      ← `pub trait EventPublisher`
+│  ├── event_subscriber.rs     ← `pub trait EventSubscriber`, `AckHandle`
+│  ├── worker.rs               ← `WorkerBuilder`, `Middleware`, `Handler`
+│  └── stream_worker.rs        ← `StreamWorker`, `StreamMiddleware`, `StreamHandler`
 ```
 
 - **`Event`**: 全ての `#[event]` 型が実装するマーカー
 - **`StreamDef`／`HasStreamDef`**: subject/stream 名を型から取得
 - **`EventPublisher`／`EventSubscriber`**: 入出力の抽象ポート
+- **`ClassifyError`／`ErrorAction`**: エラー分類と処理方法の決定
+- **`WorkerBuilder`／`StreamWorker`**: ワーカーの構築と実行
 
 ---
 
@@ -88,7 +91,9 @@ app/
 
 ## 🔄 エラーハンドリング & ミドルウェア
 
-1. **ClassifyError** トレイト → `should_retry: bool`
+1. **ClassifyError** トレイト → `error_action(): ErrorAction`
+   - `ErrorAction::Retry` → 再試行（nack）
+   - `ErrorAction::Ignore` → 無視（ack）
 2. **ミドルウェア層** でError分類 → retry/ack 決定
 3. **DLQ** は専用パイプライン or 管理UIで手動再投入
 
@@ -107,4 +112,3 @@ app/
    - in‑memory 実装 (単体)
 
 ---
-

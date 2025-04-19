@@ -9,6 +9,12 @@ use anyhow::{Context, Result};
 use async_nats::{self, jetstream, ConnectOptions};
 use std::time::Duration;
 
+mod js_publisher;
+mod js_subscriber;
+
+pub use js_publisher::JsPublisher;
+pub use js_subscriber::JsSubscriber;
+
 /// Wrapper that holds a connected JetStream context plus the underlying client (kept for drop order).
 #[derive(Clone)]
 pub struct JetStreamCtx {

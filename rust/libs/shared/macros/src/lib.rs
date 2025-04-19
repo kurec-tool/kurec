@@ -7,6 +7,13 @@ use syn::{
     Token,
 };
 
+mod stream_worker;
+
+#[proc_macro_attribute]
+pub fn stream_worker(attr: TokenStream, item: TokenStream) -> TokenStream {
+    stream_worker::stream_worker_impl(attr, item)
+}
+
 fn parse_duration(opt: &Option<String>) -> Option<Duration> {
     opt.as_ref().map(|s| {
         humantime::parse_duration(s)
