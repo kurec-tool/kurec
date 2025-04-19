@@ -24,15 +24,16 @@
 shared/core/
 ├─ src/
 │  ├── error_handling.rs       ← `pub trait ClassifyError`, `ErrorAction`
-│  ├── event_metadata.rs       ← `pub trait Event`, `StreamDef` / `HasStreamDef`
+│  ├── event_metadata.rs       ← `pub trait Event`
 │  ├── event_publisher.rs      ← `pub trait EventPublisher`
 │  ├── event_subscriber.rs     ← `pub trait EventSubscriber`, `AckHandle`
+│  ├── streams.rs              ← `StreamConfig`, ストリーム設定の登録・取得
 │  ├── worker.rs               ← `WorkerBuilder`, `Middleware`, `Handler`
 │  └── stream_worker.rs        ← `StreamWorker`, `StreamMiddleware`, `StreamHandler`
 ```
 
-- **`Event`**: 全ての `#[event]` 型が実装するマーカー
-- **`StreamDef`／`HasStreamDef`**: subject/stream 名を型から取得
+- **`Event`**: 全ての `#[event]` 型が実装するトレイト（`stream_name`と`event_name`を提供）
+- **`streams`**: ストリーム設定の登録・取得機能
 - **`EventPublisher`／`EventSubscriber`**: 入出力の抽象ポート
 - **`ClassifyError`／`ErrorAction`**: エラー分類と処理方法の決定
 - **`WorkerBuilder`／`StreamWorker`**: ワーカーの構築と実行
@@ -43,13 +44,17 @@ shared/core/
 
 ```
 shared/macros/  (proc‑macro = true)
-└─ src/lib.rs
-   ├─ #[event(stream=…, subject=…)] → StreamDef 登録＋HasStreamDef 実装
-   └─ #[worker(...)]                 → WorkerDef 登録＋属性パース
+├─ src/lib.rs
+│  ├─ #[event(stream=…)]      → Event トレイト実装
+│  ├─ define_streams!{...}    → ストリーム設定の登録
+│  └─ #[worker(...)]          → WorkerDef 登録＋属性パース
+├─ src/define_streams.rs      ← ストリーム定義マクロの実装
+└─ src/stream_worker.rs       ← ワーカー定義マクロの実装
 ```
 
-- イベント定義・ワーカー定義のメタ情報を `inventory` に流し込む
-- 実行時登録／起動ロジックと疎結合に
+- **`#[event]`**: イベント型に`Event`トレイトを実装
+- **`define_streams!`**: ストリーム設定を一元管理し、自動登録
+- **`#[worker]`**: ワーカー定義のメタ情報を登録
 
 ---
 
@@ -59,13 +64,14 @@ shared/macros/  (proc‑macro = true)
 infra/jetstream/
 ├─ src/lib.rs
 │    ├─ connect(nats_url) → `JetStreamCtx`
-│    └─ setup_all_streams(js) → StreamDef 列挙 & idempotent 作成
+│    └─ setup_all_streams(js) → ストリーム設定を列挙 & idempotent 作成
 ├─ src/js_publisher.rs      ← `EventPublisher for JsPublisher`
 └─ src/js_subscriber.rs     ← `EventSubscriber for JsSubscriber`
 ```
 
 - **JetStream** に特化した Publisher/Subscriber
-- マクロで定義されたストリームを自動プロビジョニング
+- `define_streams!`マクロで定義されたストリームを自動プロビジョニング
+- イベント型から自動的にdurable nameを生成
 
 ---
 

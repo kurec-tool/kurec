@@ -5,6 +5,7 @@ pub mod event_metadata;
 pub mod event_publisher;
 pub mod event_subscriber;
 pub mod stream_worker;
+pub mod streams;
 pub mod worker;
 
 #[cfg(test)]

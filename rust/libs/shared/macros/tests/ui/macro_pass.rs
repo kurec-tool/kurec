@@ -1,13 +1,8 @@
-use shared_macros::event; // inventory 参照でリンク
+use serde::{Deserialize, Serialize};
+use shared_macros::event;
 
-//#[event(stream = "test-stream", subject = "test.subject")]
-#[event(
-    stream = "test-stream",
-    subject = "test.subject",
-    max_deliver = 5,
-    ack_wait = "1m",
-    max_age = "1h"
-)]
+#[event(stream = "test-stream")]
+#[derive(Serialize, Deserialize)]
 pub struct TestEvt;
 
 fn main() {

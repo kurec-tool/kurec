@@ -1,18 +1,24 @@
 use std::time::Duration;
 
 use infra_jetstream::{connect, setup_all_streams};
-use shared_core::event_metadata::StreamDef;
-use shared_macros::event;
+use serde::{Deserialize, Serialize};
+use shared_core::streams::get_all_stream_configs;
+use shared_macros::{define_streams, event};
 use testcontainers::{core::WaitFor, runners::AsyncRunner, GenericImage, ImageExt};
 
-#[event(
-    stream = "test-stream",
-    subject = "test.subject",
-    max_deliver = 5,
-    ack_wait = "1m",
-    max_age = "1h"
-)]
-struct _TestEvent;
+// ストリーム定義
+define_streams! {
+    stream test_stream {
+        max_age: "1h",
+        max_deliver: 5,
+        ack_wait: "1m",
+    }
+}
+
+// イベント型の定義
+#[event(stream = "test_stream")]
+#[derive(Serialize, Deserialize, Debug)]
+struct TestEvent;
 
 async fn ensure_docker() {
     for _ in 0..20 {
@@ -59,20 +65,24 @@ async fn stream_defs_are_applied() -> anyhow::Result<()> {
     setup_all_streams(js).await?;
     println!("setup_all_streams done");
 
-    let defs: Vec<_> = shared_core::event_metadata::inventory::iter::<StreamDef>
-        .into_iter()
-        .collect();
-    assert_eq!(defs.len(), 1, "should have exactly one stream def");
+    // 登録されたストリーム設定を取得
+    let configs = get_all_stream_configs();
+    assert_eq!(configs.len(), 1, "should have exactly one stream config");
 
-    // ---- Assert every StreamDef now exists --------------------------------
-    for def in defs {
+    // ---- Assert every Stream now exists --------------------------------
+    for config in configs {
         assert!(
-            js.get_stream_no_info(def.name).await.is_ok(),
+            js.get_stream_no_info(&config.name).await.is_ok(),
             "stream {} should exist",
-            def.name
+            config.name
         );
         assert_eq!(
-            js.get_stream(def.name).await?.info().await?.config.max_age,
+            js.get_stream(&config.name)
+                .await?
+                .info()
+                .await?
+                .config
+                .max_age,
             Duration::from_secs(3600),
         );
     }
@@ -110,12 +120,13 @@ async fn idempotend_check() -> anyhow::Result<()> {
     setup_all_streams(js).await?;
     setup_all_streams(js).await?;
 
-    // ---- Assert every StreamDef now exists --------------------------------
-    for def in shared_core::event_metadata::inventory::iter::<StreamDef> {
+    // ---- Assert every Stream now exists --------------------------------
+    let configs = get_all_stream_configs();
+    for config in configs {
         assert!(
-            js.get_stream_no_info(def.name).await.is_ok(),
+            js.get_stream_no_info(&config.name).await.is_ok(),
             "stream {} should exist",
-            def.name
+            config.name
         );
     }
 

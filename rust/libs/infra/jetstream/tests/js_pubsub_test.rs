@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::StreamExt;
 use infra_jetstream::{connect, JsPublisher, JsSubscriber};
 use serde::{Deserialize, Serialize};
-use shared_core::event_metadata::{Event, HasStreamDef};
+use shared_core::event_metadata::Event;
 use shared_core::event_publisher::EventPublisher;
 use shared_core::event_subscriber::EventSubscriber;
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt}; // ContainerAsyncをインポート
@@ -14,17 +14,15 @@ struct TestEvent {
     pub message: String,
 }
 
-impl HasStreamDef for TestEvent {
+impl Event for TestEvent {
     fn stream_name() -> &'static str {
         "test-pubsub-stream"
     }
 
-    fn stream_subject() -> &'static str {
-        "test.pubsub.subject"
+    fn event_name() -> &'static str {
+        "test-event"
     }
 }
-
-impl Event for TestEvent {}
 
 async fn ensure_docker() {
     for _ in 0..20 {
@@ -57,8 +55,8 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 
     // Removed manual consumer creation to let JsSubscriber create its own consumer.
 
-    let publisher = JsPublisher::<TestEvent>::new(ctx.clone());
-    let subscriber = JsSubscriber::<TestEvent>::new(ctx.clone());
+    let publisher = JsPublisher::<TestEvent>::from_event_type(ctx.clone());
+    let subscriber = JsSubscriber::<TestEvent>::from_event_type(ctx.clone());
 
     let test_event = TestEvent {
         id: 1,

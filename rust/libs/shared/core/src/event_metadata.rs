@@ -1,30 +1,18 @@
-pub use inventory;
 use serde::{de::DeserializeOwned, Serialize};
-use std::time::Duration;
 
-pub trait Event: Serialize + DeserializeOwned + HasStreamDef + Send + Sync + 'static {}
-
-/// デフォルト構成を持つ JetStream ストリーム定義
-#[derive(Debug)]
-pub struct StreamConfigDefaults {
-    pub max_age: Option<Duration>,
-    pub max_deliver: Option<u32>,
-    pub ack_wait: Option<Duration>,
-}
-
-/// イベントストリームの定義
-#[derive(Debug)]
-pub struct StreamDef {
-    pub name: &'static str,
-    pub subjects: &'static [&'static str],
-    pub default_config: StreamConfigDefaults,
-}
-
-/// イベント型がこのトレイトを実装すると、定義が取得できるようになる
-pub trait HasStreamDef {
+/// イベントの基本トレイト
+///
+/// このトレイトを実装する型は、JetStreamを通じて送受信できるイベントとなる。
+/// ストリーム名とイベント名を指定することで、サブジェクト名が自動的に生成される。
+pub trait Event: Serialize + DeserializeOwned + Send + Sync + 'static {
+    /// イベントが属するストリーム名
     fn stream_name() -> &'static str;
-    fn stream_subject() -> &'static str;
-}
 
-// 全てのStreamDefはinventory経由で収集される（#[event]で登録）
-inventory::collect!(StreamDef);
+    /// イベント名
+    fn event_name() -> &'static str;
+
+    /// サブジェクト名（ストリーム名.イベント名）
+    fn stream_subject() -> String {
+        format!("{}.{}", Self::stream_name(), Self::event_name())
+    }
+}

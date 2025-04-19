@@ -14,15 +14,7 @@ pub struct JsPublisher<E: Event> {
 }
 
 impl<E: Event> JsPublisher<E> {
-    /// 新しいJsPublisherを作成
-    pub fn new(js_ctx: JetStreamCtx) -> Self {
-        Self {
-            js_ctx,
-            _phantom: PhantomData,
-        }
-    }
-
-    /// HasStreamDefトレイトを使用して新しいJsPublisherを作成
+    /// イベント型から新しいJsPublisherを作成
     pub fn from_event_type(js_ctx: JetStreamCtx) -> Self {
         Self {
             js_ctx,

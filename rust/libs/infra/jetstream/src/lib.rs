@@ -37,30 +37,31 @@ pub async fn connect(nats_url: &str) -> Result<JetStreamCtx> {
     })
 }
 
-/// Apply **all** `#[event]`‑generated streams to the connected JetStream instance.
+/// 登録されたすべてのストリームを接続されたJetStreamインスタンスに適用します。
 ///
-/// *Existing streams* are updated (idempotent) — so you can run this on every boot.
+/// *既存のストリーム*は更新されます（冪等）— 起動時に毎回実行できます。
 pub async fn setup_all_streams(js: &jetstream::context::Context) -> Result<()> {
-    let defs: Vec<_> = inventory::iter::<shared_core::event_metadata::StreamDef>
-        .into_iter()
-        .collect();
+    use shared_core::streams::get_all_stream_configs;
 
-    for def in defs {
-        // Convert default config & create/update stream
-        let cfg = jetstream::stream::Config {
-            name: def.name.to_string(),
-            subjects: def.subjects.iter().map(|s| s.to_string()).collect(),
-            max_age: def.default_config.max_age.unwrap_or(Duration::from_secs(0)),
+    // 登録されたすべてのストリーム設定を取得
+    for config in get_all_stream_configs() {
+        // JetStream設定に変換
+        let js_config = jetstream::stream::Config {
+            name: config.name.clone(),
+            subjects: vec![format!("{}.*", config.name)], // ワイルドカードサブジェクト
+            max_age: config.max_age.unwrap_or(Duration::from_secs(0)),
+            // max_deliver と ack_wait は consumer 設定に移動
             ..Default::default()
         };
 
         // idempotent: create if absent, update if present
-        match js.get_or_create_stream(&cfg).await {
+        match js.get_or_create_stream(&js_config).await {
             Ok(_) => {
-                js.update_stream(cfg).await?;
+                js.update_stream(js_config).await?;
             }
             Err(e) => return Err(e.into()),
         }
     }
+
     Ok(())
 }

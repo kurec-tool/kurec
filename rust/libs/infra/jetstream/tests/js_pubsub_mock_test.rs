@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use futures::stream::{self, BoxStream};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use shared_core::event_metadata::{Event, HasStreamDef};
+use shared_core::event_metadata::Event;
 use shared_core::event_publisher::EventPublisher;
 use shared_core::event_subscriber::{AckHandle, EventSubscriber};
 
@@ -16,17 +16,15 @@ struct TestEvent1 {
     pub message: String,
 }
 
-impl HasStreamDef for TestEvent1 {
+impl Event for TestEvent1 {
     fn stream_name() -> &'static str {
         "test-event1-stream"
     }
 
-    fn stream_subject() -> &'static str {
-        "test.event1.subject"
+    fn event_name() -> &'static str {
+        "event1"
     }
 }
-
-impl Event for TestEvent1 {}
 
 // テスト用のイベント型2（異なるストリームとサブジェクト）
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -35,17 +33,15 @@ struct TestEvent2 {
     pub data: Vec<u8>,
 }
 
-impl HasStreamDef for TestEvent2 {
+impl Event for TestEvent2 {
     fn stream_name() -> &'static str {
         "test-event2-stream"
     }
 
-    fn stream_subject() -> &'static str {
-        "test.event2.subject"
+    fn event_name() -> &'static str {
+        "event2"
     }
 }
-
-impl Event for TestEvent2 {}
 
 // モック用のJetStreamコンテキスト
 #[derive(Clone)]

@@ -22,17 +22,15 @@ struct InputEvent {
     pub data: String,
 }
 
-impl crate::event_metadata::HasStreamDef for InputEvent {
+impl Event for InputEvent {
     fn stream_name() -> &'static str {
         "test_input_stream"
     }
 
-    fn stream_subject() -> &'static str {
-        "test.input.events"
+    fn event_name() -> &'static str {
+        "input_event"
     }
 }
-
-impl Event for InputEvent {}
 
 // テスト用の出力イベント型
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -42,17 +40,15 @@ struct OutputEvent {
     pub processed: bool,
 }
 
-impl crate::event_metadata::HasStreamDef for OutputEvent {
+impl Event for OutputEvent {
     fn stream_name() -> &'static str {
         "test_output_stream"
     }
 
-    fn stream_subject() -> &'static str {
-        "test.output.events"
+    fn event_name() -> &'static str {
+        "output_event"
     }
 }
-
-impl Event for OutputEvent {}
 
 // テスト用のエラー型
 #[derive(Debug)]

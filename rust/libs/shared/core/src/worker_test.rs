@@ -17,17 +17,15 @@ pub struct TestEvent {
     pub data: String,
 }
 
-impl crate::event_metadata::HasStreamDef for TestEvent {
+impl crate::event_metadata::Event for TestEvent {
     fn stream_name() -> &'static str {
         "test_event_stream"
     }
 
-    fn stream_subject() -> &'static str {
-        "test.events"
+    fn event_name() -> &'static str {
+        "test_event"
     }
 }
-
-impl crate::event_metadata::Event for TestEvent {}
 
 // テスト用のトレイト
 pub trait TestEventTrait: Send + Sync + 'static {}
