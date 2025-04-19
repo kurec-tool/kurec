@@ -15,7 +15,8 @@
 *.pem
 
 # debug
-npm-debug.log*
+npm-debug.log*を
+
 yarn-debug.log*
 yarn-error.log*
 
@@ -31,3 +32,6 @@ next-env.d.ts
 
 /target
 /.devcontainer/.env
+
+# Cline generated commit message file
+COMMIT_MESSAGE.txt
