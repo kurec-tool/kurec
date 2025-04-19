@@ -348,7 +348,7 @@ impl NatsAdapter {
         value: &str,
     ) -> Result<(), anyhow::Error> {
         let jc = self.connect().await.unwrap();
-        let bucket = self.get_prefixed_kvs_name(&kvs_type);
+        let bucket = self.get_prefixed_kvs_name(kvs_type);
         let kv = match jc.get_key_value(&bucket).await {
             Ok(kv) => kv,
             Err(_) => jc
