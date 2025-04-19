@@ -9,6 +9,7 @@ edition.workspace = true
 [dependencies]
 anyhow = "1.0.98"
 async-trait = "0.1.88"
+clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.31"
 humantime = "2.2.0"
 inventory = "0.3.20"
