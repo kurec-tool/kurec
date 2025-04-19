@@ -448,5 +448,5 @@ const SUB_GENRE: [&str; 256] = [
 ];
 
 pub fn get_subgenre(genre: i32, subgenre: i32) -> &'static str {
-    SUB_GENRE[(genre as usize & 0x0f) << 4 | (subgenre as usize & 0x0f)]
+    SUB_GENRE[((genre as usize & 0x0f) << 4) | (subgenre as usize & 0x0f)]
 }
