@@ -24,3 +24,5 @@ tracing = "0.1.40"
 shared_core = { path = "../libs/shared/core" }
 shared_macros = { path = "../libs/shared/macros" }
 infra_jetstream = { path = "../libs/infra/jetstream" }
+infra_mirakc = { path = "../libs/infra/mirakc" }
+domain = { path = "../libs/domain" }

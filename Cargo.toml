@@ -12,6 +12,7 @@ members = [
   "rust/libs/shared/macros",
   "rust/libs/domain",
   "rust/libs/infra/jetstream",
+  "rust/libs/infra/mirakc",
   "rust/app",
 ]
 

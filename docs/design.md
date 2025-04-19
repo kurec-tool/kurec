@@ -122,3 +122,186 @@ app/
    - in‑memory 実装 (単体)
 
 ---
+
+## 📊 DTOとドメインモデル
+
+### DTOの配置と役割
+
+```
+shared/core/src/dtos/         ← 共通DTOの定義
+├─ version_dto.rs             ← 例: VersionDto
+
+infra/{実装名}/src/dtos/      ← 実装固有DTOの定義
+├─ version_dto.rs             ← 例: 外部APIのレスポンス型
+
+domain/src/dtos/              ← ドメイン層で使用するDTOの定義
+├─ version_dto.rs             ← 例: ドメイン層で使用するDTO
+```
+
+- **共通DTO (`shared/core/src/dtos/`)**: 
+  - 複数のレイヤーで共有されるDTO
+  - リポジトリインターフェースの入出力として使用
+  - 例: `VersionDto`
+
+- **実装固有DTO (`infra/{実装名}/src/dtos/`)**: 
+  - 特定のインフラ実装に固有のDTO
+  - 外部APIのレスポンス型など
+  - 例: `MirakcVersionResponse`
+
+- **ドメイン層DTO (`domain/src/dtos/`)**: 
+  - ドメイン層で使用するDTO
+  - ユースケースの入出力として使用
+  - 例: `VersionDto`
+
+### ドメインモデルとDTOの変換
+
+- **リポジトリ実装内での変換**:
+  - 外部APIのレスポンス → 共通DTO
+  - 例: `MirakcVersionResponse` → `VersionDto`
+
+- **ユースケース内での変換**:
+  - 共通DTO → ドメインモデル
+  - 例: `VersionDto` → `Version`
+
+## 🏗 ユースケースの作成方法
+
+### ユースケースの構造
+
+```
+domain/src/usecases/
+├─ mod.rs                     ← ユースケースモジュールの公開
+├─ version_usecase.rs         ← 例: VersionUseCase
+```
+
+### ユースケースの実装パターン
+
+```rust
+// ユースケースの基本構造
+pub struct VersionUseCase<R: VersionRepository> {
+    repository: R,
+}
+
+impl<R: VersionRepository> VersionUseCase<R> {
+    // コンストラクタ
+    pub fn new(repository: R) -> Self {
+        Self { repository }
+    }
+
+    // ユースケースメソッド
+    pub async fn get_version_status(&self) -> Result<(Version, VersionStatus)> {
+        // 1. リポジトリからデータを取得
+        let version = self.repository.get_version().await?;
+        
+        // 2. ドメインロジックを適用
+        let status = version.version_status()?;
+        
+        // 3. 結果を返却
+        Ok((version, status))
+    }
+}
+```
+
+### ユースケースのテスト
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    // モックリポジトリ
+    struct MockVersionRepository {
+        version: Arc<Mutex<Version>>,
+    }
+    
+    #[async_trait]
+    impl VersionRepository for MockVersionRepository {
+        async fn get_version(&self) -> Result<Version> {
+            let version = self.version.lock().unwrap().clone();
+            Ok(version)
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_get_version_status_up_to_date() {
+        // 1. モックリポジトリを準備
+        let repo = MockVersionRepository::new("1.0.0", "1.0.0");
+        
+        // 2. ユースケースを作成
+        let usecase = VersionUseCase::new(repo);
+        
+        // 3. ユースケースを実行
+        let (version, status) = usecase.get_version_status().await.unwrap();
+        
+        // 4. 結果を検証
+        assert_eq!(status, VersionStatus::UpToDate);
+    }
+}
+```
+
+## 🔌 リポジトリの実装方法
+
+### リポジトリインターフェース
+
+```rust
+// domain/src/ports/repositories/version_repository.rs
+#[async_trait]
+pub trait VersionRepository: Send + Sync + 'static {
+    async fn get_version(&self) -> Result<Version>;
+}
+```
+
+### リポジトリ実装
+
+```rust
+// infra/mirakc/src/repositories/domain_version_repository.rs
+pub struct DomainVersionRepositoryImpl {
+    client: MirakcClient,
+}
+
+#[async_trait]
+impl VersionRepository for DomainVersionRepositoryImpl {
+    async fn get_version(&self) -> Result<Version> {
+        // 1. 外部APIからデータを取得
+        let mirakc_version = self.client.get_version().await?;
+        
+        // 2. ドメインモデルに変換
+        Ok(Version {
+            current: mirakc_version.current,
+            latest: mirakc_version.latest,
+        })
+    }
+}
+```
+
+### リポジトリ実装のテスト
+
+```rust
+#[tokio::test]
+async fn test_get_version() {
+    // 1. モックサーバーを準備
+    let mock_server = MockServer::start().await;
+    
+    // 2. モックレスポンスを設定
+    Mock::given(method("GET"))
+        .and(path("/api/version"))
+        .respond_with(ResponseTemplate::new(200)
+            .set_body_json(json!({
+                "current": "1.0.0",
+                "latest": "1.0.0"
+            })))
+        .mount(&mock_server)
+        .await;
+    
+    // 3. リポジトリを作成
+    let repo = DomainVersionRepositoryImpl::new(&mock_server.uri());
+    
+    // 4. リポジトリを実行
+    let version = repo.get_version().await.unwrap();
+    
+    // 5. 結果を検証
+    assert_eq!(version.current, "1.0.0");
+    assert_eq!(version.latest, "1.0.0");
+}
+```
+
+---

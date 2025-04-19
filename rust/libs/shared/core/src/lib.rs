@@ -1,9 +1,11 @@
 #![recursion_limit = "512"]
 
+pub mod dtos;
 pub mod error_handling;
 pub mod event_metadata;
 pub mod event_publisher;
 pub mod event_subscriber;
+pub mod repositories;
 pub mod stream_worker;
 pub mod streams;
 pub mod worker;
