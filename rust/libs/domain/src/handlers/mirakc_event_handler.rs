@@ -10,6 +10,7 @@ use shared_core::{
     // stream_worker::StreamHandler, // 削除済み
 };
 use std::sync::Arc;
+use tracing::{debug, error, info};
 
 // MirakcEventError の定義と実装
 #[derive(Debug, thiserror::Error)] // thiserror を使用
@@ -61,7 +62,10 @@ impl MirakcEventHandler {
 
     // handle メソッドは StreamHandler のメソッドではなく、通常のメソッド
     pub async fn handle(&self, event_dto: MirakcEventDto) -> Result<Option<()>, MirakcEventError> {
-        tracing::debug!(event_type = %event_dto.event_type, "Handling MirakcEventDto");
+        info!(
+            event_type = %event_dto.event_type,
+            "Handling MirakcEventDto"
+        );
 
         // mirakc_url を事前にクローン
         let mirakc_url = event_dto.mirakc_url.clone();
@@ -78,7 +82,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at, // received_at は Copy なのでムーブされない
                 };
+                debug!("Publishing TunerStatusChangedEvent to JetStream");
                 self.sinks.tuner_status_changed.publish(event).await?;
+                info!("Successfully published TunerStatusChangedEvent");
             }
             "epg.programs-updated" => {
                 let data: shared_core::dtos::mirakc_event::EpgProgramsUpdatedDto =
@@ -88,7 +94,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing EpgProgramsUpdatedEvent to JetStream");
                 self.sinks.epg_programs_updated.publish(event).await?;
+                info!("Successfully published EpgProgramsUpdatedEvent");
             }
             "recording.started" => {
                 let data: shared_core::dtos::mirakc_event::RecordingStartedDto =
@@ -98,7 +106,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingStartedEvent to JetStream");
                 self.sinks.recording_started.publish(event).await?;
+                info!("Successfully published RecordingStartedEvent");
             }
             "recording.stopped" => {
                 let data: shared_core::dtos::mirakc_event::RecordingStoppedDto =
@@ -108,7 +118,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingStoppedEvent to JetStream");
                 self.sinks.recording_stopped.publish(event).await?;
+                info!("Successfully published RecordingStoppedEvent");
             }
             "recording.failed" => {
                 let data: shared_core::dtos::mirakc_event::RecordingFailedDto =
@@ -118,7 +130,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingFailedEvent to JetStream");
                 self.sinks.recording_failed.publish(event).await?;
+                info!("Successfully published RecordingFailedEvent");
             }
             "recording.rescheduled" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRescheduledDto =
@@ -128,7 +142,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingRescheduledEvent to JetStream");
                 self.sinks.recording_rescheduled.publish(event).await?;
+                info!("Successfully published RecordingRescheduledEvent");
             }
             "recording.record-saved" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRecordSavedDto =
@@ -138,7 +154,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingRecordSavedEvent to JetStream");
                 self.sinks.recording_record_saved.publish(event).await?;
+                info!("Successfully published RecordingRecordSavedEvent");
             }
             "recording.record-removed" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRecordRemovedDto =
@@ -148,7 +166,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingRecordRemovedEvent to JetStream");
                 self.sinks.recording_record_removed.publish(event).await?;
+                info!("Successfully published RecordingRecordRemovedEvent");
             }
             "recording.content-removed" => {
                 let data: shared_core::dtos::mirakc_event::RecordingContentRemovedDto =
@@ -158,7 +178,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingContentRemovedEvent to JetStream");
                 self.sinks.recording_content_removed.publish(event).await?;
+                info!("Successfully published RecordingContentRemovedEvent");
             }
             "recording.record-broken" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRecordBrokenDto =
@@ -168,7 +190,9 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing RecordingRecordBrokenEvent to JetStream");
                 self.sinks.recording_record_broken.publish(event).await?;
+                info!("Successfully published RecordingRecordBrokenEvent");
             }
             "onair.program-changed" => {
                 let data: shared_core::dtos::mirakc_event::OnairProgramChangedDto =
@@ -178,11 +202,13 @@ impl MirakcEventHandler {
                     data,
                     received_at: event_dto.received_at,
                 };
+                debug!("Publishing OnairProgramChangedEvent to JetStream");
                 self.sinks.onair_program_changed.publish(event).await?;
+                info!("Successfully published OnairProgramChangedEvent");
             }
             _ => {
                 // 未知のイベントタイプはログに記録するだけ
-                tracing::debug!(
+                info!(
                     "Unknown mirakc event type received: {}",
                     event_dto.event_type
                 );

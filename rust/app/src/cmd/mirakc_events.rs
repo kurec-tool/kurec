@@ -18,7 +18,7 @@ use shared_core::{
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 /// mirakcイベント処理コマンドを実行
 pub async fn run_mirakc_events(
@@ -69,10 +69,18 @@ pub async fn run_mirakc_events(
             maybe_event_dto = event_stream.next() => {
                 match maybe_event_dto {
                     Some(event_dto) => {
+                        // イベント受信のログを追加
+                        info!(
+                            event_type = %event_dto.event_type,
+                            received_at = %event_dto.received_at,
+                            "Received mirakc event"
+                        );
+
                         // ハンドラでイベントを処理
                         match handler.handle(event_dto).await {
                             Ok(_) => {
-                                // SSEにはAckがないので何もしない
+                                // 処理成功のログを追加
+                                debug!("Successfully handled mirakc event");
                             }
                             Err(e) => {
                                 // エラー処理 (ClassifyError に基づく)

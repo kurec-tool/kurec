@@ -41,13 +41,23 @@ impl MirakcSseSource {
             match reqwest::get(&events_url).await {
                 Ok(resp) if resp.status().is_success() => {
                     tracing::info!("Connected to mirakc events endpoint: {}", events_url);
+                    tracing::debug!("Starting to receive SSE events");
 
                     // StreamExt::map_errを使わずに手動で変換
                     let stream = futures::stream::unfold(resp, |mut resp| async move {
                         match resp.chunk().await {
-                            Ok(Some(chunk)) => Some((Ok(chunk), resp)),
-                            Ok(None) => None,
-                            Err(e) => Some((Err(anyhow::Error::new(e)), resp)),
+                            Ok(Some(chunk)) => {
+                                tracing::debug!("Received chunk of size: {} bytes", chunk.len());
+                                Some((Ok(chunk), resp))
+                            }
+                            Ok(None) => {
+                                tracing::info!("SSE stream ended");
+                                None
+                            }
+                            Err(e) => {
+                                tracing::error!("Error receiving chunk: {:?}", e);
+                                Some((Err(anyhow::Error::new(e)), resp))
+                            }
                         }
                     });
 
@@ -99,6 +109,10 @@ impl MirakcSseSource {
                 future::ready(match event_result {
                     Ok(event) => {
                         // MirakcEventDtoを作成
+                        tracing::debug!(
+                            event_type = %event.event,
+                            "Received SSE event"
+                        );
                         Some(MirakcEventDto {
                             mirakc_url,
                             event_type: event.event,
