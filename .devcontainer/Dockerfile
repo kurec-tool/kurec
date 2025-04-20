@@ -7,6 +7,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     clang \
     ffmpeg \
     mold \
+    openjdk-17-jre \
     protobuf-compiler \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
