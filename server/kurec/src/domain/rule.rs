@@ -1,4 +1,3 @@
-
 use kurec_adapter::{MeilisearchAdapter, NatsAdapter, StreamType};
 use kurec_interface::{ProgramDocument, RuleUpdatedMessage, ScheduleUpdatedMessage};
 use tracing::debug;
