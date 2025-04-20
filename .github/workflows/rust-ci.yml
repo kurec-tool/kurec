@@ -1,0 +1,67 @@
+# RustプロジェクトのCIワークフロー
+name: Rust CI
+
+# ワークフローがトリガーされるイベント
+on:
+  push:
+    branches: [ main ] # mainブランチへのプッシュ時
+    paths: # rustディレクトリ以下の変更があった場合のみ実行
+      - 'rust/**'
+      - '.github/workflows/rust-ci.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  pull_request:
+    branches: [ main ] # mainブランチへのプルリクエスト時
+    paths: # rustディレクトリ以下の変更があった場合のみ実行
+      - 'rust/**'
+      - '.github/workflows/rust-ci.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+# 環境変数
+env:
+  CARGO_TERM_COLOR: always # Cargoの出力を常にカラー表示
+
+# ジョブの定義
+jobs:
+  ci:
+    name: Check, Build, Lint, Test
+    runs-on: ubuntu-latest # 実行環境
+
+    steps:
+    - name: リポジトリをチェックアウト
+      uses: actions/checkout@v4
+
+    - name: Rustツールチェインをセットアップ (stable)
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy, rustfmt # clippyとrustfmtもインストール
+
+    - name: Cargoキャッシュを設定
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/ # ビルドキャッシュ
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }} # キャッシュキー
+
+    - name: フォーマットチェック (cargo fmt)
+      # server/mirakc-client を除外してチェック
+      run: cargo fmt --all -- --check
+
+    - name: ビルド (cargo build)
+      # server/mirakc-client を除外してビルド
+      run: cargo build --workspace --exclude server-mirakc-client --verbose
+
+    # - name: Lintチェック (cargo clippy)
+      # server/mirakc-client を除外してチェック
+      # -D warnings で警告をエラーとして扱う
+      # mirakc-clientが除外出来ないためclippyチェックは外す
+      # run: cargo clippy --workspace --exclude server-mirakc-client -- -D warnings
+
+    - name: テスト (cargo test)
+      # server/mirakc-client を除外してテスト
+      run: cargo test --workspace --exclude server-mirakc-client --verbose
