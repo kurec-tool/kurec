@@ -1,11 +1,12 @@
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::Duration; // Arc をインポート
 
 use futures::StreamExt;
 use infra_jetstream::{connect, JsPublisher, JsSubscriber};
 use serde::{Deserialize, Serialize};
 use shared_core::event_metadata::Event;
-use shared_core::event_publisher::EventPublisher;
-use shared_core::event_subscriber::EventSubscriber;
+use shared_core::event_sink::EventSink; // リネーム
+use shared_core::event_source::EventSource; // リネーム
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt}; // ContainerAsyncをインポート
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -55,8 +56,8 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 
     // Removed manual consumer creation to let JsSubscriber create its own consumer.
 
-    let publisher = JsPublisher::<TestEvent>::from_event_type(ctx.clone());
-    let subscriber = JsSubscriber::<TestEvent>::from_event_type(ctx.clone());
+    let publisher = JsPublisher::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
+    let subscriber = JsSubscriber::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
 
     let test_event = TestEvent {
         id: 1,
@@ -98,8 +99,8 @@ async fn test_from_event_type() -> anyhow::Result<()> {
         })
         .await?;
 
-    let publisher = JsPublisher::<TestEvent>::from_event_type(ctx.clone());
-    let subscriber = JsSubscriber::<TestEvent>::from_event_type(ctx.clone());
+    let publisher = JsPublisher::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
+    let subscriber = JsSubscriber::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
 
     let test_event = TestEvent {
         id: 2,

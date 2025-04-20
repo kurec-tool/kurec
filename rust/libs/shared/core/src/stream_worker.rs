@@ -1,7 +1,7 @@
 use crate::error_handling::ClassifyError;
 use crate::event_metadata::Event;
-use crate::event_publisher::EventPublisher;
-use crate::event_subscriber::EventSubscriber;
+use crate::event_sink::EventSink; // リネーム
+use crate::event_source::EventSource; // リネーム
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -20,7 +20,8 @@ where
     O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
-    async fn handle(&self, event: I, next: StreamNext<'_, I, O, E>) -> Result<O, E>;
+    // 戻り値を Option<O> に変更
+    async fn handle(&self, event: I, next: StreamNext<'_, I, O, E>) -> Result<Option<O>, E>;
 }
 
 /// ミドルウェアチェーンの次の処理を表す構造体
@@ -30,7 +31,9 @@ where
     O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
-    pub(crate) handler: Arc<dyn Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static>,
+    // ハンドラの型と戻り値を Option<O> に変更
+    pub(crate) handler:
+        Arc<dyn Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static>,
     _phantom: PhantomData<&'a ()>,
 }
 
@@ -40,8 +43,9 @@ where
     O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
+    // ハンドラの型と戻り値を Option<O> に変更
     pub fn new(
-        handler: Arc<dyn Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static>,
+        handler: Arc<dyn Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static>,
     ) -> Self {
         Self {
             handler,
@@ -49,7 +53,8 @@ where
         }
     }
 
-    pub async fn run(&self, event: I) -> Result<O, E> {
+    // 戻り値を Option<O> に変更
+    pub async fn run(&self, event: I) -> Result<Option<O>, E> {
         (self.handler)(event).await
     }
 }
@@ -60,6 +65,7 @@ where
     O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
+    // ハンドラの型を Option<O> に変更
     fn clone(&self) -> Self {
         Self {
             handler: self.handler.clone(),
@@ -73,19 +79,21 @@ where
 pub trait StreamHandler<I, O, E>: Send + Sync + 'static
 where
     I: Event,
-    O: Event,
+    // O: Event, // このトレイト境界を削除 (ハンドラは Event を返さなくても良い)
     E: ClassifyError + Send + Sync + 'static,
 {
-    async fn handle(&self, event: I) -> Result<O, E>;
+    // 戻り値を Option<O> に変更
+    async fn handle(&self, event: I) -> Result<Option<O>, E>;
 }
 
 /// 関数をハンドラとして扱うためのラッパー
 pub struct FnStreamHandler<I, O, E, F>
 where
     I: Event,
-    O: Event,
+    // O: Event, // このトレイト境界を削除
     E: ClassifyError + Send + Sync + 'static,
-    F: Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static,
+    // 関数の戻り値を Option<O> に変更
+    F: Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static,
 {
     f: F,
     _phantom: PhantomData<(I, O, E)>,
@@ -94,9 +102,10 @@ where
 impl<I, O, E, F> FnStreamHandler<I, O, E, F>
 where
     I: Event,
-    O: Event,
+    // O: Event, // このトレイト境界を削除
     E: ClassifyError + Send + Sync + 'static,
-    F: Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static,
+    // 関数の戻り値を Option<O> に変更
+    F: Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static,
 {
     pub fn new(f: F) -> Self {
         Self {
@@ -110,48 +119,51 @@ where
 impl<I, O, E, F> StreamHandler<I, O, E> for FnStreamHandler<I, O, E, F>
 where
     I: Event,
-    O: Event,
+    O: Send + Sync + 'static, // Send + Sync 境界を追加
     E: ClassifyError + Send + Sync + 'static,
-    F: Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static,
+    // 関数の戻り値を Option<O> に変更
+    F: Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static,
 {
-    async fn handle(&self, event: I) -> Result<O, E> {
+    // 戻り値を Option<O> に変更
+    async fn handle(&self, event: I) -> Result<Option<O>, E> {
         (self.f)(event).await
     }
 }
 
 /// ストリームワーカー
 /// 入力イベントを処理して出力イベントを生成するワーカー
-pub struct StreamWorker<I, O, E, F>
+// ジェネリック F を削除し、ハンドラをトレイトオブジェクトに変更
+pub struct StreamWorker<I, O, E>
 where
     I: Event,
-    O: Event,
+    O: Event, // Sink が Event を要求するため、StreamWorker の O には Event 境界が必要
     E: ClassifyError + Send + Sync + 'static,
-    F: Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static + Clone,
 {
-    subscriber: Arc<dyn EventSubscriber<I>>,
-    publisher: Arc<dyn EventPublisher<O>>,
-    handler: F,
+    source: Arc<dyn EventSource<I>>, // subscriber -> source にリネーム
+    sink: Arc<dyn EventSink<O>>,     // publisher -> sink にリネーム
+    handler: Arc<dyn StreamHandler<I, O, E>>, // F -> Arc<dyn StreamHandler> に変更
     middlewares: Vec<Arc<dyn StreamMiddleware<I, O, E>>>,
     durable_name: Option<String>,
 }
 
-impl<I, O, E, F> StreamWorker<I, O, E, F>
+// ジェネリック F を削除
+impl<I, O, E> StreamWorker<I, O, E>
 where
     I: Event,
-    O: Event,
+    O: Event, // Sink が Event を要求するため、StreamWorker の O には Event 境界が必要
     E: ClassifyError + Send + Sync + 'static,
-    F: Fn(I) -> BoxFuture<'static, Result<O, E>> + Send + Sync + 'static + Clone,
 {
     /// 新しいStreamWorkerを作成
+    // シグネチャを変更
     pub fn new(
-        subscriber: Arc<dyn EventSubscriber<I>>,
-        publisher: Arc<dyn EventPublisher<O>>,
-        handler: F,
+        source: Arc<dyn EventSource<I>>,
+        sink: Arc<dyn EventSink<O>>,
+        handler: Arc<dyn StreamHandler<I, O, E>>,
     ) -> Self {
         Self {
-            subscriber,
-            publisher,
-            handler,
+            source,
+            sink,
+            handler, // Arc<dyn StreamHandler> を受け取る
             middlewares: Vec::new(),
             durable_name: None,
         }
@@ -160,6 +172,7 @@ where
     /// ミドルウェアを追加
     pub fn with_middleware<M>(mut self, middleware: M) -> Self
     where
+        // M の戻り値を Option<O> に変更
         M: StreamMiddleware<I, O, E> + 'static,
     {
         self.middlewares.push(Arc::new(middleware));
@@ -181,14 +194,16 @@ where
     }
 
     /// ミドルウェアチェーンを構築して実行
+    // シグネチャと戻り値を変更
     async fn execute_middleware_chain(
-        handler: F,
+        handler: Arc<dyn StreamHandler<I, O, E>>, // F -> Arc<dyn StreamHandler>
         middlewares: &[Arc<dyn StreamMiddleware<I, O, E>>],
         event: I,
-    ) -> Result<O, E> {
+    ) -> Result<Option<O>, E> {
+        // Result<O, E> -> Result<Option<O>, E>
         // ミドルウェアがない場合は直接ハンドラを実行
         if middlewares.is_empty() {
-            return handler(event).await;
+            return handler.handle(event).await; // handler(event) -> handler.handle(event)
         }
 
         // ミドルウェアチェーンを構築
@@ -198,10 +213,11 @@ where
         }
 
         // 最後のミドルウェアの次の処理はハンドラ
-        let handler_clone = handler.clone();
-        let handler_fn = Arc::new(move |e: I| -> BoxFuture<'static, Result<O, E>> {
+        let handler_clone = handler.clone(); // handler は Arc なので clone するだけ
+                                             // ハンドラの型と戻り値を Option<O> に変更
+        let handler_fn = Arc::new(move |e: I| -> BoxFuture<'static, Result<Option<O>, E>> {
             let handler_inner = handler_clone.clone();
-            Box::pin(async move { handler_inner(e).await })
+            Box::pin(async move { handler_inner.handle(e).await }) // handler_inner(e) -> handler_inner.handle(e)
         });
 
         // ミドルウェアチェーンを逆順に実行
@@ -209,7 +225,8 @@ where
         for middleware in chain.into_iter().rev() {
             let prev_next = next.clone();
             let middleware_clone = Arc::clone(&middleware);
-            let next_handler = Arc::new(move |e: I| -> BoxFuture<'static, Result<O, E>> {
+            // ハンドラの型と戻り値を Option<O> に変更
+            let next_handler = Arc::new(move |e: I| -> BoxFuture<'static, Result<Option<O>, E>> {
                 let pn = prev_next.clone();
                 let middleware_inner = Arc::clone(&middleware_clone);
                 Box::pin(async move { middleware_inner.handle(e, pn).await })
@@ -223,14 +240,14 @@ where
 
     /// ワーカーを実行
     pub async fn run(self, shutdown: CancellationToken) -> Result<()> {
-        // サブスクライバーからメッセージストリームを取得
-        let mut stream = self.subscriber.subscribe().await?;
+        // source からメッセージストリームを取得 (subscriber -> source)
+        let mut stream = self.source.subscribe().await?;
         let shutdown_token = shutdown.clone();
 
-        // ハンドラとミドルウェアをArcでラップ
-        let handler = self.handler.clone();
+        // ハンドラとミドルウェアをArcでラップ (handler は既に Arc)
+        let handler = self.handler; // clone 不要
         let middlewares: Vec<Arc<dyn StreamMiddleware<I, O, E>>> = self.middlewares;
-        let publisher = self.publisher;
+        let sink = self.sink; // publisher -> sink
 
         // メッセージ処理ループ
         loop {
@@ -243,17 +260,22 @@ where
                 message = stream.next() => {
                     match message {
                         Some((event, ack)) => {
-                            // ミドルウェアチェーンを実行
+                            // ミドルウェアチェーンを実行 (handler.clone() 不要)
                             let result = Self::execute_middleware_chain(
-                                handler.clone(),
+                                handler.clone(), // handler は Arc なので clone
                                 &middlewares,
                                 event,
                             ).await;
 
                             match result {
-                                Ok(output_event) => {
-                                    // 出力イベントをパブリッシュ
-                                    publisher.publish(output_event).await?;
+                                // 戻り値が Option<O> になったので Some の場合のみ publish
+                                Ok(Some(output_event)) => {
+                                    // 出力イベントを sink に発行 (publisher -> sink)
+                                    sink.publish(output_event).await?;
+                                    ack.ack().await?;
+                                }
+                                Ok(None) => {
+                                    // 出力イベントがない場合は ack のみ
                                     ack.ack().await?;
                                 }
                                 Err(e) => {
@@ -262,6 +284,7 @@ where
                                         crate::error_handling::ErrorAction::Retry => {
                                             // nack（再試行）
                                             // JetStreamの場合、ackしないと自動的に再配信される
+                                            // 何もしない
                                         }
                                         crate::error_handling::ErrorAction::Ignore => {
                                             // エラーを無視してack

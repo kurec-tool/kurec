@@ -1,24 +1,25 @@
-use anyhow::{Context, Result}; // anyhow::Result と Context をインポート
-                               // 重複した use 文を削除
-use async_trait::async_trait; // async_trait をインポート
-use domain::events::kurec_events::EpgStoredEvent; // EpgStoredEvent をインポート
-use domain::ports::notifiers::EpgNotifier; // EpgNotifier をインポート
+use anyhow::{Context, Result};
+use async_trait::async_trait;
+use std::sync::Arc; // Arc をインポート
+                    // use domain::events::kurec_events::EpgStoredEvent; // EpgNotifier 関連削除
+                    // use domain::ports::notifiers::EpgNotifier; // EpgNotifier 関連削除
 use shared_core::event_metadata::Event;
-use shared_core::event_publisher::EventPublisher;
+use shared_core::event_sink::EventSink; // event_publisher -> event_sink
 use std::marker::PhantomData;
-use tracing::{error, instrument}; // error マクロを追加
+use tracing::instrument; // error マクロは不要になったので削除
 
 use crate::JetStreamCtx;
 
 /// JetStreamを使用したイベント発行者
 pub struct JsPublisher<E: Event> {
-    js_ctx: JetStreamCtx,
+    js_ctx: Arc<JetStreamCtx>, // JetStreamCtx -> Arc<JetStreamCtx>
     _phantom: PhantomData<E>,
 }
 
 impl<E: Event> JsPublisher<E> {
     /// イベント型から新しいJsPublisherを作成
-    pub fn from_event_type(js_ctx: JetStreamCtx) -> Self {
+    pub fn from_event_type(js_ctx: Arc<JetStreamCtx>) -> Self {
+        // JetStreamCtx -> Arc<JetStreamCtx>
         Self {
             js_ctx,
             _phantom: PhantomData,
@@ -37,7 +38,8 @@ impl<E: Event> JsPublisher<E> {
 }
 
 #[async_trait]
-impl<E: Event> EventPublisher<E> for JsPublisher<E> {
+// EventPublisher -> EventSink
+impl<E: Event> EventSink<E> for JsPublisher<E> {
     #[instrument(skip(self, event), fields(subject = %E::stream_subject()))]
     async fn publish(&self, event: E) -> Result<()> {
         // イベントをJSONにシリアライズ
@@ -54,42 +56,4 @@ impl<E: Event> EventPublisher<E> for JsPublisher<E> {
     }
 }
 
-// EpgNotifier トレイトの実装を追加
-#[async_trait]
-impl EpgNotifier for JsPublisher<EpgStoredEvent> {
-    #[instrument(skip(self, event), fields(subject = %self.generate_subject(&event)))]
-    async fn notify_epg_stored(&self, event: EpgStoredEvent) -> Result<()> {
-        let subject = self.generate_subject(&event);
-        let payload =
-            serde_json::to_vec(&event).context("Failed to serialize EpgStoredEvent to JSON")?;
-
-        // self.js_ctx を直接参照できないため、この実装方法では publish できない
-        // JsPublisher を EpgNotifier として使うには、JsPublisher::new などで
-        // js_ctx を渡す必要がある。
-        // 一旦、コンパイルを通すために publish 処理をコメントアウトする。
-        // TODO: JsPublisher を EpgNotifier として正しく機能させる
-        // self.js_ctx
-        //     .js
-        //     .publish(subject, payload.into())
-        //     .await
-        //     .context("Failed to publish EpgStoredEvent to JetStream")?;
-
-        error!(
-            "notify_epg_stored is not fully implemented yet. Subject: {}, Payload: {:?}",
-            subject, payload
-        );
-        // 仮に Ok を返す
-        Ok(())
-    }
-}
-
-// EpgStoredEvent 用のヘルパーメソッド (JsPublisher<EpgStoredEvent> にのみ実装)
-// &self が不要になったため、関連関数に変更
-impl JsPublisher<EpgStoredEvent> {
-    fn generate_subject(&self, _event: &EpgStoredEvent) -> String {
-        // 設定ファイルから取得したプレフィックスを使うのが望ましい
-        // ここではハードコードする
-        // コンパイルを通すため一旦仮の値
-        "epg.stored".to_string()
-    }
-}
+// EpgNotifier 関連の実装を削除

@@ -1061,6 +1061,7 @@ dependencies = [
  "serde_json",
  "shared_core",
  "shared_macros",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-util",
  "tracing",

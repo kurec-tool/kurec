@@ -4,6 +4,7 @@
 
 pub mod dtos;
 pub mod events;
+pub mod handlers; // 追加
 pub mod models;
 pub mod ports;
 pub mod usecases;

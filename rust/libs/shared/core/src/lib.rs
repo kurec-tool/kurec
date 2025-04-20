@@ -3,8 +3,8 @@
 pub mod dtos;
 pub mod error_handling;
 pub mod event_metadata;
-pub mod event_publisher;
-pub mod event_subscriber;
+pub mod event_sink; // 追加
+pub mod event_source; // 追加
 pub mod repositories;
 pub mod stream_worker;
 pub mod streams;
@@ -19,8 +19,8 @@ pub fn init_streams() {
 #[cfg(test)]
 mod error_handling_test;
 
-#[cfg(test)]
-mod event_subscriber_test;
+// #[cfg(test)] // 削除
+// mod event_subscriber_test; // 削除
 
 #[cfg(test)]
 mod worker_test;

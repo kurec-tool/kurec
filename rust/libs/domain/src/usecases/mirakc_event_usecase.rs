@@ -5,49 +5,54 @@
 use crate::events::mirakc_events::*;
 use crate::ports::repositories::mirakc_event_repository::MirakcEventRepository;
 use futures::StreamExt;
-use shared_core::event_publisher::EventPublisher;
+use shared_core::event_sink::EventSink; // event_publisher -> event_sink
 
 /// mirakcイベントユースケース
-pub struct MirakcEventUseCase<R, P>
+pub struct MirakcEventUseCase<R, S>
+// P -> S
 where
     R: MirakcEventRepository,
-    P: EventPublisher<TunerStatusChangedEvent>
-        + EventPublisher<EpgProgramsUpdatedEvent>
-        + EventPublisher<RecordingStartedEvent>
-        + EventPublisher<RecordingStoppedEvent>
-        + EventPublisher<RecordingFailedEvent>
-        + EventPublisher<RecordingRescheduledEvent>
-        + EventPublisher<RecordingRecordSavedEvent>
-        + EventPublisher<RecordingRecordRemovedEvent>
-        + EventPublisher<RecordingContentRemovedEvent>
-        + EventPublisher<RecordingRecordBrokenEvent>
-        + EventPublisher<OnairProgramChangedEvent>,
+    // EventPublisher -> EventSink
+    S: EventSink<TunerStatusChangedEvent>
+        + EventSink<EpgProgramsUpdatedEvent>
+        + EventSink<RecordingStartedEvent>
+        + EventSink<RecordingStoppedEvent>
+        + EventSink<RecordingFailedEvent>
+        + EventSink<RecordingRescheduledEvent>
+        + EventSink<RecordingRecordSavedEvent>
+        + EventSink<RecordingRecordRemovedEvent>
+        + EventSink<RecordingContentRemovedEvent>
+        + EventSink<RecordingRecordBrokenEvent>
+        + EventSink<OnairProgramChangedEvent>,
 {
     repository: R,
-    publisher: P,
+    sink: S, // publisher -> sink
     shutdown: Option<tokio_util::sync::CancellationToken>,
 }
 
-impl<R, P> MirakcEventUseCase<R, P>
+impl<R, S> MirakcEventUseCase<R, S>
+// P -> S
 where
     R: MirakcEventRepository,
-    P: EventPublisher<TunerStatusChangedEvent>
-        + EventPublisher<EpgProgramsUpdatedEvent>
-        + EventPublisher<RecordingStartedEvent>
-        + EventPublisher<RecordingStoppedEvent>
-        + EventPublisher<RecordingFailedEvent>
-        + EventPublisher<RecordingRescheduledEvent>
-        + EventPublisher<RecordingRecordSavedEvent>
-        + EventPublisher<RecordingRecordRemovedEvent>
-        + EventPublisher<RecordingContentRemovedEvent>
-        + EventPublisher<RecordingRecordBrokenEvent>
-        + EventPublisher<OnairProgramChangedEvent>,
+    // EventPublisher -> EventSink
+    S: EventSink<TunerStatusChangedEvent>
+        + EventSink<EpgProgramsUpdatedEvent>
+        + EventSink<RecordingStartedEvent>
+        + EventSink<RecordingStoppedEvent>
+        + EventSink<RecordingFailedEvent>
+        + EventSink<RecordingRescheduledEvent>
+        + EventSink<RecordingRecordSavedEvent>
+        + EventSink<RecordingRecordRemovedEvent>
+        + EventSink<RecordingContentRemovedEvent>
+        + EventSink<RecordingRecordBrokenEvent>
+        + EventSink<OnairProgramChangedEvent>,
 {
     /// 新しいMirakcEventUseCaseを作成
-    pub fn new(repository: R, publisher: P) -> Self {
+    pub fn new(repository: R, sink: S) -> Self {
+        // publisher -> sink
         Self {
             repository,
-            publisher,
+            sink, // publisher -> sink
             shutdown: None,
         }
     }
@@ -101,7 +106,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "epg.programs-updated" => {
                     let data: shared_core::dtos::mirakc_event::EpgProgramsUpdatedDto =
@@ -111,7 +116,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.started" => {
                     let data: shared_core::dtos::mirakc_event::RecordingStartedDto =
@@ -121,7 +126,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.stopped" => {
                     let data: shared_core::dtos::mirakc_event::RecordingStoppedDto =
@@ -131,7 +136,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.failed" => {
                     let data: shared_core::dtos::mirakc_event::RecordingFailedDto =
@@ -141,7 +146,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.rescheduled" => {
                     let data: shared_core::dtos::mirakc_event::RecordingRescheduledDto =
@@ -151,7 +156,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.record-saved" => {
                     let data: shared_core::dtos::mirakc_event::RecordingRecordSavedDto =
@@ -161,7 +166,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.record-removed" => {
                     let data: shared_core::dtos::mirakc_event::RecordingRecordRemovedDto =
@@ -171,7 +176,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.content-removed" => {
                     let data: shared_core::dtos::mirakc_event::RecordingContentRemovedDto =
@@ -181,7 +186,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "recording.record-broken" => {
                     let data: shared_core::dtos::mirakc_event::RecordingRecordBrokenDto =
@@ -191,7 +196,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 "onair.program-changed" => {
                     let data: shared_core::dtos::mirakc_event::OnairProgramChangedDto =
@@ -201,7 +206,7 @@ where
                         data,
                         received_at: event_dto.received_at,
                     };
-                    self.publisher.publish(event).await?;
+                    self.sink.publish(event).await?; // publisher -> sink
                 }
                 _ => {
                     // 未知のイベントタイプはログに記録するだけ
