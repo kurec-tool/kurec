@@ -8,9 +8,11 @@ edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.98"
+async-nats = "0.40.0" # バージョンを infra_jetstream に合わせる
 async-trait = "0.1.88"
+chrono = { version = "0.4.35", features = ["serde"] }
 clap = { version = "4.5.4", features = ["derive"] }
-futures = "0.3.31"
+futures = "0.3.31" # StreamExt のために必要
 humantime = "2.2.0"
 inventory = "0.3.20"
 serde = { version = "1.0.219", features = ["derive"] }
@@ -25,4 +27,6 @@ shared_core = { path = "../libs/shared/core" }
 shared_macros = { path = "../libs/shared/macros" }
 infra_jetstream = { path = "../libs/infra/jetstream" }
 infra_mirakc = { path = "../libs/infra/mirakc" }
+infra_kvs = { path = "../libs/infra/kvs" }
 domain = { path = "../libs/domain" }
+mirakc-client = { path = "../../server/mirakc-client" } # 追加

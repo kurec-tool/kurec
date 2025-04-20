@@ -3,9 +3,9 @@
 resolver = "2"
 members = [
   # old implementation
-  # "server/kurec",
-  # "server/kurec-adapter",
-  # "server/kurec-interface",
+  "server/kurec",
+  "server/kurec-adapter",
+  "server/kurec-interface",
 
   # generated mirakc client by openapi-generator
   "server/mirakc-client",
@@ -16,6 +16,7 @@ members = [
   "rust/libs/domain",
   "rust/libs/infra/jetstream",
   "rust/libs/infra/mirakc",
+  "rust/libs/infra/kvs", # 追加
   "rust/app",
 ]
 

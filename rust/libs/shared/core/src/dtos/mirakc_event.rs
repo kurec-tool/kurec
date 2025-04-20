@@ -31,7 +31,7 @@ pub struct TunerStatusChangedDto {
 pub struct EpgProgramsUpdatedDto {
     /// サービスID
     #[serde(rename = "serviceId")]
-    pub service_id: u64,
+    pub service_id: i64, // u64 -> i64
 }
 
 /// RecordingStartedイベントDTO
@@ -161,5 +161,5 @@ pub struct RecordingRecordBrokenDto {
 pub struct OnairProgramChangedDto {
     /// サービスID
     #[serde(rename = "serviceId")]
-    pub service_id: u64,
+    pub service_id: i64, // u64 -> i64
 }

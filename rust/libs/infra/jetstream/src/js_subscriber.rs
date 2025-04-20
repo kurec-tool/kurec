@@ -5,8 +5,9 @@ use futures::stream::BoxStream;
 use futures::StreamExt;
 use heck::ToSnakeCase;
 use shared_core::event_metadata::Event;
-use shared_core::event_subscriber::{AckHandle, EventSubscriber};
+use shared_core::event_source::{AckHandle, EventSource}; // event_subscriber -> event_source
 use std::marker::PhantomData;
+use std::sync::Arc; // Arc をインポート (正しい位置)
 
 use crate::JetStreamCtx;
 
@@ -26,13 +27,14 @@ fn generate_durable_name<E: Event>() -> String {
 
 /// JetStreamを使用したイベント購読者
 pub struct JsSubscriber<E: Event> {
-    js_ctx: JetStreamCtx,
+    js_ctx: Arc<JetStreamCtx>, // JetStreamCtx -> Arc<JetStreamCtx>
     _phantom: PhantomData<E>,
 }
 
 impl<E: Event> JsSubscriber<E> {
     /// イベント型から新しいJsSubscriberを作成
-    pub fn from_event_type(js_ctx: JetStreamCtx) -> Self {
+    pub fn from_event_type(js_ctx: Arc<JetStreamCtx>) -> Self {
+        // JetStreamCtx -> Arc<JetStreamCtx>
         Self {
             js_ctx,
             _phantom: PhantomData,
@@ -41,7 +43,8 @@ impl<E: Event> JsSubscriber<E> {
 }
 
 #[async_trait]
-impl<E: Event> EventSubscriber<E> for JsSubscriber<E> {
+// EventSubscriber -> EventSource
+impl<E: Event> EventSource<E> for JsSubscriber<E> {
     async fn subscribe(&self) -> Result<BoxStream<'static, (E, AckHandle)>> {
         // JetStreamからコンシューマーを取得
         let stream = self.js_ctx.js.get_stream(E::stream_name()).await?;

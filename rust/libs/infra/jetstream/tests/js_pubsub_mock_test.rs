@@ -6,8 +6,8 @@ use futures::stream::{self, BoxStream};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use shared_core::event_metadata::Event;
-use shared_core::event_publisher::EventPublisher;
-use shared_core::event_subscriber::{AckHandle, EventSubscriber};
+use shared_core::event_sink::EventSink; // リネーム
+use shared_core::event_source::{AckHandle, EventSource}; // リネーム
 
 // テスト用のイベント型1
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -77,7 +77,8 @@ impl<E: Event> MockPublisher<E> {
 }
 
 #[async_trait]
-impl<E: Event> EventPublisher<E> for MockPublisher<E> {
+// EventPublisher -> EventSink
+impl<E: Event> EventSink<E> for MockPublisher<E> {
     async fn publish(&self, event: E) -> Result<()> {
         let payload = serde_json::to_vec(&event)?;
         self.ctx
@@ -101,7 +102,8 @@ impl<E: Event + Clone> MockSubscriber<E> {
 }
 
 #[async_trait]
-impl<E: Event + Clone> EventSubscriber<E> for MockSubscriber<E> {
+// EventSubscriber -> EventSource
+impl<E: Event + Clone> EventSource<E> for MockSubscriber<E> {
     async fn subscribe(&self) -> Result<BoxStream<'static, (E, AckHandle)>> {
         let events = self.events.clone();
         let stream = stream::iter(events.into_iter().map(move |event| {
@@ -234,7 +236,8 @@ async fn test_error_handling() -> Result<()> {
     }
 
     #[async_trait]
-    impl<E: Event> EventPublisher<E> for ErrorPublisher<E> {
+    // EventPublisher -> EventSink
+    impl<E: Event> EventSink<E> for ErrorPublisher<E> {
         async fn publish(&self, _event: E) -> Result<()> {
             Err(anyhow::anyhow!("Simulated publish error"))
         }
@@ -246,7 +249,8 @@ async fn test_error_handling() -> Result<()> {
     }
 
     #[async_trait]
-    impl<E: Event> EventSubscriber<E> for ErrorSubscriber<E> {
+    // EventSubscriber -> EventSource
+    impl<E: Event> EventSource<E> for ErrorSubscriber<E> {
         async fn subscribe(&self) -> Result<BoxStream<'static, (E, AckHandle)>> {
             Err(anyhow::anyhow!("Simulated subscribe error"))
         }

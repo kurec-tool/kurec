@@ -1,5 +1,5 @@
 use crate::error_handling::{ClassifyError, ErrorAction};
-use crate::event_subscriber::{AckHandle, EventSubscriber};
+use crate::event_source::{AckHandle, EventSource}; // リネーム
 use crate::worker::{FnHandler, Handler, Middleware, Next, WorkerBuilder};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -69,7 +69,8 @@ impl TestSubscriber {
 }
 
 #[async_trait]
-impl EventSubscriber<TestEvent> for TestSubscriber {
+// EventSubscriber -> EventSource
+impl EventSource<TestEvent> for TestSubscriber {
     async fn subscribe(&self) -> Result<BoxStream<'static, (TestEvent, AckHandle)>> {
         let events = self.events.clone();
         let ack_called = self.ack_called.clone();

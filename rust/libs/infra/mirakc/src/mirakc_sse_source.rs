@@ -1,0 +1,119 @@
+//! mirakc SSEイベントソースの実装
+
+use anyhow::Result;
+use async_trait::async_trait;
+use backoff::{backoff::Backoff, ExponentialBackoff};
+use bytes::Bytes;
+use chrono::Utc;
+use eventsource_stream::Eventsource;
+use futures::{future, stream::BoxStream, Stream, StreamExt};
+use shared_core::dtos::mirakc_event::MirakcEventDto;
+// EventSource と AckHandle のインポートは不要になったので削除
+// use shared_core::event_source::{AckHandle, EventSource};
+use std::time::Duration;
+
+/// mirakc SSEイベントソース
+pub struct MirakcSseSource {
+    mirakc_url: String,
+}
+
+impl MirakcSseSource {
+    /// 新しいMirakcSseSourceを作成
+    pub fn new(mirakc_url: String) -> Self {
+        Self { mirakc_url }
+    }
+
+    /// バックオフを使用してmirakcサーバーに接続し、SSEストリームを取得
+    async fn get_sse_stream(
+        &self,
+    ) -> anyhow::Result<impl Stream<Item = Result<Bytes, anyhow::Error>>> {
+        let events_url = format!("{}/events", self.mirakc_url);
+
+        let mut backoff = ExponentialBackoff {
+            initial_interval: Duration::from_secs(1),
+            max_interval: Duration::from_secs(60),
+            multiplier: 2.0,
+            max_elapsed_time: None, // 無限に再試行
+            ..ExponentialBackoff::default()
+        };
+
+        loop {
+            match reqwest::get(&events_url).await {
+                Ok(resp) if resp.status().is_success() => {
+                    tracing::info!("Connected to mirakc events endpoint: {}", events_url);
+
+                    // StreamExt::map_errを使わずに手動で変換
+                    let stream = futures::stream::unfold(resp, |mut resp| async move {
+                        match resp.chunk().await {
+                            Ok(Some(chunk)) => Some((Ok(chunk), resp)),
+                            Ok(None) => None,
+                            Err(e) => Some((Err(anyhow::Error::new(e)), resp)),
+                        }
+                    });
+
+                    return Ok(stream);
+                }
+                Ok(resp) => {
+                    let status = resp.status();
+                    tracing::warn!(
+                        "Failed to connect to mirakc events endpoint: {}, status: {}",
+                        events_url,
+                        status
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Error connecting to mirakc events endpoint: {}, error: {:?}",
+                        events_url,
+                        e
+                    );
+                }
+            }
+
+            // バックオフして再試行
+            if let Some(duration) = backoff.next_backoff() {
+                tracing::info!("Retrying connection in {:?}...", duration);
+                tokio::time::sleep(duration).await;
+            } else {
+                return Err(anyhow::anyhow!("Max retries exceeded"));
+            } // loop の閉じ括弧を追加
+        } // loop の閉じ括弧を追加
+    }
+
+    // #[async_trait] を削除
+    // EventSource<MirakcEventDto> の実装を削除
+    // 代わりに、MirakcEventDto を返すストリームを提供するメソッドを追加する
+
+    /// MirakcEventDto のストリームを取得する
+    pub async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventDto>> {
+        let mirakc_url = self.mirakc_url.clone();
+
+        // SSEストリームを取得
+        let stream = self.get_sse_stream().await?;
+
+        // SSEストリームを MirakcEventDto ストリームに変換
+        let event_stream = stream
+            .eventsource()
+            .filter_map(move |event_result| {
+                let mirakc_url = mirakc_url.clone(); // 各イベント用にURLをクローン
+                future::ready(match event_result {
+                    Ok(event) => {
+                        // MirakcEventDtoを作成
+                        Some(MirakcEventDto {
+                            mirakc_url,
+                            event_type: event.event,
+                            data: event.data,
+                            received_at: Utc::now(),
+                        })
+                    }
+                    Err(e) => {
+                        tracing::error!("Error receiving SSE event: {:?}", e);
+                        None // エラーが発生したイベントはスキップ
+                    }
+                })
+            })
+            .boxed();
+
+        Ok(event_stream)
+    }
+} // impl MirakcSseSource の閉じ括弧を追加

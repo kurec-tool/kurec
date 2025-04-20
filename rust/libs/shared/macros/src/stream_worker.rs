@@ -119,27 +119,33 @@ pub fn stream_worker_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
         ) -> anyhow::Result<()> {
             use std::sync::Arc;
             use shared_core::event_metadata::Event;
-            use shared_core::stream_worker::StreamWorker;
-            use infra_jetstream::{JsPublisher, JsSubscriber};
+            use shared_core::stream_worker::{StreamWorker, FnStreamHandler}; // FnStreamHandler をインポート
+            use shared_core::event_source::EventSource; // JsSubscriber -> EventSource
+            use shared_core::event_sink::EventSink;   // JsPublisher -> EventSink
+            use infra_jetstream::{JsPublisher, JsSubscriber}; // これは JsPublisher/Subscriber の実装を使うために必要
 
-            // サブスクライバーとパブリッシャーを作成
-            let subscriber = Arc::new(JsSubscriber::<#input_type>::from_event_type(
-                js_ctx.clone(),
+            // EventSource と EventSink を作成 (subscriber/publisher -> source/sink)
+            let source = Arc::new(JsSubscriber::<#input_type>::from_event_type(
+                Arc::new(js_ctx.clone()), // Arc::new() を使用
             ));
 
-            let publisher = Arc::new(JsPublisher::<#output_type>::from_event_type(
-                js_ctx.clone(),
+            let sink = Arc::new(JsPublisher::<#output_type>::from_event_type(
+                Arc::new(js_ctx.clone()), // Arc::new() を使用
             ));
 
-            // ハンドラ関数をラップ
-            let handler = |event: #input_type| -> futures::future::BoxFuture<'static, std::result::Result<#output_type, #error_type>> {
-                Box::pin(async move {
-                    #fn_name(event).await
-                })
-            };
+            // ハンドラ関数を FnStreamHandler でラップし、Arc で囲む
+            // 戻り値を Result<Option<Output>, Error> に変更
+            let handler = Arc::new(FnStreamHandler::new(
+                |event: #input_type| -> futures::future::BoxFuture<'static, std::result::Result<Option<#output_type>, #error_type>> {
+                    Box::pin(async move {
+                        // 元の関数の結果を Option にラップ
+                        #fn_name(event).await.map(Some)
+                    })
+                }
+            ));
 
-            // StreamWorkerを構築して実行
-            StreamWorker::new(subscriber, publisher, handler)
+            // StreamWorkerを構築して実行 (source, sink, handler を使用)
+            StreamWorker::new(source, sink, handler)
                 #durable_method
                 .run(shutdown)
                 .await

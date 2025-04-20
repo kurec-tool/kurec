@@ -1,4 +1,5 @@
 // ワーカーモジュール
+pub mod epg_updater_worker;
 pub mod epg_worker;
 
 // ワーカー実行関数をエクスポート

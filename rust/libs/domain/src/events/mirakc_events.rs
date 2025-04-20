@@ -20,7 +20,7 @@ pub struct TunerStatusChangedEvent {
 }
 
 /// mirakcのEpgProgramsUpdatedイベント
-#[event(stream = "mirakc-events")]
+#[event(stream = "epg_programs_updated_event")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EpgProgramsUpdatedEvent {
     /// イベント元のmirakc URL

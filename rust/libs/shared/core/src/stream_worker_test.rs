@@ -1,7 +1,7 @@
 use crate::error_handling::{ClassifyError, ErrorAction};
 use crate::event_metadata::Event;
-use crate::event_publisher::EventPublisher;
-use crate::event_subscriber::{AckHandle, EventSubscriber};
+use crate::event_sink::EventSink; // リネーム
+use crate::event_source::{AckHandle, EventSource}; // リネーム
 use crate::stream_worker::{
     FnStreamHandler, StreamHandler, StreamMiddleware, StreamNext, StreamWorker,
 };
@@ -88,7 +88,8 @@ impl TestSubscriber {
 }
 
 #[async_trait]
-impl EventSubscriber<InputEvent> for TestSubscriber {
+// EventSubscriber -> EventSource
+impl EventSource<InputEvent> for TestSubscriber {
     async fn subscribe(&self) -> Result<BoxStream<'static, (InputEvent, AckHandle)>> {
         let events = self.events.clone();
         let ack_called = self.ack_called.clone();
@@ -128,7 +129,8 @@ impl TestPublisher {
 }
 
 #[async_trait]
-impl EventPublisher<OutputEvent> for TestPublisher {
+// EventPublisher -> EventSink
+impl EventSink<OutputEvent> for TestPublisher {
     async fn publish(&self, event: OutputEvent) -> Result<()> {
         self.published.fetch_add(1, Ordering::SeqCst);
         let mut last_event = self.last_event.lock().unwrap();
@@ -148,22 +150,26 @@ impl StreamMiddleware<InputEvent, OutputEvent, TestError> for TestMiddleware {
         &self,
         event: InputEvent,
         next: StreamNext<'_, InputEvent, OutputEvent, TestError>,
-    ) -> Result<OutputEvent, TestError> {
+        // 戻り値を Option<OutputEvent> に変更
+    ) -> Result<Option<OutputEvent>, TestError> {
         // イベント処理前にカウンターをインクリメント
         self.counter.fetch_add(1, Ordering::SeqCst);
 
         // 次のミドルウェアまたはハンドラを呼び出す
-        let mut result = next.run(event).await;
+        let result = next.run(event).await; // mut 不要
 
         // イベント処理後にカウンターをインクリメント
         self.counter.fetch_add(1, Ordering::SeqCst);
 
-        // 出力イベントを変更
-        if let Ok(ref mut output) = result {
-            output.data = format!("{}:middleware", output.data);
+        // 出力イベントを変更 (Option を考慮)
+        match result {
+            Ok(Some(mut output)) => {
+                output.data = format!("{}:middleware", output.data);
+                Ok(Some(output))
+            }
+            Ok(None) => Ok(None), // None の場合はそのまま返す
+            Err(e) => Err(e),     // エラーの場合はそのまま返す
         }
-
-        result
     }
 }
 
@@ -177,7 +183,8 @@ struct TestHandler {
 
 #[async_trait]
 impl StreamHandler<InputEvent, OutputEvent, TestError> for TestHandler {
-    async fn handle(&self, event: InputEvent) -> Result<OutputEvent, TestError> {
+    // 戻り値を Option<OutputEvent> に変更
+    async fn handle(&self, event: InputEvent) -> Result<Option<OutputEvent>, TestError> {
         self.processed.fetch_add(1, Ordering::SeqCst);
 
         if self.should_fail {
@@ -186,11 +193,12 @@ impl StreamHandler<InputEvent, OutputEvent, TestError> for TestHandler {
                 should_retry: self.should_retry,
             })
         } else {
-            Ok(OutputEvent {
+            // Ok を Ok(Some(...)) に変更
+            Ok(Some(OutputEvent {
                 id: event.id,
                 data: format!("{}:processed", event.data),
                 processed: true,
-            })
+            }))
         }
     }
 }
@@ -212,15 +220,15 @@ async fn test_stream_worker_success() -> Result<()> {
     // ackが呼ばれたかを追跡
     let ack_called = Arc::new(AtomicBool::new(false));
 
-    // サブスクライバーを作成
-    let subscriber = Arc::new(TestSubscriber::new(events, ack_called.clone()));
+    // EventSource を作成 (subscriber -> source)
+    let source = Arc::new(TestSubscriber::new(events, ack_called.clone()));
 
     // パブリッシュされたイベントをカウント
     let published = Arc::new(AtomicUsize::new(0));
     let last_event = Arc::new(std::sync::Mutex::new(None));
 
-    // パブリッシャーを作成
-    let publisher = Arc::new(TestPublisher::new(published.clone(), last_event.clone()));
+    // EventSink を作成 (publisher -> sink)
+    let sink = Arc::new(TestPublisher::new(published.clone(), last_event.clone()));
 
     // 処理されたイベントをカウント
     let processed = Arc::new(AtomicUsize::new(0));
@@ -231,6 +239,8 @@ async fn test_stream_worker_success() -> Result<()> {
         should_fail: false,
         should_retry: false,
     };
+    // ハンドラを Arc でラップ
+    let handler_arc = Arc::new(handler);
 
     // ミドルウェアのカウンター
     let middleware_counter = Arc::new(AtomicUsize::new(0));
@@ -240,20 +250,15 @@ async fn test_stream_worker_success() -> Result<()> {
         counter: middleware_counter.clone(),
     };
 
-    // ハンドラ関数をラップ
-    let handler_fn =
-        move |event: InputEvent| -> BoxFuture<'static, Result<OutputEvent, TestError>> {
-            let handler_clone = handler.clone();
-            Box::pin(async move { handler_clone.handle(event).await })
-        };
+    // ハンドラ関数ラップは不要
 
     // キャンセルトークン
     let token = CancellationToken::new();
     let token_clone = token.clone();
 
-    // ストリームワーカーを構築して実行
+    // ストリームワーカーを構築して実行 (source, sink, handler_arc を使用)
     let worker_task = tokio::spawn(async move {
-        StreamWorker::new(subscriber, publisher, handler_fn)
+        StreamWorker::new(source, sink, handler_arc) // 引数を変更
             .with_middleware(middleware)
             .durable("test_stream_worker")
             .run(token_clone)
@@ -301,15 +306,15 @@ async fn test_stream_worker_error_handling() -> Result<()> {
     // ackが呼ばれたかを追跡
     let ack_called = Arc::new(AtomicBool::new(false));
 
-    // サブスクライバーを作成
-    let subscriber = Arc::new(TestSubscriber::new(events, ack_called.clone()));
+    // EventSource を作成 (subscriber -> source)
+    let source = Arc::new(TestSubscriber::new(events, ack_called.clone()));
 
     // パブリッシュされたイベントをカウント
     let published = Arc::new(AtomicUsize::new(0));
     let last_event = Arc::new(std::sync::Mutex::new(None));
 
-    // パブリッシャーを作成
-    let publisher = Arc::new(TestPublisher::new(published.clone(), last_event.clone()));
+    // EventSink を作成 (publisher -> sink)
+    let sink = Arc::new(TestPublisher::new(published.clone(), last_event.clone()));
 
     // 処理されたイベントをカウント
     let processed = Arc::new(AtomicUsize::new(0));
@@ -320,21 +325,18 @@ async fn test_stream_worker_error_handling() -> Result<()> {
         should_fail: true,
         should_retry: false, // Ignoreアクションを返す
     };
+    // ハンドラを Arc でラップ
+    let handler_arc = Arc::new(handler);
 
-    // ハンドラ関数をラップ
-    let handler_fn =
-        move |event: InputEvent| -> BoxFuture<'static, Result<OutputEvent, TestError>> {
-            let handler_clone = handler.clone();
-            Box::pin(async move { handler_clone.handle(event).await })
-        };
+    // ハンドラ関数ラップは不要
 
     // キャンセルトークン
     let token = CancellationToken::new();
     let token_clone = token.clone();
 
-    // ストリームワーカーを構築して実行
+    // ストリームワーカーを構築して実行 (source, sink, handler_arc を使用)
     let worker_task = tokio::spawn(async move {
-        StreamWorker::new(subscriber, publisher, handler_fn)
+        StreamWorker::new(source, sink, handler_arc) // 引数を変更
             .durable("test_stream_worker_error")
             .run(token_clone)
             .await
@@ -370,15 +372,15 @@ async fn test_stream_worker_error_retry() -> Result<()> {
     // ackが呼ばれたかを追跡
     let ack_called = Arc::new(AtomicBool::new(false));
 
-    // サブスクライバーを作成
-    let subscriber = Arc::new(TestSubscriber::new(events, ack_called.clone()));
+    // EventSource を作成 (subscriber -> source)
+    let source = Arc::new(TestSubscriber::new(events, ack_called.clone()));
 
     // パブリッシュされたイベントをカウント
     let published = Arc::new(AtomicUsize::new(0));
     let last_event = Arc::new(std::sync::Mutex::new(None));
 
-    // パブリッシャーを作成
-    let publisher = Arc::new(TestPublisher::new(published.clone(), last_event.clone()));
+    // EventSink を作成 (publisher -> sink)
+    let sink = Arc::new(TestPublisher::new(published.clone(), last_event.clone()));
 
     // 処理されたイベントをカウント
     let processed = Arc::new(AtomicUsize::new(0));
@@ -389,21 +391,18 @@ async fn test_stream_worker_error_retry() -> Result<()> {
         should_fail: true,
         should_retry: true, // Retryアクションを返す
     };
+    // ハンドラを Arc でラップ
+    let handler_arc = Arc::new(handler);
 
-    // ハンドラ関数をラップ
-    let handler_fn =
-        move |event: InputEvent| -> BoxFuture<'static, Result<OutputEvent, TestError>> {
-            let handler_clone = handler.clone();
-            Box::pin(async move { handler_clone.handle(event).await })
-        };
+    // ハンドラ関数ラップは不要
 
     // キャンセルトークン
     let token = CancellationToken::new();
     let token_clone = token.clone();
 
-    // ストリームワーカーを構築して実行
+    // ストリームワーカーを構築して実行 (source, sink, handler_arc を使用)
     let worker_task = tokio::spawn(async move {
-        StreamWorker::new(subscriber, publisher, handler_fn)
+        StreamWorker::new(source, sink, handler_arc) // 引数を変更
             .durable("test_stream_worker_retry")
             .run(token_clone)
             .await
@@ -434,17 +433,18 @@ async fn test_fn_stream_handler() -> Result<()> {
     let processed = Arc::new(AtomicUsize::new(0));
     let processed_clone = processed.clone();
 
-    // 関数ハンドラを作成
+    // 関数ハンドラを作成 (戻り値を Option<OutputEvent> に変更)
     let handler = FnStreamHandler::new(
-        move |event: InputEvent| -> BoxFuture<'static, Result<OutputEvent, TestError>> {
+        move |event: InputEvent| -> BoxFuture<'static, Result<Option<OutputEvent>, TestError>> {
             let counter = processed_clone.clone();
             Box::pin(async move {
                 counter.fetch_add(1, Ordering::SeqCst);
-                Ok(OutputEvent {
+                // Ok を Ok(Some(...)) に変更
+                Ok(Some(OutputEvent {
                     id: event.id,
                     data: format!("{}:fn_processed", event.data),
                     processed: true,
-                })
+                }))
             })
         },
     );
@@ -459,10 +459,12 @@ async fn test_fn_stream_handler() -> Result<()> {
     // 処理されたイベント数を確認
     assert_eq!(processed.load(Ordering::SeqCst), 1);
 
-    // 結果を確認
-    assert_eq!(result.id, 1);
-    assert_eq!(result.data, "test:fn_processed");
-    assert!(result.processed);
+    // 結果を確認 (Option を考慮)
+    assert!(result.is_some());
+    let output = result.unwrap();
+    assert_eq!(output.id, 1);
+    assert_eq!(output.data, "test:fn_processed");
+    assert!(output.processed);
 
     Ok(())
 }

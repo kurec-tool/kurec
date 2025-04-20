@@ -1,6 +1,6 @@
 use crate::error_handling::{ClassifyError, ErrorAction};
 use crate::event_metadata::Event;
-use crate::event_subscriber::EventSubscriber;
+use crate::event_source::EventSource; // リネーム
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -119,7 +119,7 @@ where
     H: Handler<E, Ctx>,
     Ctx: Clone + Send + Sync + 'static,
 {
-    subscriber: Arc<dyn EventSubscriber<E>>,
+    source: Arc<dyn EventSource<E>>, // subscriber -> source にリネーム
     handler: H,
     context: Ctx,
     middlewares: Vec<Arc<dyn Middleware<E, Ctx>>>,
@@ -133,9 +133,10 @@ where
     Ctx: Clone + Send + Sync + 'static,
 {
     /// 新しいWorkerBuilderを作成
-    pub fn new(subscriber: Arc<dyn EventSubscriber<E>>, handler: H, context: Ctx) -> Self {
+    pub fn new(source: Arc<dyn EventSource<E>>, handler: H, context: Ctx) -> Self {
+        // subscriber -> source
         Self {
-            subscriber,
+            source, // subscriber -> source
             handler,
             context,
             middlewares: Vec::new(),
@@ -210,8 +211,8 @@ where
 
     /// ワーカーを実行
     pub async fn run(self, shutdown: CancellationToken) -> Result<()> {
-        // サブスクライバーからメッセージストリームを取得
-        let mut stream = self.subscriber.subscribe().await?;
+        // source からメッセージストリームを取得 (subscriber -> source)
+        let mut stream = self.source.subscribe().await?;
         let shutdown_token = shutdown.clone();
 
         // ハンドラとミドルウェアをArcでラップ
