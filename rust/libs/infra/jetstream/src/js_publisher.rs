@@ -86,10 +86,10 @@ impl EpgNotifier for JsPublisher<EpgStoredEvent> {
 // EpgStoredEvent 用のヘルパーメソッド (JsPublisher<EpgStoredEvent> にのみ実装)
 // &self が不要になったため、関連関数に変更
 impl JsPublisher<EpgStoredEvent> {
-    fn generate_subject(&self, event: &EpgStoredEvent) -> String {
+    fn generate_subject(&self, _event: &EpgStoredEvent) -> String {
         // 設定ファイルから取得したプレフィックスを使うのが望ましい
         // ここではハードコードする
         // コンパイルを通すため一旦仮の値
-        "あああ".to_string()
+        "epg.stored".to_string()
     }
 }

@@ -1,6 +1,56 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// ビデオタイプの列挙型
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum VideoType {
+    /// 不明
+    Unknown,
+    /// SD 4:3
+    SD_4_3,
+    /// SD 16:9 パンベクトルあり
+    SD_16_9_PanVector,
+    /// SD 16:9 パンベクトルなし
+    SD_16_9,
+    /// SD 16:9超
+    SD_Over16_9,
+    /// HD 4:3
+    HD_4_3,
+    /// HD 16:9 パンベクトルあり
+    HD_16_9_PanVector,
+    /// HD 16:9 パンベクトルなし
+    HD_16_9,
+    /// HD 16:9超
+    HD_Over16_9,
+    /// UHD 16:9
+    UHD_16_9,
+}
+
+/// オーディオタイプの列挙型
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum AudioType {
+    /// 不明
+    Unknown,
+    /// モノラル
+    Mono,
+    /// デュアルモノ
+    DualMono,
+    /// ステレオ
+    Stereo,
+    /// 2/1モード
+    Mode2_1,
+    /// 3/0モード
+    Mode3_0,
+    /// 2/2モード
+    Mode2_2,
+    /// 3/1モード
+    Mode3_1,
+    /// 3/2モード
+    Mode3_2,
+    /// 3/2.1モード
+    Mode3_2_LFE,
+}
+
 /// mirakcから取得した番組情報をKurecで扱いやすい形式に変換したドメインモデル。
 /// KVSへの保存や、後続の処理で利用される。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -10,11 +60,11 @@ pub struct KurecProgram {
     /// 番組情報を取得したmirakcのベースURL
     pub mirakc_url: String,
     /// Mirakurun Service ID (mirakc APIのprogram.serviceId)
-    pub service_id: i32,
+    pub service_id: i64, // i32 -> i64
     /// Mirakurun Network ID (mirakc APIのprogram.networkId)
-    pub network_id: i32,
+    pub network_id: i64, // i32 -> i64
     /// Mirakurun Event ID (mirakc APIのprogram.eventId)
-    pub event_id: i32,
+    pub event_id: i64, // i32 -> i64
     /// チャンネル名 (mirakc APIのservice.name から取得)
     pub channel_name: String,
     /// チャンネルタイプ (例: "GR", "BS", "CS") (mirakc APIのservice.channel.type から取得)
@@ -46,12 +96,12 @@ pub struct KurecProgram {
 /// Kurecで扱うシリーズ情報
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct KurecSeriesInfo {
-    pub id: i32,
-    pub repeat: i32,
-    pub pattern: i32,
+    pub id: i64,                          // i32 -> i64
+    pub repeat: i64,                      // i32 -> i64
+    pub pattern: i64,                     // i32 -> i64
     pub expire_at: Option<DateTime<Utc>>, // Unixタイムスタンプ milliseconds を DateTime<Utc> に変換
-    pub episode: i32,
-    pub last_episode: i32,
+    pub episode: i64,                     // i32 -> i64
+    pub last_episode: i64,                // i32 -> i64
     pub name: String,
 }
 
@@ -65,11 +115,11 @@ mod tests {
     fn test_kurec_program_serialization_deserialization() {
         let dt = Utc.timestamp_millis_opt(1678886400000).unwrap(); // 例: 2023-03-15T12:00:00Z
         let program = KurecProgram {
-            id: 12345,
+            id: 12345i64,
             mirakc_url: "http://mirakc:40772".to_string(),
-            service_id: 101,
-            network_id: 1,
-            event_id: 54321,
+            service_id: 101i64,
+            network_id: 1i64,
+            event_id: 54321i64,
             channel_name: "テストチャンネル".to_string(),
             channel_type: "GR".to_string(),
             channel: "27".to_string(),
@@ -83,12 +133,12 @@ mod tests {
             video_info: Some("1080i(1125i), アスペクト比16:9 パンベクトルなし".to_string()),
             audio_infos: vec!["2/0モード(ステレオ)".to_string(), "日本語".to_string()],
             series_info: Some(KurecSeriesInfo {
-                id: 99,
-                repeat: 1,
-                pattern: 1,
+                id: 99i64,
+                repeat: 1i64,
+                pattern: 1i64,
                 expire_at: Some(Utc.timestamp_millis_opt(1710508800000).unwrap()), // 例: 2024-03-15T12:00:00Z
-                episode: 5,
-                last_episode: 10,
+                episode: 5i64,
+                last_episode: 10i64,
                 name: "テストシリーズ".to_string(),
             }),
         };

@@ -40,7 +40,9 @@ enum WorkerType {
         #[arg(long, default_value = "http://localhost:40772")]
         mirakc_url: String,
     },
-    // 将来的に他のワーカーを追加する場合はここに追加
+    /// EPG更新イベントを処理するワーカー
+    EpgUpdater, // mirakc_url 引数を削除
+                // 将来的に他のワーカーを追加する場合はここに追加
 }
 
 /// 環境変数NATS_URLからNATS接続URLを取得する
@@ -58,8 +60,10 @@ async fn main() -> Result<()> {
     let nats_url = get_nats_url();
     let js_ctx = std::sync::Arc::new(jetstream::connect(&nats_url).await?);
 
-    // ストリームを設定
+    // 共通ストリームを設定
     jetstream::setup_all_streams(&js_ctx.js).await?;
+    // KuRec 固有リソースを設定
+    jetstream::setup_kurec_resources(&js_ctx.js).await?;
 
     // シャットダウントークンを作成
     let shutdown = CancellationToken::new();
@@ -166,6 +170,22 @@ async fn main() -> Result<()> {
 
             // 正常終了
             shutdown.cancel();
+        }
+        WorkerType::EpgUpdater => {
+            // mirakc_url を削除
+            println!("Starting EPG updater worker..."); // URL表示を削除
+
+            // シャットダウントークンのクローンを作成
+            let worker_shutdown = shutdown.clone();
+
+            // EPG更新ワーカーを実行 (mirakc_url 引数を削除)
+            let _epg_updater_handle = tokio::spawn(async move {
+                if let Err(e) = cmd::epg_updater::run_epg_updater(&app_config, worker_shutdown) // mirakc_url を削除
+                    .await
+                {
+                    eprintln!("EPG updater worker error: {}", e);
+                }
+            });
         }
     }
 

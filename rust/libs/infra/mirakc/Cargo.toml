@@ -14,12 +14,13 @@ bytes = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 eventsource-stream = "0.2"
 futures = "0.3"
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream"] } # バージョンを mirakc-client に合わせる
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 tracing = "0.1"
+url = "2.5.0" # 追加
 
 [dev-dependencies]
 wiremock = "0.5"

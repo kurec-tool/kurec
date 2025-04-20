@@ -28,11 +28,21 @@ impl NatsKvProgramRepository {
 
     /// KVSで使用するキーを生成する。
     /// キーは `epg:{mirakc_url}:{service_id}` の形式。
-    fn generate_key(mirakc_url: &str, service_id: i32) -> String {
+    fn generate_key(mirakc_url: &str, service_id: i64) -> String {
+        // i32 -> i64
         // URLに含まれる可能性のある特殊文字をエスケープまたは置換する必要があるか検討
         // NATSのキーとして安全な形式にする
-        // 簡単のため、ここでは単純な結合のみ行う
-        format!("epg:{}:{}", mirakc_url, service_id)
+        // URLからスキーム (http:// など) を削除し、ホスト部分のみを使用
+        // URLからスキーム (http:// など) を削除し、ホスト部分のみを使用
+        // また、特殊文字（:や/など）をアンダースコアに置換
+        let host = mirakc_url
+            .replace("http://", "")
+            .replace("https://", "")
+            .replace(":", "_")
+            .replace("/", "_")
+            .trim_end_matches('_')
+            .to_string();
+        format!("epg_{}_svc_{}", host, service_id)
     }
 }
 
@@ -42,7 +52,7 @@ impl KurecProgramRepository for NatsKvProgramRepository {
     async fn save_service_programs(
         &self,
         mirakc_url: &str,
-        service_id: i32,
+        service_id: i64, // i32 -> i64
         programs: Vec<KurecProgram>,
     ) -> Result<()> {
         // 戻り値は anyhow::Result<()> でOK
@@ -62,8 +72,10 @@ impl KurecProgramRepository for NatsKvProgramRepository {
                 Ok(())
             }
             Err(e) => {
-                error!("Failed to save programs to NATS KV: {}", e);
-                Err(e).context("NATS KV put operation failed") // anyhow::Error に変換
+                // エラーログを強化
+                error!(key = %key, error = %e, "Failed to save programs to NATS KV");
+                Err(e).context(format!("NATS KV put operation failed for key '{}'", key))
+                // エラーコンテキストにキーを含める
             }
         }
     }
@@ -72,7 +84,7 @@ impl KurecProgramRepository for NatsKvProgramRepository {
     async fn get_service_programs(
         &self,
         mirakc_url: &str,
-        service_id: i32,
+        service_id: i64, // i32 -> i64
     ) -> Result<Option<Vec<KurecProgram>>> {
         // 戻り値は anyhow::Result<...> でOK
         let key = Self::generate_key(mirakc_url, service_id);
@@ -118,22 +130,69 @@ mod tests {
     use domain::models::epg::KurecProgram; // KurecSeriesInfo を削除
                                            // use rand; // rand は setup_test_kv 内で直接 ::random を使うので不要
 
+    // テスト終了時に自動的にバケットを削除するための構造体
+    struct TestBucketCleaner {
+        context: Option<async_nats::jetstream::Context>,
+        bucket_name: String,
+    }
+
+    impl Drop for TestBucketCleaner {
+        fn drop(&mut self) {
+            if let Some(_context) = self.context.take() {
+                // バケット名をクローンして所有権を移動
+                let bucket_name = self.bucket_name.clone();
+
+                // 非同期処理を実行するためのタスクを作成
+                // 注意: これはテスト終了時に実行されるため、結果を待機しない
+                // 代わりに、テスト終了時にバケットを削除するコマンドを実行する
+                eprintln!("Cleaning up test bucket: {}", bucket_name);
+
+                // 別プロセスでNATSコマンドを実行してバケットを削除
+                // これはテスト環境でのみ使用されるため、実運用コードには影響しない
+                std::thread::spawn(move || {
+                    // nats CLI コマンドを使用してバケットを削除
+                    let output = std::process::Command::new("nats")
+                        .args(["kv", "rm", "--force", &bucket_name])
+                        .output();
+
+                    match output {
+                        Ok(output) => {
+                            if output.status.success() {
+                                eprintln!("Successfully cleaned up test bucket: {}", bucket_name);
+                            } else {
+                                let stderr = String::from_utf8_lossy(&output.stderr);
+                                eprintln!(
+                                    "Failed to clean up test bucket {}: {}",
+                                    bucket_name, stderr
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Failed to execute cleanup command for bucket {}: {}",
+                                bucket_name, e
+                            );
+                        }
+                    }
+                });
+            }
+        }
+    }
+
     // Helper function to create a test NATS client and KV store
     // Note: This requires a running NATS server. For true unit tests,
     // consider mocking the Store trait. For integration tests, use testcontainers.
-    // 戻り値に context と bucket_name を追加
-    async fn setup_test_kv() -> (
-        async_nats::Client,
-        async_nats::jetstream::Context,
-        Store,
-        String,
-    ) {
+    // 戻り値に cleaner を追加
+    async fn setup_test_kv() -> (async_nats::Client, Store, TestBucketCleaner) {
         // 環境変数などからNATS URLを取得 (テスト用に変更可能にする)
         let nats_url =
             std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
         let client = connect(&nats_url).await.expect("Failed to connect to NATS");
         let context = async_nats::jetstream::new(client.clone());
         let bucket_name = format!("test_kurec_epg_{}", rand::random::<u32>()); // バケット名を保存
+
+        debug!("Creating test bucket: {}", bucket_name);
+
         let store = context
             .create_key_value(async_nats::jetstream::kv::Config {
                 // パスはOK
@@ -143,11 +202,19 @@ mod tests {
             })
             .await
             .expect("Failed to create KV store");
-        (client, context, store, bucket_name) // context と bucket_name を返す
+
+        // クリーナーを作成
+        let cleaner = TestBucketCleaner {
+            context: Some(context),
+            bucket_name,
+        };
+
+        (client, store, cleaner) // クリーナーを返す
     }
 
     // Helper function to create dummy program data
-    fn create_dummy_programs(mirakc_url: &str, service_id: i32, count: usize) -> Vec<KurecProgram> {
+    fn create_dummy_programs(mirakc_url: &str, service_id: i64, count: usize) -> Vec<KurecProgram> {
+        // i32 -> i64
         (0..count)
             .map(|i| {
                 let dt = Utc
@@ -157,8 +224,8 @@ mod tests {
                     id: 1000 + i as i64,
                     mirakc_url: mirakc_url.to_string(),
                     service_id,
-                    network_id: 1,
-                    event_id: 5000 + i as i32,
+                    network_id: 1i64,
+                    event_id: 5000i64 + i as i64,
                     channel_name: format!("チャンネル{}", service_id),
                     channel_type: "GR".to_string(),
                     channel: "27".to_string(),
@@ -178,13 +245,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // NATSサーバーが必要なためデフォルトでは無視
+    // #[ignore] // NATSサーバーが必要なためデフォルトでは無視 <- コメントアウト解除
     async fn test_save_and_get_programs() {
-        let (_client, context, store, bucket_name) = setup_test_kv().await; // context と bucket_name を受け取る
+        let (_client, store, _cleaner) = setup_test_kv().await; // クリーナーを受け取る
         let repository = NatsKvProgramRepository::new(store.clone());
 
         let mirakc_url = "http://test-mirakc:1234";
-        let service_id = 101;
+        let service_id = 101i64;
         let programs_to_save = create_dummy_programs(mirakc_url, service_id, 3);
 
         // 保存テスト
@@ -203,25 +270,21 @@ mod tests {
         assert_eq!(retrieved_programs.unwrap(), programs_to_save);
 
         // 存在しないキーの取得テスト
-        let get_none_result = repository.get_service_programs(mirakc_url, 999).await; // 存在しないservice_id
+        let get_none_result = repository.get_service_programs(mirakc_url, 999i64).await; // 存在しないservice_id
         assert!(get_none_result.is_ok());
         assert!(get_none_result.unwrap().is_none());
 
-        // クリーンアップ (テストバケット削除)
-        context // context を使用
-            .delete_key_value(&bucket_name) // delete_key_value を使用
-            .await
-            .expect("Failed to delete test KV bucket");
+        // クリーンアップは _cleaner のドロップ時に自動的に行われる
     }
 
     #[tokio::test]
-    #[ignore] // NATSサーバーが必要なためデフォルトでは無視
+    // #[ignore] // NATSサーバーが必要なためデフォルトでは無視 <- コメントアウト解除
     async fn test_save_overwrite() {
-        let (_client, context, store, bucket_name) = setup_test_kv().await; // context と bucket_name を受け取る
+        let (_client, store, _cleaner) = setup_test_kv().await; // クリーナーを受け取る
         let repository = NatsKvProgramRepository::new(store.clone());
 
         let mirakc_url = "http://overwrite-test:5678";
-        let service_id = 202;
+        let service_id = 202i64;
         let initial_programs = create_dummy_programs(mirakc_url, service_id, 2);
         let updated_programs = create_dummy_programs(mirakc_url, service_id, 5); // 更新版 (件数変更)
 
@@ -249,10 +312,6 @@ mod tests {
             .unwrap();
         assert_eq!(retrieved2, updated_programs); // 更新後のデータと一致するか
 
-        // クリーンアップ
-        context // context を使用
-            .delete_key_value(&bucket_name) // delete_key_value を使用
-            .await
-            .expect("Failed to delete test KV bucket");
+        // クリーンアップは _cleaner のドロップ時に自動的に行われる
     }
 }

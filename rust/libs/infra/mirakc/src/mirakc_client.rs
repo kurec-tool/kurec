@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use mirakc_client::apis::{configuration::Configuration, version_api};
+use mirakc_client::apis::{configuration::Configuration, services_api, version_api};
+use mirakc_client::models::{MirakurunProgram, MirakurunService};
 use std::sync::Arc;
 
 /// mirakcクライアントのラッパー
@@ -26,5 +27,17 @@ impl MirakcClient {
             .context("Failed to get mirakc version")
     }
 
-    // 将来的に他のAPIメソッドを追加...
+    /// サービス情報を取得
+    pub async fn get_service(&self, service_id: u64) -> Result<MirakurunService> {
+        services_api::get_service(&self.config, service_id as i64)
+            .await
+            .context("Failed to get service")
+    }
+
+    /// サービスのプログラム一覧を取得
+    pub async fn get_programs_of_service(&self, service_id: u64) -> Result<Vec<MirakurunProgram>> {
+        services_api::get_programs_of_service(&self.config, service_id as i64)
+            .await
+            .context("Failed to get programs of service")
+    }
 }

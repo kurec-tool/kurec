@@ -68,3 +68,58 @@ pub async fn setup_all_streams(js: &jetstream::context::Context) -> Result<()> {
 
     Ok(())
 }
+
+/// KuRec 固有の JetStream ストリームと KV ストアをセットアップします。
+///
+/// - `kurec-events` ストリーム
+/// - `kurec_epg` KV ストア
+pub async fn setup_kurec_resources(js: &jetstream::context::Context) -> Result<()> {
+    // kurec-events ストリームの設定
+    let kurec_events_config = jetstream::stream::Config {
+        name: "kurec-events".to_string(),
+        subjects: vec!["kurec-events.*".to_string()],
+        // 必要に応じて max_age などを設定
+        ..Default::default()
+    };
+
+    // kurec-events ストリームを作成または更新
+    match js.get_or_create_stream(&kurec_events_config).await {
+        Ok(_) => {
+            js.update_stream(kurec_events_config).await?;
+            println!("JetStream stream 'kurec-events' created or updated.");
+        }
+        Err(e) => {
+            eprintln!(
+                "Failed to create or update JetStream stream 'kurec-events': {}",
+                e
+            );
+            return Err(e.into());
+        }
+    }
+
+    // kurec_epg KV ストアの設定
+    let kurec_epg_kv_config = jetstream::kv::Config {
+        bucket: "kurec_epg".to_string(),
+        // 必要に応じて TTL などを設定
+        ..Default::default()
+    };
+
+    // kurec_epg KV ストアを作成
+    match js.create_key_value(kurec_epg_kv_config).await {
+        // 参照を外す
+        Ok(_) => {
+            println!("JetStream KV store 'kurec_epg' created.");
+        }
+        Err(e) => {
+            // すでに存在する場合のエラーは無視 (get_key_value がないため)
+            if e.to_string().contains("bucket already exists") {
+                println!("JetStream KV store 'kurec_epg' already exists.");
+            } else {
+                eprintln!("Failed to create JetStream KV store 'kurec_epg': {}", e);
+                return Err(e.into());
+            }
+        }
+    }
+
+    Ok(())
+}

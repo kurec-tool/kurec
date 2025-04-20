@@ -22,7 +22,7 @@ pub trait KurecProgramRepository: Send + Sync {
     async fn save_service_programs(
         &self,
         mirakc_url: &str,
-        service_id: i32,
+        service_id: i64, // i32 -> i64
         programs: Vec<KurecProgram>,
     ) -> Result<()>;
 
@@ -40,7 +40,7 @@ pub trait KurecProgramRepository: Send + Sync {
     async fn get_service_programs(
         &self,
         mirakc_url: &str,
-        service_id: i32,
+        service_id: i64, // i32 -> i64
     ) -> Result<Option<Vec<KurecProgram>>>;
 
     // 必要に応じて他のメソッドを追加 (例: delete_service_programs)
