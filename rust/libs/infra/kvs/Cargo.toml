@@ -22,6 +22,6 @@ shared_core = { path = "../../shared/core" }
 [dev-dependencies]
 chrono = { version = "0.4", features = ["serde"] } # テストで使用
 rand = "0.8" # テストで使用
-# testcontainers = "0.19" # 統合テスト用 (後で追加)
-# testcontainers-modules = { version = "0.5", features = ["nats"] } # NATSコンテナ (後で追加)
+testcontainers = "0.23.3" # 統合テスト用
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+futures = "0.3.31" # テストで使用

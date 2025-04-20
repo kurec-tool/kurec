@@ -126,9 +126,12 @@ impl KurecProgramRepository for NatsKvProgramRepository {
 mod tests {
     use super::*;
     use async_nats::connect;
-    use chrono::{TimeZone, Utc}; // chrono を use
-    use domain::models::epg::KurecProgram; // KurecSeriesInfo を削除
-                                           // use rand; // rand は setup_test_kv 内で直接 ::random を使うので不要
+    use chrono::{TimeZone, Utc};
+    use domain::models::epg::KurecProgram;
+    use futures::StreamExt;
+    use testcontainers::{
+        core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
+    };
 
     // テスト終了時に自動的にバケットを削除するための構造体
     struct TestBucketCleaner {
@@ -138,40 +141,22 @@ mod tests {
 
     impl Drop for TestBucketCleaner {
         fn drop(&mut self) {
-            if let Some(_context) = self.context.take() {
+            if let Some(context) = self.context.take() {
                 // バケット名をクローンして所有権を移動
                 let bucket_name = self.bucket_name.clone();
 
                 // 非同期処理を実行するためのタスクを作成
                 // 注意: これはテスト終了時に実行されるため、結果を待機しない
-                // 代わりに、テスト終了時にバケットを削除するコマンドを実行する
                 eprintln!("Cleaning up test bucket: {}", bucket_name);
 
-                // 別プロセスでNATSコマンドを実行してバケットを削除
-                // これはテスト環境でのみ使用されるため、実運用コードには影響しない
-                std::thread::spawn(move || {
-                    // nats CLI コマンドを使用してバケットを削除
-                    let output = std::process::Command::new("nats")
-                        .args(["kv", "rm", "--force", &bucket_name])
-                        .output();
-
-                    match output {
-                        Ok(output) => {
-                            if output.status.success() {
-                                eprintln!("Successfully cleaned up test bucket: {}", bucket_name);
-                            } else {
-                                let stderr = String::from_utf8_lossy(&output.stderr);
-                                eprintln!(
-                                    "Failed to clean up test bucket {}: {}",
-                                    bucket_name, stderr
-                                );
-                            }
+                // async-natsのAPIを使用してバケットを削除
+                tokio::spawn(async move {
+                    match context.delete_key_value(&bucket_name).await {
+                        Ok(_) => {
+                            eprintln!("Successfully cleaned up test bucket: {}", bucket_name);
                         }
                         Err(e) => {
-                            eprintln!(
-                                "Failed to execute cleanup command for bucket {}: {}",
-                                bucket_name, e
-                            );
+                            eprintln!("Failed to clean up test bucket {}: {}", bucket_name, e);
                         }
                     }
                 });
@@ -179,29 +164,64 @@ mod tests {
         }
     }
 
+    async fn ensure_docker() {
+        for _ in 0..20 {
+            if std::process::Command::new("docker")
+                .arg("info")
+                .output()
+                .is_ok()
+            {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
+        panic!("Docker daemon not ready");
+    }
+
+    async fn setup_nats() -> anyhow::Result<(ContainerAsync<GenericImage>, String)> {
+        ensure_docker().await;
+        // ---- Spin‑up test JetStream -------------------------------------------
+        let container = GenericImage::new("nats", "latest")
+            .with_exposed_port(4222u16.into())
+            .with_wait_for(WaitFor::message_on_stderr("Server is ready"))
+            .with_cmd(vec!["--js", "--debug"])
+            .start()
+            .await?;
+        let host = container.get_host().await?;
+        let port = container.get_host_port_ipv4(4222u16).await?;
+        let url = format!("{}:{}", host, port);
+
+        // NATSサーバーが完全に起動するまで少し待機
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+        Ok((container, url))
+    }
+
     // Helper function to create a test NATS client and KV store
-    // Note: This requires a running NATS server. For true unit tests,
-    // consider mocking the Store trait. For integration tests, use testcontainers.
-    // 戻り値に cleaner を追加
-    async fn setup_test_kv() -> (async_nats::Client, Store, TestBucketCleaner) {
-        // 環境変数などからNATS URLを取得 (テスト用に変更可能にする)
-        let nats_url =
-            std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
-        let client = connect(&nats_url).await.expect("Failed to connect to NATS");
+    async fn setup_test_kv() -> anyhow::Result<(
+        ContainerAsync<GenericImage>,
+        async_nats::Client,
+        Store,
+        TestBucketCleaner,
+    )> {
+        let (container, url) = setup_nats().await?;
+
+        let client = async_nats::connect(&url).await?;
         let context = async_nats::jetstream::new(client.clone());
-        let bucket_name = format!("test_kurec_epg_{}", rand::random::<u32>()); // バケット名を保存
+        let bucket_name = format!("test_kurec_epg_{}", rand::random::<u32>());
 
         debug!("Creating test bucket: {}", bucket_name);
 
-        let store = context
-            .create_key_value(async_nats::jetstream::kv::Config {
-                // パスはOK
-                bucket: bucket_name.clone(), // 保存したバケット名を使用
-                // 他の設定 (TTLなど) はデフォルト
-                ..Default::default()
-            })
-            .await
-            .expect("Failed to create KV store");
+        // KVストアの設定
+        let kv_config = async_nats::jetstream::kv::Config {
+            bucket: bucket_name.clone(),
+            history: 1,
+            max_value_size: 1024 * 1024, // 1MB
+            ..Default::default()
+        };
+
+        // KVストアを作成
+        let store = context.create_key_value(kv_config).await?;
 
         // クリーナーを作成
         let cleaner = TestBucketCleaner {
@@ -209,7 +229,10 @@ mod tests {
             bucket_name,
         };
 
-        (client, store, cleaner) // クリーナーを返す
+        // 少し待機してKVストアが完全に初期化されるのを待つ
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        Ok((container, client, store, cleaner))
     }
 
     // Helper function to create dummy program data
@@ -245,9 +268,8 @@ mod tests {
     }
 
     #[tokio::test]
-    // #[ignore] // NATSサーバーが必要なためデフォルトでは無視 <- コメントアウト解除
-    async fn test_save_and_get_programs() {
-        let (_client, store, _cleaner) = setup_test_kv().await; // クリーナーを受け取る
+    async fn test_save_and_get_programs() -> anyhow::Result<()> {
+        let (_container, _client, store, _cleaner) = setup_test_kv().await?;
         let repository = NatsKvProgramRepository::new(store.clone());
 
         let mirakc_url = "http://test-mirakc:1234";
@@ -255,32 +277,28 @@ mod tests {
         let programs_to_save = create_dummy_programs(mirakc_url, service_id, 3);
 
         // 保存テスト
-        let save_result = repository
+        repository
             .save_service_programs(mirakc_url, service_id, programs_to_save.clone())
-            .await;
-        assert!(save_result.is_ok());
+            .await?;
 
         // 取得テスト
-        let get_result = repository
+        let retrieved_programs = repository
             .get_service_programs(mirakc_url, service_id)
-            .await;
-        assert!(get_result.is_ok());
-        let retrieved_programs = get_result.unwrap();
+            .await?;
         assert!(retrieved_programs.is_some());
         assert_eq!(retrieved_programs.unwrap(), programs_to_save);
 
         // 存在しないキーの取得テスト
-        let get_none_result = repository.get_service_programs(mirakc_url, 999i64).await; // 存在しないservice_id
-        assert!(get_none_result.is_ok());
-        assert!(get_none_result.unwrap().is_none());
+        let get_none_result = repository.get_service_programs(mirakc_url, 999i64).await?;
+        assert!(get_none_result.is_none());
 
         // クリーンアップは _cleaner のドロップ時に自動的に行われる
+        Ok(())
     }
 
     #[tokio::test]
-    // #[ignore] // NATSサーバーが必要なためデフォルトでは無視 <- コメントアウト解除
-    async fn test_save_overwrite() {
-        let (_client, store, _cleaner) = setup_test_kv().await; // クリーナーを受け取る
+    async fn test_save_overwrite() -> anyhow::Result<()> {
+        let (_container, _client, store, _cleaner) = setup_test_kv().await?;
         let repository = NatsKvProgramRepository::new(store.clone());
 
         let mirakc_url = "http://overwrite-test:5678";
@@ -291,27 +309,24 @@ mod tests {
         // 初回保存
         repository
             .save_service_programs(mirakc_url, service_id, initial_programs.clone())
-            .await
-            .unwrap();
+            .await?;
         let retrieved1 = repository
             .get_service_programs(mirakc_url, service_id)
-            .await
-            .unwrap()
+            .await?
             .unwrap();
         assert_eq!(retrieved1, initial_programs);
 
         // 上書き保存
         repository
             .save_service_programs(mirakc_url, service_id, updated_programs.clone())
-            .await
-            .unwrap();
+            .await?;
         let retrieved2 = repository
             .get_service_programs(mirakc_url, service_id)
-            .await
-            .unwrap()
+            .await?
             .unwrap();
         assert_eq!(retrieved2, updated_programs); // 更新後のデータと一致するか
 
         // クリーンアップは _cleaner のドロップ時に自動的に行われる
+        Ok(())
     }
 }
