@@ -8,7 +8,13 @@ pub mod event_subscriber;
 pub mod repositories;
 pub mod stream_worker;
 pub mod streams;
+pub mod streams_def;
 pub mod worker;
+
+// ストリーム定義の初期化
+pub fn init_streams() {
+    streams_def::init_streams();
+}
 
 #[cfg(test)]
 mod error_handling_test;

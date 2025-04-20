@@ -8,4 +8,5 @@ pub mod repositories;
 // 再エクスポート
 pub use mirakc_client::MirakcClient;
 pub use repositories::domain_version_repository::DomainVersionRepositoryImpl;
+pub use repositories::mirakc_event_repository_impl::MirakcEventRepositoryImpl;
 pub use repositories::version_repository_impl::VersionRepositoryImpl;

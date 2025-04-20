@@ -5,7 +5,14 @@ use std::env;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 
+mod cmd;
 mod workers;
+
+/// アプリケーション設定
+pub struct AppConfig {
+    /// NATS接続URL
+    pub nats_url: String,
+}
 
 /// KuRec アプリケーション CLI
 #[derive(Parser, Debug)]
@@ -23,6 +30,12 @@ enum WorkerType {
     Epg,
     /// mirakcのバージョンを確認
     CheckVersion {
+        /// mirakcサーバーのURL
+        #[arg(long, default_value = "http://localhost:40772")]
+        mirakc_url: String,
+    },
+    /// mirakcのイベントを処理するワーカー
+    MirakcEvents {
         /// mirakcサーバーのURL
         #[arg(long, default_value = "http://localhost:40772")]
         mirakc_url: String,
@@ -58,6 +71,11 @@ async fn main() -> Result<()> {
         println!("Shutting down...");
         shutdown_clone.cancel();
     });
+
+    // アプリケーション設定を作成
+    let app_config = AppConfig {
+        nats_url: nats_url.clone(),
+    };
 
     // ワーカーを起動
     match cli.worker.unwrap_or(WorkerType::Epg) {
@@ -130,6 +148,24 @@ async fn main() -> Result<()> {
                     std::process::exit(1);
                 }
             }
+        }
+        WorkerType::MirakcEvents { mirakc_url } => {
+            println!("Starting mirakc events worker with URL: {}...", mirakc_url);
+
+            // シャットダウントークンのクローンを作成
+            let worker_shutdown = shutdown.clone();
+
+            // mirakcイベント処理コマンドを実行
+            if let Err(e) =
+                cmd::mirakc_events::run_mirakc_events(&app_config, &mirakc_url, worker_shutdown)
+                    .await
+            {
+                eprintln!("mirakc events worker error: {}", e);
+                std::process::exit(1);
+            }
+
+            // 正常終了
+            shutdown.cancel();
         }
     }
 
