@@ -1498,6 +1498,7 @@ dependencies = [
  "async-nats 0.40.0",
  "async-trait",
  "ctor",
+ "domain",
  "futures",
  "heck 0.4.1",
  "inventory",
@@ -1507,6 +1508,7 @@ dependencies = [
  "shared_macros",
  "testcontainers",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
