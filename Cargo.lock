@@ -120,6 +120,42 @@ dependencies = [
 
 [[package]]
 name = "async-nats"
+version = "0.38.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76433c4de73442daedb3a59e991d94e85c14ebfc33db53dfcd347a21cd6ef4f8"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "futures",
+ "memchr",
+ "nkeys",
+ "nuid",
+ "once_cell",
+ "pin-project",
+ "portable-atomic",
+ "rand 0.8.5",
+ "regex",
+ "ring",
+ "rustls-native-certs 0.7.3",
+ "rustls-pemfile 2.2.0",
+ "rustls-webpki 0.102.8",
+ "serde",
+ "serde_json",
+ "serde_nanos",
+ "serde_repr",
+ "thiserror 1.0.69",
+ "time",
+ "tokio",
+ "tokio-rustls",
+ "tokio-util",
+ "tokio-websockets",
+ "tracing",
+ "tryhard",
+ "url",
+]
+
+[[package]]
+name = "async-nats"
 version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e23419d455dc57d3ae60a2f4278cf561fc74fe866e548e14d2b0ad3e1b8ca0b2"
@@ -1459,7 +1495,7 @@ name = "infra_jetstream"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "async-nats",
+ "async-nats 0.40.0",
  "async-trait",
  "ctor",
  "futures",
@@ -1471,6 +1507,25 @@ dependencies = [
  "shared_macros",
  "testcontainers",
  "tokio",
+]
+
+[[package]]
+name = "infra_kvs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats 0.38.0",
+ "async-trait",
+ "bytes",
+ "chrono",
+ "domain",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "shared_core",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2290,6 +2345,7 @@ version = "0.102.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64ca1bc8749bd4cf37b5ce386cc146580777b4e8572c7b97baf22c83f444bee9"
 dependencies = [
+ "ring",
  "rustls-pki-types",
  "untrusted",
 ]
@@ -2973,6 +3029,7 @@ dependencies = [
  "httparse",
  "rand 0.8.5",
  "ring",
+ "rustls-native-certs 0.8.1",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",

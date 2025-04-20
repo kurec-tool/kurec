@@ -1,0 +1,27 @@
+[package]
+name = "infra_kvs"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+async-nats = "0.38" # feature 指定を削除
+bytes = "1" # 追加
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0" # KVSにJSON文字列として保存するため
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] } # NATSクライアントがtokioに依存
+tracing = "0.1"
+
+# --- Internal Dependencies ---
+domain = { path = "../../domain" }
+shared_core = { path = "../../shared/core" }
+
+[dev-dependencies]
+chrono = { version = "0.4", features = ["serde"] } # テストで使用
+rand = "0.8" # テストで使用
+# testcontainers = "0.19" # 統合テスト用 (後で追加)
+# testcontainers-modules = { version = "0.5", features = ["nats"] } # NATSコンテナ (後で追加)
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
