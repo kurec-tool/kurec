@@ -2,9 +2,9 @@
 //!
 //! このモジュールはmirakcイベントを処理するコマンドを提供します。
 
-use anyhow::Result;
+use anyhow::{Context, Result}; // Context をインポート
 use domain::{
-    events::mirakc_events::*, // イベント型をインポート
+    events::mirakc_events::*,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks}, // 新しいハンドラ
 };
 use futures::StreamExt;
@@ -28,26 +28,32 @@ pub async fn run_mirakc_events(
 ) -> Result<()> {
     info!("Starting mirakc events command with URL: {}", mirakc_url);
 
-    // JetStreamの設定
-    let js_ctx = Arc::new(infra_jetstream::connect(&config.nats_url).await?);
-    infra_jetstream::setup_all_streams(&js_ctx.js).await?;
+    // NATS 接続 (infra_nats を使用)
+    let nats_client = infra_nats::connect(&config.nats_url)
+        .await
+        .context("NATS への接続に失敗しました")?;
+
+    // JetStream ストリームの設定 (infra_jetstream を使用)
+    infra_jetstream::setup_all_streams(nats_client.jetstream_context())
+        .await
+        .context("JetStream ストリームのセットアップに失敗しました")?;
 
     // SSEイベントソースの作成
     let source = MirakcSseSource::new(mirakc_url.to_string());
 
-    // 各イベント型に対応する EventSink (JsPublisher) を作成
+    // 各イベント型に対応する EventSink (JsPublisher) を作成 (NatsClient を渡す)
     let sinks = MirakcEventSinks {
-        tuner_status_changed: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        epg_programs_updated: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_started: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_stopped: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_failed: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_rescheduled: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_record_saved: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_record_removed: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_content_removed: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        recording_record_broken: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
-        onair_program_changed: Arc::new(JsPublisher::from_event_type(js_ctx.clone())), // js_ctx.clone() を渡す
+        tuner_status_changed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        epg_programs_updated: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_started: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_stopped: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_failed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_rescheduled: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_record_saved: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_record_removed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_content_removed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        recording_record_broken: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
+        onair_program_changed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
     };
 
     // イベントハンドラの作成

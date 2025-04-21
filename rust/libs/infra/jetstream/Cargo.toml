@@ -8,7 +8,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.98"
-async-nats = "0.40.0"
+async-nats = { workspace = true } # ワークスペースから継承
 async-trait = "0.1.88"
 ctor = "0.2.7"
 futures = "0.3.31"
@@ -20,6 +20,7 @@ shared_core = { version = "0.0.1", path = "../../shared/core" }
 shared_macros = { version = "0.0.1", path = "../../shared/macros" }
 tracing = "0.1" # 追加
 shared_types = { version = "0.0.1", path = "../../shared/types" }
+infra_nats = { path = "../nats" } # NATS接続クレートを追加
 
 [dev-dependencies]
 testcontainers = "0.23.3"

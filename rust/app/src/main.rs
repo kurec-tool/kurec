@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Context, Result}; // Context をインポート
 use clap::{Parser, Subcommand};
-use infra_jetstream as jetstream;
+use infra_jetstream as jetstream; // setup_all_streams を使うために残す
+use infra_nats; // infra_nats をインポート
 use std::env;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
@@ -57,14 +58,18 @@ async fn main() -> Result<()> {
     // コマンドライン引数を解析
     let cli = Cli::parse();
 
-    // JetStreamに接続
+    // NATS に接続
     let nats_url = get_nats_url();
-    let js_ctx = std::sync::Arc::new(jetstream::connect(&nats_url).await?);
+    let nats_client = infra_nats::connect(&nats_url)
+        .await
+        .context("NATS への接続に失敗しました")?;
 
     // 共通ストリームを設定
-    jetstream::setup_all_streams(&js_ctx.js).await?;
-    // KuRec 固有リソースを設定
-    jetstream::setup_kurec_resources(&js_ctx.js).await?;
+    jetstream::setup_all_streams(nats_client.jetstream_context())
+        .await
+        .context("JetStream ストリームのセットアップに失敗しました")?;
+    // KuRec 固有リソースの設定は infra_nats または infra_kvs で行うため削除
+    // jetstream::setup_kurec_resources(&js_ctx.js).await?;
 
     // シャットダウントークンを作成
     let shutdown = CancellationToken::new();

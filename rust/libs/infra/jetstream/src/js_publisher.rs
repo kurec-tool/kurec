@@ -1,27 +1,29 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use std::sync::Arc; // Arc をインポート
+use std::sync::Arc; // コメント解除
                     // use domain::events::kurec_events::EpgStoredEvent; // EpgNotifier 関連削除
                     // use domain::ports::notifiers::EpgNotifier; // EpgNotifier 関連削除
 use shared_core::event_metadata::Event;
 use shared_core::event_sink::EventSink; // event_publisher -> event_sink
 use std::marker::PhantomData;
+// use std::sync::Arc; // 重複しているため削除 (上部でインポート済み)
 use tracing::{debug, error, instrument}; // debug, error マクロを追加
 
-use crate::JetStreamCtx;
+// infra_nats クレートの NatsClient をインポート
+use infra_nats::NatsClient;
 
 /// JetStreamを使用したイベント発行者
 pub struct JsPublisher<E: Event> {
-    js_ctx: Arc<JetStreamCtx>, // JetStreamCtx -> Arc<JetStreamCtx>
+    nats_client: Arc<NatsClient>, // NatsClient を保持
     _phantom: PhantomData<E>,
 }
 
 impl<E: Event> JsPublisher<E> {
     /// イベント型から新しいJsPublisherを作成
-    pub fn from_event_type(js_ctx: Arc<JetStreamCtx>) -> Self {
-        // JetStreamCtx -> Arc<JetStreamCtx>
+    pub fn from_event_type(nats_client: Arc<NatsClient>) -> Self {
+        // NatsClient を受け取るように変更
         Self {
-            js_ctx,
+            nats_client,
             _phantom: PhantomData,
         }
     }
@@ -57,11 +59,11 @@ impl<E: Event> EventSink<E> for JsPublisher<E> {
             }
         };
 
-        // JetStreamにパブリッシュ
+        // JetStream にパブリッシュ (NatsClient 経由で JetStream コンテキストを取得)
         debug!(subject = %subject, "Publishing event to JetStream");
         match self
-            .js_ctx
-            .js
+            .nats_client // js_ctx -> nats_client
+            .jetstream_context() // jetstream_context() メソッドを呼び出す
             .publish(subject.clone(), payload.into())
             .await
         {
@@ -71,7 +73,8 @@ impl<E: Event> EventSink<E> for JsPublisher<E> {
             }
             Err(e) => {
                 error!(subject = %subject, error = %e, "Failed to publish event to JetStream");
-                Err(anyhow::anyhow!(e).context("Failed to publish event to JetStream"))
+                // anyhow!(e) -> anyhow::Error::new(e) に変更
+                Err(anyhow::Error::new(e).context("Failed to publish event to JetStream"))
             }
         }
     }

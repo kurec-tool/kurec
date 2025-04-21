@@ -25,8 +25,13 @@
 
 ## 📦 infra と app (docs/design.md より)
 
-- `infra`: 外部システム（例: JetStream）との接続を担当する実装を提供する。
-- `app (workers)`: `WorkerBuilder` を使用してワーカーを構築し、ミドルウェアを適用する。CLI (`clap`) でワーカーを選択可能にする。
+- `infra`: 外部システムとの接続や具体的な実装を担当するクレート群。
+  - `infra_nats`: NATS サーバーへの接続と、JetStream コンテキストや KV ストアへの基本的なアクセスを提供する。
+  - `infra_jetstream`: `infra_nats` を利用し、JetStream の Pub/Sub 機能（`JsPublisher`, `JsSubscriber`）やストリーム管理機能 (`setup_all_streams`) を提供する。
+  - `infra_kvs`: `infra_nats` を利用し、NATS KV ストアを用いたリポジトリ実装 (`NatsKvProgramRepository`) を提供する。
+  - `infra_mirakc`: mirakc API クライアントや SSE イベントソースを提供する。
+  - (その他、必要に応じて `infra_*` クレートを追加)
+- `app (workers)`: `domain` と `infra` を組み合わせて具体的なワーカーアプリケーションを構築する。CLI (`clap`) でワーカーを選択可能にする。
 
 ## 🔄 エラーハンドリング (docs/design.md より)
 
