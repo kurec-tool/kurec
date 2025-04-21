@@ -3,4 +3,5 @@
 //! このクレートは、他のクレートで共有される基本的な型定義を提供します。
 
 pub mod event_metadata;
-pub mod stream;
+pub mod kvs;
+pub mod stream; // KVSバケット定義用モジュールを追加

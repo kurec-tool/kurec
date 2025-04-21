@@ -1,0 +1,7 @@
+error: Missing required attribute `bucket_name`
+ --> tests/ui/kvs_fail/fail_missing_name.rs:5:1
+  |
+5 | #[define_kvs_bucket] // bucket_name がない
+  | ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `define_kvs_bucket` (in Nightly builds, run with -Z macro-backtrace for more info)
