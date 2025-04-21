@@ -13,10 +13,12 @@ proc-macro = true
 ctor = "0.2.7"
 heck = "0.4.1"
 humantime = "2.2.0"
-shared_core = { version = "0.0.1", path = "../core" }
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
+shared_core = { path = "../core" }
+shared_types = { path = "../types" }
 syn = { version = "2.0.100", features = ["full"] }
+inflections = "1.1.1"
 
 [dev-dependencies]
 serde = { version = "1.0.219", features = ["derive"] }

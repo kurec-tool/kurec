@@ -6,7 +6,7 @@ use std::sync::Arc; // Arc をインポート
 use shared_core::event_metadata::Event;
 use shared_core::event_sink::EventSink; // event_publisher -> event_sink
 use std::marker::PhantomData;
-use tracing::instrument; // error マクロは不要になったので削除
+use tracing::{debug, error, instrument}; // debug, error マクロを追加
 
 use crate::JetStreamCtx;
 
@@ -42,17 +42,38 @@ impl<E: Event> JsPublisher<E> {
 impl<E: Event> EventSink<E> for JsPublisher<E> {
     #[instrument(skip(self, event), fields(subject = %E::stream_subject()))]
     async fn publish(&self, event: E) -> Result<()> {
+        let subject = E::stream_subject();
+        debug!(subject = %subject, "Serializing event for JetStream");
+
         // イベントをJSONにシリアライズ
-        let payload = serde_json::to_vec(&event).context("Failed to serialize event to JSON")?;
+        let payload = match serde_json::to_vec(&event) {
+            Ok(p) => {
+                debug!(subject = %subject, size = p.len(), "Event serialized successfully");
+                p
+            }
+            Err(e) => {
+                error!(subject = %subject, error = %e, "Failed to serialize event to JSON");
+                return Err(anyhow::anyhow!(e).context("Failed to serialize event to JSON"));
+            }
+        };
 
         // JetStreamにパブリッシュ
-        self.js_ctx
+        debug!(subject = %subject, "Publishing event to JetStream");
+        match self
+            .js_ctx
             .js
-            .publish(E::stream_subject(), payload.into())
+            .publish(subject.clone(), payload.into())
             .await
-            .context("Failed to publish event to JetStream")?;
-
-        Ok(())
+        {
+            Ok(_) => {
+                debug!(subject = %subject, "Successfully published event to JetStream");
+                Ok(())
+            }
+            Err(e) => {
+                error!(subject = %subject, error = %e, "Failed to publish event to JetStream");
+                Err(anyhow::anyhow!(e).context("Failed to publish event to JetStream"))
+            }
+        }
     }
 }
 

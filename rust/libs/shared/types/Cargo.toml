@@ -1,0 +1,11 @@
+[package]
+name = "shared_types"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+humantime = "2.2.0"
+serde = { version = "1.0.219", features = ["derive"] }

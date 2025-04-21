@@ -42,20 +42,20 @@ pub async fn connect(nats_url: &str) -> Result<JetStreamCtx> {
 /// *既存のストリーム*は更新されます（冪等）— 起動時に毎回実行できます。
 pub async fn setup_all_streams(js: &jetstream::context::Context) -> Result<()> {
     use shared_core::streams::get_all_stream_configs;
-
-    // ストリーム定義を初期化
-    shared_core::init_streams();
+    use shared_types::stream::{DiscardPolicy, StorageType};
 
     // 登録されたすべてのストリーム設定を取得
     for config in get_all_stream_configs() {
         // JetStream設定に変換
-        let js_config = jetstream::stream::Config {
+        let mut js_config = jetstream::stream::Config {
             name: config.name.clone(),
-            subjects: vec![format!("{}.*", config.name)], // ワイルドカードサブジェクト
-            max_age: config.max_age.unwrap_or(Duration::from_secs(0)),
-            // max_deliver と ack_wait は consumer 設定に移動
             ..Default::default()
         };
+
+        // オプション設定を適用
+        if let Some(max_age) = config.max_age {
+            js_config.max_age = max_age;
+        }
 
         // idempotent: create if absent, update if present
         match js.get_or_create_stream(&js_config).await {
@@ -74,28 +74,8 @@ pub async fn setup_all_streams(js: &jetstream::context::Context) -> Result<()> {
 /// - `kurec-events` ストリーム
 /// - `kurec_epg` KV ストア
 pub async fn setup_kurec_resources(js: &jetstream::context::Context) -> Result<()> {
-    // kurec-events ストリームの設定
-    let kurec_events_config = jetstream::stream::Config {
-        name: "kurec-events".to_string(),
-        subjects: vec!["kurec-events.*".to_string()],
-        // 必要に応じて max_age などを設定
-        ..Default::default()
-    };
-
-    // kurec-events ストリームを作成または更新
-    match js.get_or_create_stream(&kurec_events_config).await {
-        Ok(_) => {
-            js.update_stream(kurec_events_config).await?;
-            println!("JetStream stream 'kurec-events' created or updated.");
-        }
-        Err(e) => {
-            eprintln!(
-                "Failed to create or update JetStream stream 'kurec-events': {}",
-                e
-            );
-            return Err(e.into());
-        }
-    }
+    // ストリーム設定は stream_registry から取得するため、
+    // ここでは KV ストアのみを設定します
 
     // kurec_epg KV ストアの設定
     let kurec_epg_kv_config = jetstream::kv::Config {

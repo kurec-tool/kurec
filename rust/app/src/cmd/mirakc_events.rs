@@ -18,7 +18,7 @@ use shared_core::{
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 /// mirakcイベント処理コマンドを実行
 pub async fn run_mirakc_events(
@@ -69,10 +69,18 @@ pub async fn run_mirakc_events(
             maybe_event_dto = event_stream.next() => {
                 match maybe_event_dto {
                     Some(event_dto) => {
+                        // イベント受信のログを追加
+                        info!(
+                            event_type = %event_dto.event_type,
+                            received_at = %event_dto.received_at,
+                            "Received mirakc event"
+                        );
+
                         // ハンドラでイベントを処理
                         match handler.handle(event_dto).await {
                             Ok(_) => {
-                                // SSEにはAckがないので何もしない
+                                // 処理成功のログを追加
+                                debug!("Successfully handled mirakc event");
                             }
                             Err(e) => {
                                 // エラー処理 (ClassifyError に基づく)
@@ -90,8 +98,18 @@ pub async fn run_mirakc_events(
                         }
                     }
                     None => {
-                        info!("Mirakc event stream ended.");
-                        break; // ストリームが終了したらループを抜ける
+                        error!("Mirakc event stream ended unexpectedly. Attempting to reconnect...");
+                        // ストリームが終了したら再接続を試みる
+                        match source.event_stream().await {
+                            Ok(new_stream) => {
+                                info!("Successfully reconnected to mirakc event stream");
+                                event_stream = new_stream;
+                            }
+                            Err(e) => {
+                                error!("Failed to reconnect to mirakc event stream: {:?}. Exiting.", e);
+                                break; // 再接続に失敗したらループを抜ける
+                            }
+                        }
                     }
                 }
             }

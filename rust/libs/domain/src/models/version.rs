@@ -95,14 +95,13 @@ mod tests {
             latest: "2.3.4".to_string(),
         };
 
-        // ↓↓↓ この行を修正 ↓↓↓
-        let (current, _latest) = version.parse_versions().unwrap(); // latest を _latest に変更
+        let (current, latest) = version.parse_versions().unwrap();
         assert_eq!(current.major, 1);
         assert_eq!(current.minor, 2);
         assert_eq!(current.patch, 3);
-        // assert_eq!(_latest.major, 2); // _latest は使用しないためコメントアウト
-        // assert_eq!(_latest.minor, 3); // _latest は使用しないためコメントアウト
-        // assert_eq!(_latest.patch, 4); // _latest は使用しないためコメントアウト
+        assert_eq!(latest.major, 2);
+        assert_eq!(latest.minor, 3);
+        assert_eq!(latest.patch, 4);
     }
 
     #[test]

@@ -1,4 +1,5 @@
-use heck::ToSnakeCase;
+use heck::{ToKebabCase, ToSnakeCase};
+use inflections::case::is_kebab_case;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -40,6 +41,21 @@ pub fn event_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     let stream = stream.expect("stream parameter is required");
+
+    // ストリーム名がケバブケースかどうかを検証
+    if !is_kebab_case(&stream) {
+        let kebab_case = stream.to_kebab_case();
+        return syn::Error::new(
+            Span::call_site(),
+            format!(
+                "Stream name must be kebab-case. '{}' should be '{}'.",
+                stream, kebab_case
+            ),
+        )
+        .to_compile_error()
+        .into();
+    }
+
     let stream_lit = LitStr::new(&stream, Span::call_site());
 
     // イベント名が指定されていない場合は構造体名をsnake_caseに変換
@@ -50,7 +66,7 @@ pub fn event_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #input
 
-        impl shared_core::event_metadata::Event for #struct_name {
+        impl shared_types::event_metadata::Event for #struct_name {
             fn stream_name() -> &'static str {
                 #stream_lit
             }

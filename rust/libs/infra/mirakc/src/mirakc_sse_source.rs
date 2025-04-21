@@ -41,13 +41,23 @@ impl MirakcSseSource {
             match reqwest::get(&events_url).await {
                 Ok(resp) if resp.status().is_success() => {
                     tracing::info!("Connected to mirakc events endpoint: {}", events_url);
+                    tracing::debug!("Starting to receive SSE events");
 
                     // StreamExt::map_errを使わずに手動で変換
                     let stream = futures::stream::unfold(resp, |mut resp| async move {
                         match resp.chunk().await {
-                            Ok(Some(chunk)) => Some((Ok(chunk), resp)),
-                            Ok(None) => None,
-                            Err(e) => Some((Err(anyhow::Error::new(e)), resp)),
+                            Ok(Some(chunk)) => {
+                                tracing::debug!("Received chunk of size: {} bytes", chunk.len());
+                                Some((Ok(chunk), resp))
+                            }
+                            Ok(None) => {
+                                tracing::warn!("SSE stream ended unexpectedly. This may cause events to be processed only once. Check if mirakc server is still running.");
+                                None
+                            }
+                            Err(e) => {
+                                tracing::error!("Error receiving chunk: {:?}. This may cause events to be processed only once.", e);
+                                Some((Err(anyhow::Error::new(e)), resp))
+                            }
                         }
                     });
 
@@ -87,11 +97,23 @@ impl MirakcSseSource {
     /// MirakcEventDto のストリームを取得する
     pub async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventDto>> {
         let mirakc_url = self.mirakc_url.clone();
+        tracing::info!("Starting event stream from mirakc URL: {}", mirakc_url);
 
         // SSEストリームを取得
-        let stream = self.get_sse_stream().await?;
+        tracing::debug!("Attempting to get SSE stream...");
+        let stream = match self.get_sse_stream().await {
+            Ok(s) => {
+                tracing::info!("Successfully obtained SSE stream");
+                s
+            }
+            Err(e) => {
+                tracing::error!("Failed to get SSE stream: {:?}. This will prevent events from being processed.", e);
+                return Err(e);
+            }
+        };
 
         // SSEストリームを MirakcEventDto ストリームに変換
+        tracing::debug!("Converting SSE stream to MirakcEventDto stream");
         let event_stream = stream
             .eventsource()
             .filter_map(move |event_result| {
@@ -99,6 +121,10 @@ impl MirakcSseSource {
                 future::ready(match event_result {
                     Ok(event) => {
                         // MirakcEventDtoを作成
+                        tracing::info!(
+                            event_type = %event.event,
+                            "Received SSE event - will be processed and published to JetStream"
+                        );
                         Some(MirakcEventDto {
                             mirakc_url,
                             event_type: event.event,
@@ -107,13 +133,17 @@ impl MirakcSseSource {
                         })
                     }
                     Err(e) => {
-                        tracing::error!("Error receiving SSE event: {:?}", e);
+                        tracing::error!(
+                            "Error receiving SSE event: {:?}. Event will be skipped.",
+                            e
+                        );
                         None // エラーが発生したイベントはスキップ
                     }
                 })
             })
             .boxed();
 
+        tracing::info!("Event stream setup complete. Events will be processed as they arrive.");
         Ok(event_stream)
     }
 } // impl MirakcSseSource の閉じ括弧を追加

@@ -2,90 +2,8 @@ use proc_macro::TokenStream;
 #[cfg(test)]
 use std::time::Duration;
 
-mod define_streams;
 mod event;
-mod stream_worker;
-
-/// ストリームワーカーを定義するマクロ
-///
-/// このマクロは、イベント処理関数をラップして、JetStreamを使用したストリームワーカーを生成します。
-/// 元の関数をそのまま保持し、さらに `{関数名}_worker` という名前のワーカー実行関数を生成します。
-///
-/// # 要件
-///
-/// - 関数は正確に1つのパラメータを持つ必要があります
-/// - 関数は `Result<OutputType, ErrorType>` を返す必要があります
-/// - パラメータと戻り値の型は `Event` トレイトを実装している必要があります
-/// - エラー型は `ClassifyError` トレイトを実装している必要があります
-///
-/// # 属性パラメータ
-///
-/// - `durable = "名前"`: 永続的なコンシューマー名を指定します（省略可）
-///
-/// # 生成される関数
-///
-/// このマクロは元の関数に加えて、以下の関数を生成します：
-///
-/// ```text
-/// async fn 元の関数名_worker(
-///     js_ctx: &infra_jetstream::JetStreamCtx,
-///     shutdown: tokio_util::sync::CancellationToken
-/// ) -> anyhow::Result<()>
-/// ```
-///
-/// # 使用例
-///
-/// ```ignore
-/// use shared_macros::{event, stream_worker};
-/// use serde::{Serialize, Deserialize};
-/// use shared_core::error_handling::{ClassifyError, ErrorAction};
-///
-/// // エラー型定義
-/// #[derive(Debug, thiserror::Error)]
-/// enum MyError {
-///     #[error("エラー: {0}")]
-///     Error(String),
-/// }
-///
-/// // エラー分類の実装
-/// impl ClassifyError for MyError {
-///     fn error_action(&self) -> ErrorAction {
-///         ErrorAction::Retry
-///     }
-/// }
-///
-/// #[event(stream = "test")]
-/// #[derive(Serialize, Deserialize)]
-/// struct InputEvent {
-///     data: String,
-/// }
-///
-/// #[event(stream = "test")]
-/// #[derive(Serialize, Deserialize)]
-/// struct OutputEvent {
-///     data: String,
-/// }
-///
-/// #[stream_worker]
-/// async fn process_event(event: InputEvent) -> Result<OutputEvent, MyError> {
-///     Ok(OutputEvent { data: event.data })
-/// }
-///
-/// // 以下の関数が生成されます：
-/// // async fn process_event_worker(
-/// //     js_ctx: &infra_jetstream::JetStreamCtx,
-/// //     shutdown: tokio_util::sync::CancellationToken
-/// // ) -> anyhow::Result<()>
-/// ```
-#[proc_macro_attribute]
-pub fn stream_worker(attr: TokenStream, item: TokenStream) -> TokenStream {
-    stream_worker::stream_worker_impl(attr, item)
-}
-
-#[proc_macro]
-pub fn define_streams(input: TokenStream) -> TokenStream {
-    define_streams::define_streams_impl(input)
-}
+mod stream;
 
 #[cfg(test)]
 fn parse_duration(opt: &Option<String>) -> Option<Duration> {
@@ -98,6 +16,47 @@ fn parse_duration(opt: &Option<String>) -> Option<Duration> {
 #[proc_macro_attribute]
 pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     event::event_impl(attr, item)
+}
+
+/// ストリームを定義するマクロ
+///
+/// このマクロは、型にStreamトレイトを実装し、自動的にストリームレジストリに登録します。
+///
+/// # 属性パラメータ
+///
+/// - `name = "ストリーム名"`: ストリーム名を指定します（省略時は型名をケバブケースに変換）
+/// - `max_age = "期間"`: メッセージの最大保持期間を指定します（例: "7d", "24h"）
+/// - `max_msgs = 数値`: 最大メッセージ数を指定します
+/// - `max_bytes = 数値`: 最大バイト数を指定します
+/// - `max_msg_size = 数値`: 最大メッセージサイズを指定します
+/// - `storage = "タイプ"`: ストレージタイプを指定します（"file" または "memory"）
+/// - `discard = "ポリシー"`: 破棄ポリシーを指定します（"old" または "new"）
+/// - `duplicate_window = "期間"`: 重複検出ウィンドウを指定します（例: "2m", "1h"）
+/// - `allow_rollup = 真偽値`: ロールアップを許可するかどうかを指定します
+/// - `deny_delete = 真偽値`: 削除を拒否するかどうかを指定します
+/// - `deny_purge = 真偽値`: パージを拒否するかどうかを指定します
+/// - `description = "説明"`: ストリームの説明を指定します
+///
+/// # 使用例
+///
+/// ```ignore
+/// use shared_macros::stream;
+///
+/// #[stream(max_age = "7d")]
+/// enum MirakcEvents;
+///
+/// #[stream(
+///     max_age = "3d",
+///     max_msgs = 10000,
+///     storage = "file",
+///     discard = "old",
+///     description = "KuRec events stream"
+/// )]
+/// enum KurecEvents;
+/// ```
+#[proc_macro_attribute]
+pub fn stream(attr: TokenStream, item: TokenStream) -> TokenStream {
+    stream::stream_impl(attr, item)
 }
 
 #[cfg(test)]
