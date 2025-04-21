@@ -39,11 +39,32 @@ impl NatsKvProgramRepository {
         };
 
         info!(bucket_name = %kv_config.bucket, "EPG 用 KV ストアを取得または作成します...");
-        // NatsClient を使用して KV ストアを取得または作成
-        let store = nats_client
-            .get_or_create_kv_store(kv_config)
-            .await
-            .context("EPG 用 KV ストアの取得/作成に失敗しました")?; // anyhow::Context を使用
+        // NatsClient から JetStream Context を取得し、KV ストアを作成/取得
+        let js_ctx = nats_client.jetstream_context();
+        let store = match js_ctx.get_key_value(&kv_config.bucket).await {
+            Ok(store) => {
+                info!(bucket_name = %kv_config.bucket, "既存の EPG 用 KV ストアを取得しました。");
+                // TODO: 設定が異なる場合に update_key_value を呼ぶべきか検討
+                store
+            }
+            Err(err)
+                if err.to_string().contains("no key value store named")
+                    || err.to_string().contains("stream not found") =>
+            {
+                info!(bucket_name = %kv_config.bucket, "EPG 用 KV ストアが存在しないか、関連ストリームが見つからないため、新規作成します。");
+                js_ctx
+                    .create_key_value(kv_config)
+                    .await
+                    .context("EPG 用 KV ストアの作成に失敗しました")?
+            }
+            Err(e) => {
+                // その他の予期せぬエラー
+                return Err(anyhow::Error::new(e).context(format!(
+                    "EPG 用 KV ストア '{}' の取得中にエラーが発生しました",
+                    kv_config.bucket
+                )));
+            }
+        };
 
         Ok(Self { store })
     }
@@ -247,12 +268,28 @@ mod tests {
             ..Default::default()
         };
 
-        // NatsClient を使用して KV ストアを作成 (テスト用なので直接作成)
-        // new() のテストではないため、ここでは直接作成する
-        let store = nats_client
-            .get_or_create_kv_store(kv_config)
-            .await
-            .context("テスト用 KV ストアの作成に失敗")?;
+        // NatsClient から JetStream Context を取得し、テスト用 KV ストアを作成
+        let js_ctx = nats_client.jetstream_context();
+        let store = match js_ctx.get_key_value(&kv_config.bucket).await {
+            Ok(store) => store, // 既存ストアを返す
+            Err(err)
+                if err.to_string().contains("no key value store named")
+                    || err.to_string().contains("stream not found") =>
+            {
+                // ストアが存在しないか、関連ストリームが見つからない場合は作成
+                js_ctx
+                    .create_key_value(kv_config)
+                    .await
+                    .context("テスト用 KV ストアの作成に失敗")?
+            }
+            Err(e) => {
+                // その他のエラー
+                return Err(anyhow::Error::new(e).context(format!(
+                    "テスト用 KV ストア '{}' の取得中にエラーが発生しました",
+                    kv_config.bucket
+                )));
+            }
+        };
 
         // クリーナーを作成 (JetStream Context を渡す)
         let cleaner = TestBucketCleaner {
