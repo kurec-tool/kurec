@@ -44,9 +44,6 @@ pub async fn setup_all_streams(js: &jetstream::context::Context) -> Result<()> {
     use shared_core::streams::get_all_stream_configs;
     use shared_types::stream::{DiscardPolicy, StorageType};
 
-    // ストリーム定義を初期化
-    shared_core::init_streams();
-
     // 登録されたすべてのストリーム設定を取得
     for config in get_all_stream_configs() {
         // JetStream設定に変換

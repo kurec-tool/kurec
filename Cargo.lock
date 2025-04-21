@@ -1460,7 +1460,6 @@ dependencies = [
  "domain",
  "futures",
  "heck 0.4.1",
- "inventory",
  "serde",
  "serde_json",
  "shared_core",

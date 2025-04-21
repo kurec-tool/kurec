@@ -12,11 +12,6 @@ pub mod stream_worker;
 pub mod streams;
 pub mod worker;
 
-// ストリーム定義の初期化
-pub fn init_streams() {
-    // TODO inventoryを見て全部初期化する
-}
-
 #[cfg(test)]
 mod error_handling_test;
 

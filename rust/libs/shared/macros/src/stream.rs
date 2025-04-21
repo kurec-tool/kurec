@@ -323,13 +323,6 @@ pub fn stream_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
                 config
             }
         }
-
-        inventory::submit! {
-            shared_core::stream_registry::StreamRegistration {
-                name: #name,
-                config: || #type_name::config(),
-            }
-        }
     };
 
     TokenStream::from(expanded)
