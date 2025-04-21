@@ -20,6 +20,7 @@ domain = { path = "../../domain" } # 追加
 shared_core = { version = "0.0.1", path = "../../shared/core" }
 shared_macros = { version = "0.0.1", path = "../../shared/macros" }
 tracing = "0.1" # 追加
+shared_types = { version = "0.0.1", path = "../../shared/types" }
 
 [dev-dependencies]
 testcontainers = "0.23.3"

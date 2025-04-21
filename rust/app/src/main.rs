@@ -6,7 +6,7 @@ use tokio::signal;
 use tokio_util::sync::CancellationToken;
 
 mod cmd;
-mod workers;
+mod streams_def;
 
 /// アプリケーション設定
 pub struct AppConfig {
@@ -20,14 +20,12 @@ pub struct AppConfig {
 struct Cli {
     /// 起動するワーカーの種類
     #[command(subcommand)]
-    worker: Option<WorkerType>,
+    worker: WorkerType,
 }
 
 /// 起動可能なワーカーの種類
 #[derive(Subcommand, Debug)]
 enum WorkerType {
-    /// EPG情報を処理するワーカー
-    Epg,
     /// mirakcのバージョンを確認
     CheckVersion {
         /// mirakcサーバーのURL
@@ -53,6 +51,9 @@ fn get_nats_url() -> String {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // ログの初期化
+    tracing_subscriber::fmt::init();
+
     // コマンドライン引数を解析
     let cli = Cli::parse();
 
@@ -82,19 +83,7 @@ async fn main() -> Result<()> {
     };
 
     // ワーカーを起動
-    match cli.worker.unwrap_or(WorkerType::Epg) {
-        WorkerType::Epg => {
-            println!("Starting EPG worker...");
-            let js_ctx_clone = js_ctx.clone();
-            let shutdown_worker = shutdown.clone();
-            let _epg_worker_handle = tokio::spawn(async move {
-                if let Err(e) =
-                    workers::process_epg_event_worker(&js_ctx_clone, shutdown_worker).await
-                {
-                    eprintln!("EPG worker error: {}", e);
-                }
-            });
-        }
+    match cli.worker {
         WorkerType::CheckVersion { mirakc_url } => {
             println!("mirakcバージョンを確認中: {}...", mirakc_url);
 
@@ -198,6 +187,8 @@ async fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use clap::CommandFactory as _;
+
     use super::*;
 
     #[test]
@@ -220,25 +211,48 @@ mod tests {
         // テスト後に環境変数をクリア
         env::remove_var("NATS_URL");
     }
-
     #[test]
-    fn test_cli_default_worker() {
-        // 引数なしの場合
-        let cli = Cli::parse_from(["app"]);
-
-        // デフォルトでは None が返される
-        assert!(cli.worker.is_none());
+    fn test_cli_structure() {
+        // CLI構造が正しく生成されることを確認
+        Cli::command().debug_assert();
     }
 
     #[test]
-    fn test_cli_epg_worker() {
-        // EPGワーカーを指定
-        let cli = Cli::parse_from(["app", "epg"]);
+    fn test_cli_check_version() {
+        // CheckVersionサブコマンドの引数を解析
+        let args = vec!["app", "check-version", "--mirakc-url", "http://example.com"];
+        let cli = Cli::parse_from(args);
 
-        // WorkerType::Epg が返される
-        match cli.worker {
-            Some(WorkerType::Epg) => (),
-            _ => panic!("Expected WorkerType::Epg"),
+        if let WorkerType::CheckVersion { mirakc_url } = cli.worker {
+            assert_eq!(mirakc_url, "http://example.com");
+        } else {
+            panic!("Expected WorkerType::CheckVersion");
+        }
+    }
+
+    #[test]
+    fn test_cli_mirakc_events() {
+        // MirakcEventsサブコマンドの引数を解析
+        let args = vec!["app", "mirakc-events", "--mirakc-url", "http://example.com"];
+        let cli = Cli::parse_from(args);
+
+        if let WorkerType::MirakcEvents { mirakc_url } = cli.worker {
+            assert_eq!(mirakc_url, "http://example.com");
+        } else {
+            panic!("Expected WorkerType::MirakcEvents");
+        }
+    }
+
+    #[test]
+    fn test_cli_epg_updater() {
+        // EpgUpdaterサブコマンドの引数を解析
+        let args = vec!["app", "epg-updater"];
+        let cli = Cli::parse_from(args);
+
+        if let WorkerType::EpgUpdater = cli.worker {
+            // 正常にEpgUpdaterが選択されることを確認
+        } else {
+            panic!("Expected WorkerType::EpgUpdater");
         }
     }
 }

@@ -98,8 +98,18 @@ pub async fn run_mirakc_events(
                         }
                     }
                     None => {
-                        info!("Mirakc event stream ended.");
-                        break; // ストリームが終了したらループを抜ける
+                        error!("Mirakc event stream ended unexpectedly. Attempting to reconnect...");
+                        // ストリームが終了したら再接続を試みる
+                        match source.event_stream().await {
+                            Ok(new_stream) => {
+                                info!("Successfully reconnected to mirakc event stream");
+                                event_stream = new_stream;
+                            }
+                            Err(e) => {
+                                error!("Failed to reconnect to mirakc event stream: {:?}. Exiting.", e);
+                                break; // 再接続に失敗したらループを抜ける
+                            }
+                        }
                     }
                 }
             }
