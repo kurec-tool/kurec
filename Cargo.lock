@@ -2527,6 +2527,7 @@ name = "shared_macros"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "async-nats",
  "async-trait",
  "ctor",
  "futures",
@@ -2550,6 +2551,7 @@ dependencies = [
 name = "shared_types"
 version = "0.0.1"
 dependencies = [
+ "async-nats",
  "humantime",
  "serde",
 ]

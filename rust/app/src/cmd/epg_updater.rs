@@ -20,6 +20,8 @@ use shared_core::{
     event_source::EventSource,   // EventSource トレイト
     stream_worker::StreamWorker, // StreamWorker
 };
+use shared_macros::define_kvs_bucket; // KVSバケット定義マクロ
+use shared_types::kvs::KvsBucket; // KvsBucket トレイト
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
@@ -43,6 +45,10 @@ impl EpgNotifierTrait for JsEpgNotifier {
     }
 }
 
+// KVSバケット定義
+#[define_kvs_bucket(bucket_name = "kurec_epg")]
+struct EpgKvsBucket;
+
 /// EPG更新ワーカーを実行 (StreamWorker を使用)
 pub async fn run_epg_updater(config: &crate::AppConfig, shutdown: CancellationToken) -> Result<()> {
     info!("Starting EPG updater worker...");
@@ -51,13 +57,10 @@ pub async fn run_epg_updater(config: &crate::AppConfig, shutdown: CancellationTo
     let js_ctx = Arc::new(infra_jetstream::connect(&config.nats_url).await?);
     infra_jetstream::setup_all_streams(&js_ctx.js).await?; // ストリーム設定は必要
 
-    // KVSストアを取得または作成
+    // KVSストアを取得または作成 (マクロで定義した設定を使用)
     let kv_store = js_ctx
         .js
-        .create_key_value(async_nats::jetstream::kv::Config {
-            bucket: "kurec_epg".to_string(),
-            ..Default::default()
-        })
+        .create_key_value(EpgKvsBucket::config()) // マクロで生成された config を使用
         .await
         .context("Failed to create/get KV store")?;
 

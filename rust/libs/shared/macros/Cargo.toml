@@ -10,6 +10,7 @@ edition.workspace = true
 proc-macro = true
 
 [dependencies]
+async-nats = "0.40.0" # define_kvs_bucket マクロで使用
 ctor = "0.2.7"
 heck = "0.4.1"
 humantime = "2.2.0"
