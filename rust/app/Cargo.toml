@@ -30,5 +30,6 @@ shared_types = { path = "../libs/shared/types" }
 infra_jetstream = { path = "../libs/infra/jetstream" }
 infra_mirakc = { path = "../libs/infra/mirakc" }
 infra_kvs = { path = "../libs/infra/kvs" }
+infra_nats = { path = "../libs/infra/nats" } # 追加
 domain = { path = "../libs/domain" }
 mirakc-client = { path = "../../server/mirakc-client" } # 追加

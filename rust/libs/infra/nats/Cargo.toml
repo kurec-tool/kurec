@@ -1,0 +1,25 @@
+[package]
+name = "infra_nats"
+version = "0.1.0"
+edition = "2021"
+publish = false # クレートを公開しない場合は false を推奨
+
+[dependencies]
+# NATS クライアント (ワークスペースから継承)
+async-nats = { workspace = true }
+# エラーハンドリング
+anyhow = "1.0"
+thiserror = "1.0"
+# ロギング
+tracing = "0.1"
+# Tokio ランタイム (KVストア作成時のエラーハンドリング等で必要になる可能性)
+# tokio = { version = "1", features = ["rt", "macros"] } # 必要に応じて機能を選択
+# 非同期トレイト
+# async-trait = "0.1" # このクレートでは直接不要かもしれない
+
+[dev-dependencies]
+# テスト用
+tokio = { version = "1", features = ["full"] }
+testcontainers = "0.23.3" # 統合テスト用
+rand = "0.8" # テストでユニークな名前を生成するため
+futures = "0.3.31" # testcontainers の async runner で必要になる場合がある

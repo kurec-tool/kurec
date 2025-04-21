@@ -1,8 +1,12 @@
 use anyhow::{Context, Result}; // anyhow::Result を使用
-use async_nats::jetstream::kv::Store; // Entry を削除
+use async_nats::jetstream::kv::{Config as KvConfig, Store}; // Config をインポート
 use async_trait::async_trait;
 use bytes::Bytes;
-use tracing::{debug, error, instrument}; // anyhow::Result を使用
+use std::sync::Arc; // Arc をインポート
+use tracing::{debug, error, info, instrument}; // info を追加
+
+// infra_nats クレートの NatsClient をインポート
+use infra_nats::NatsClient;
 
 use domain::models::epg::KurecProgram;
 use domain::ports::repositories::KurecProgramRepository;
@@ -19,11 +23,50 @@ pub struct NatsKvProgramRepository {
 impl NatsKvProgramRepository {
     /// 新しい `NatsKvProgramRepository` を作成する。
     ///
+    /// このリポジトリは "kurec_epg" KV バケットを使用します。
+    /// バケットが存在しない場合は作成されます。
+    ///
     /// # Arguments
     ///
-    /// * `store` - 使用するNATS KVストア (`async_nats::kv::Store`)
-    pub fn new(store: Store) -> Self {
-        Self { store }
+    /// * `nats_client` - 接続済みの `NatsClient`
+    pub async fn new(nats_client: Arc<NatsClient>) -> Result<Self> {
+        // "kurec_epg" バケットの設定を定義
+        // TODO: バケット名を定数化または設定から取得する
+        let kv_config = KvConfig {
+            bucket: "kurec_epg".to_string(),
+            // 必要に応じて他の設定 (TTL, history など) を追加
+            ..Default::default()
+        };
+
+        info!(bucket_name = %kv_config.bucket, "EPG 用 KV ストアを取得または作成します...");
+        // NatsClient から JetStream Context を取得し、KV ストアを作成/取得
+        let js_ctx = nats_client.jetstream_context();
+        let store = match js_ctx.get_key_value(&kv_config.bucket).await {
+            Ok(store) => {
+                info!(bucket_name = %kv_config.bucket, "既存の EPG 用 KV ストアを取得しました。");
+                // TODO: 設定が異なる場合に update_key_value を呼ぶべきか検討
+                store
+            }
+            Err(err)
+                if err.to_string().contains("no key value store named")
+                    || err.to_string().contains("stream not found") =>
+            {
+                info!(bucket_name = %kv_config.bucket, "EPG 用 KV ストアが存在しないか、関連ストリームが見つからないため、新規作成します。");
+                js_ctx
+                    .create_key_value(kv_config)
+                    .await
+                    .context("EPG 用 KV ストアの作成に失敗しました")?
+            }
+            Err(e) => {
+                // その他の予期せぬエラー
+                return Err(anyhow::Error::new(e).context(format!(
+                    "EPG 用 KV ストア '{}' の取得中にエラーが発生しました",
+                    kv_config.bucket
+                )));
+            }
+        };
+
+        Ok(Self { store })
     }
 
     /// KVSで使用するキーを生成する。
@@ -122,13 +165,15 @@ impl KurecProgramRepository for NatsKvProgramRepository {
 } // impl ブロックの正しい閉じ括弧
 
 // --- 単体テスト ---
+// --- 単体テスト ---
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_nats::connect;
+    // use async_nats::connect; // infra_nats::connect を使うので不要
     use chrono::{TimeZone, Utc};
     use domain::models::epg::KurecProgram;
     use futures::StreamExt;
+    use infra_nats::connect as nats_connect; // infra_nats::connect をインポート
     use testcontainers::{
         core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
     };
@@ -200,19 +245,22 @@ mod tests {
     // Helper function to create a test NATS client and KV store
     async fn setup_test_kv() -> anyhow::Result<(
         ContainerAsync<GenericImage>,
-        async_nats::Client,
+        Arc<NatsClient>,
         Store,
         TestBucketCleaner,
     )> {
         let (container, url) = setup_nats().await?;
 
-        let client = async_nats::connect(&url).await?;
-        let context = async_nats::jetstream::new(client.clone());
+        // infra_nats::connect を使用して NatsClient を取得
+        let nats_client = nats_connect(&url)
+            .await
+            .context("テスト用 NATS クライアントの接続に失敗")?;
+        let context = nats_client.jetstream_context().clone(); // クリーナー用にコンテキストをクローン
         let bucket_name = format!("test_kurec_epg_{}", rand::random::<u32>());
 
         debug!("Creating test bucket: {}", bucket_name);
 
-        // KVストアの設定
+        // KVストアの設定 (テスト用)
         let kv_config = async_nats::jetstream::kv::Config {
             bucket: bucket_name.clone(),
             history: 1,
@@ -220,19 +268,40 @@ mod tests {
             ..Default::default()
         };
 
-        // KVストアを作成
-        let store = context.create_key_value(kv_config).await?;
+        // NatsClient から JetStream Context を取得し、テスト用 KV ストアを作成
+        let js_ctx = nats_client.jetstream_context();
+        let store = match js_ctx.get_key_value(&kv_config.bucket).await {
+            Ok(store) => store, // 既存ストアを返す
+            Err(err)
+                if err.to_string().contains("no key value store named")
+                    || err.to_string().contains("stream not found") =>
+            {
+                // ストアが存在しないか、関連ストリームが見つからない場合は作成
+                js_ctx
+                    .create_key_value(kv_config)
+                    .await
+                    .context("テスト用 KV ストアの作成に失敗")?
+            }
+            Err(e) => {
+                // その他のエラー
+                return Err(anyhow::Error::new(e).context(format!(
+                    "テスト用 KV ストア '{}' の取得中にエラーが発生しました",
+                    kv_config.bucket
+                )));
+            }
+        };
 
-        // クリーナーを作成
+        // クリーナーを作成 (JetStream Context を渡す)
         let cleaner = TestBucketCleaner {
-            context: Some(context),
+            context: Some(context), // クローンしたコンテキストを渡す
             bucket_name,
         };
 
         // 少し待機してKVストアが完全に初期化されるのを待つ
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-        Ok((container, client, store, cleaner))
+        // NatsClient と Store の両方を返す (テスト内容に応じて使い分ける)
+        Ok((container, nats_client.clone(), store, cleaner))
     }
 
     // Helper function to create dummy program data
@@ -268,9 +337,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_repository_new() -> anyhow::Result<()> {
+        let (_container, nats_client, _store, _cleaner) = setup_test_kv().await?;
+
+        // NatsKvProgramRepository::new をテスト
+        let repository_result = NatsKvProgramRepository::new(nats_client.clone()).await;
+        assert!(
+            repository_result.is_ok(),
+            "Repository 作成に失敗: {:?}",
+            repository_result.err()
+        );
+
+        // 作成されたリポジトリが動作するか簡単な確認 (バケット名など)
+        let repository = repository_result.unwrap();
+        assert_eq!(repository.store.name, "kurec_epg"); // ハードコードされたバケット名を確認
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_save_and_get_programs() -> anyhow::Result<()> {
-        let (_container, _client, store, _cleaner) = setup_test_kv().await?;
-        let repository = NatsKvProgramRepository::new(store.clone());
+        // NatsClient を取得するが、リポジトリ作成には store を直接使う (new のテストではないため)
+        let (_container, nats_client, store, _cleaner) = setup_test_kv().await?;
+        // let repository = NatsKvProgramRepository::new(nats_client.clone()).await?; // new を使う場合
+        let repository = NatsKvProgramRepository {
+            store: store.clone(),
+        }; // store を直接設定
 
         let mirakc_url = "http://test-mirakc:1234";
         let service_id = 101i64;
@@ -298,8 +390,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_save_overwrite() -> anyhow::Result<()> {
-        let (_container, _client, store, _cleaner) = setup_test_kv().await?;
-        let repository = NatsKvProgramRepository::new(store.clone());
+        let (_container, _nats_client, store, _cleaner) = setup_test_kv().await?;
+        // let repository = NatsKvProgramRepository::new(_nats_client.clone()).await?; // new を使う場合
+        let repository = NatsKvProgramRepository {
+            store: store.clone(),
+        }; // store を直接設定
 
         let mirakc_url = "http://overwrite-test:5678";
         let service_id = 202i64;

@@ -7,9 +7,10 @@ use heck::ToSnakeCase;
 use shared_core::event_metadata::Event;
 use shared_core::event_source::{AckHandle, EventSource}; // event_subscriber -> event_source
 use std::marker::PhantomData;
-use std::sync::Arc; // Arc をインポート (正しい位置)
+use std::sync::Arc; // Arc をインポート
 
-use crate::JetStreamCtx;
+// infra_nats クレートの NatsClient をインポート
+use infra_nats::NatsClient;
 
 /// 型情報を使用してdurable nameを生成する関数
 fn generate_durable_name<E: Event>() -> String {
@@ -27,16 +28,16 @@ fn generate_durable_name<E: Event>() -> String {
 
 /// JetStreamを使用したイベント購読者
 pub struct JsSubscriber<E: Event> {
-    js_ctx: Arc<JetStreamCtx>, // JetStreamCtx -> Arc<JetStreamCtx>
+    nats_client: Arc<NatsClient>, // NatsClient を保持
     _phantom: PhantomData<E>,
 }
 
 impl<E: Event> JsSubscriber<E> {
     /// イベント型から新しいJsSubscriberを作成
-    pub fn from_event_type(js_ctx: Arc<JetStreamCtx>) -> Self {
-        // JetStreamCtx -> Arc<JetStreamCtx>
+    pub fn from_event_type(nats_client: Arc<NatsClient>) -> Self {
+        // NatsClient を受け取るように変更
         Self {
-            js_ctx,
+            nats_client,
             _phantom: PhantomData,
         }
     }
@@ -46,8 +47,11 @@ impl<E: Event> JsSubscriber<E> {
 // EventSubscriber -> EventSource
 impl<E: Event> EventSource<E> for JsSubscriber<E> {
     async fn subscribe(&self) -> Result<BoxStream<'static, (E, AckHandle)>> {
-        // JetStreamからコンシューマーを取得
-        let stream = self.js_ctx.js.get_stream(E::stream_name()).await?;
+        // JetStream コンテキストを取得
+        let js_ctx = self.nats_client.jetstream_context();
+
+        // JetStreamからストリームを取得
+        let stream = js_ctx.get_stream(E::stream_name()).await?;
 
         // イベント型から一意なdurable nameを生成
         let durable_name = generate_durable_name::<E>();
@@ -79,37 +83,40 @@ impl<E: Event> EventSource<E> for JsSubscriber<E> {
         // メッセージをプル
         let messages = consumer.messages().await?;
 
-        // メッセージをイベントとAckHandleに変換
-        let events = messages.filter_map(move |msg_result| async move {
-            match msg_result {
-                Ok(msg) => {
-                    // メッセージをデシリアライズ
-                    let event: E = match serde_json::from_slice(&msg.payload) {
-                        Ok(event) => event,
-                        Err(e) => {
-                            eprintln!("Failed to deserialize message: {}", e);
-                            return None;
-                        }
-                    };
+        // メッセージを非同期に処理し、イベントとAckHandleに変換
+        let events = messages
+            .then(|msg_result| async move {
+                // `then` を使って非同期処理
+                match msg_result {
+                    Ok(msg) => {
+                        // メッセージをデシリアライズ
+                        let event: E = match serde_json::from_slice(&msg.payload) {
+                            Ok(event) => event,
+                            Err(e) => {
+                                eprintln!("Failed to deserialize message: {}", e);
+                                return None; // この async move ブロックから None を返す
+                            }
+                        }; // セミコロンを追加
 
-                    // AckHandleを作成
-                    let ack_handle = AckHandle::new(Box::new(move || {
-                        let msg = msg.clone();
-                        Box::pin(async move {
-                            msg.ack()
-                                .await
-                                .map_err(|e| anyhow::anyhow!("Failed to ack message: {}", e))
-                        })
-                    }));
+                        // AckHandleを作成 (同期処理、非同期ロジックをキャプチャ)
+                        let ack_handle = AckHandle::new(Box::new(move || {
+                            let msg = msg.clone(); // ack クロージャ用にメッセージをクローン
+                            Box::pin(async move {
+                                msg.ack()
+                                    .await
+                                    .map_err(|e| anyhow::anyhow!("Failed to ack message: {}", e))
+                            })
+                        }));
 
-                    Some((event, ack_handle))
+                        Some((event, ack_handle)) // 成功時は Some を返す
+                    }
+                    Err(e) => {
+                        eprintln!("Error receiving message: {}", e);
+                        None // メッセージ受信エラー時は None を返す
+                    }
                 }
-                Err(e) => {
-                    eprintln!("Error receiving message: {}", e);
-                    None
-                }
-            }
-        });
+            })
+            .filter_map(futures::future::ready); // `then` の結果 (Option<T>) から None をフィルタリング (futures::future::ready を使用)
 
         Ok(Box::pin(events))
     }

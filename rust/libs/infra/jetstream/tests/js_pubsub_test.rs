@@ -1,8 +1,10 @@
 use std::sync::Arc;
-use std::time::Duration; // Arc をインポート
+// use std::sync::Arc; // 重複削除
+use std::time::Duration;
 
 use futures::StreamExt;
-use infra_jetstream::{connect, JsPublisher, JsSubscriber};
+use infra_jetstream::{JsPublisher, JsSubscriber}; // connect を削除
+use infra_nats::connect as nats_connect; // infra_nats::connect をインポート
 use serde::{Deserialize, Serialize};
 use shared_core::event_metadata::Event;
 use shared_core::event_sink::EventSink; // リネーム
@@ -43,8 +45,9 @@ async fn ensure_docker() {
 async fn test_publisher_subscriber() -> anyhow::Result<()> {
     let (_container, url) = setup_nats().await?;
 
-    let ctx = connect(&url).await?;
-    let js = &ctx.js;
+    // infra_nats::connect を使用
+    let nats_client = nats_connect(&url).await?;
+    let js = nats_client.jetstream_context(); // NatsClient から JetStream Context を取得
 
     let _stream = js
         .create_stream(&async_nats::jetstream::stream::Config {
@@ -56,8 +59,9 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 
     // Removed manual consumer creation to let JsSubscriber create its own consumer.
 
-    let publisher = JsPublisher::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
-    let subscriber = JsSubscriber::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
+    // NatsClient を渡すように変更
+    let publisher = JsPublisher::<TestEvent>::from_event_type(nats_client.clone());
+    let subscriber = JsSubscriber::<TestEvent>::from_event_type(nats_client.clone());
 
     let test_event = TestEvent {
         id: 1,
@@ -88,8 +92,9 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 async fn test_from_event_type() -> anyhow::Result<()> {
     let (_container, url) = setup_nats().await?;
 
-    let ctx = connect(&url).await?;
-    let js = &ctx.js;
+    // infra_nats::connect を使用
+    let nats_client = nats_connect(&url).await?;
+    let js = nats_client.jetstream_context(); // NatsClient から JetStream Context を取得
 
     let _stream = js
         .create_stream(&async_nats::jetstream::stream::Config {
@@ -99,8 +104,9 @@ async fn test_from_event_type() -> anyhow::Result<()> {
         })
         .await?;
 
-    let publisher = JsPublisher::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
-    let subscriber = JsSubscriber::<TestEvent>::from_event_type(std::sync::Arc::new(ctx.clone())); // 完全修飾パスを使用
+    // NatsClient を渡すように変更
+    let publisher = JsPublisher::<TestEvent>::from_event_type(nats_client.clone());
+    let subscriber = JsSubscriber::<TestEvent>::from_event_type(nats_client.clone());
 
     let test_event = TestEvent {
         id: 2,
@@ -138,6 +144,6 @@ async fn setup_nats() -> anyhow::Result<(ContainerAsync<GenericImage>, String)> 
         .await?;
     let host = container.get_host().await?;
     let port = container.get_host_port_ipv4(4222u16).await?;
-    let url = format!("{}:{}", host, port);
+    let url = format!("nats://{}:{}", host, port); // スキームを追加
     Ok((container, url))
 }

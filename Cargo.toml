@@ -17,8 +17,14 @@ members = [
   "rust/libs/infra/jetstream",
   "rust/libs/infra/mirakc",
   "rust/libs/infra/kvs", # 追加
+  "rust/libs/infra/nats", # 新しいクレートを追加
   "rust/app",
 ]
+
+[workspace.dependencies]
+# async-nats のバージョンを一元管理 (feature 指定は不要)
+async-nats = { version = "0.40.0" }
+# 他の共通依存関係もここに追加可能
 
 [workspace.package]
 version = "0.0.1"

@@ -12,16 +12,19 @@ use domain::{
         repositories::kurec_program_repository::KurecProgramRepository,
     },
 };
-use infra_jetstream::{JsPublisher, JsSubscriber}; // 新しい Source/Sink 実装
+// infra_nats::connect をインポート
+use infra_jetstream::{setup_all_streams, JsPublisher, JsSubscriber}; // setup_all_streams をインポート
 use infra_kvs::nats_kv::NatsKvProgramRepository;
 use infra_mirakc::factory::MirakcClientFactoryImpl;
+use infra_nats;
 use shared_core::{
     event_sink::EventSink,       // EventSink トレイト
     event_source::EventSource,   // EventSource トレイト
     stream_worker::StreamWorker, // StreamWorker
 };
-use shared_macros::define_kvs_bucket; // KVSバケット定義マクロ
-use shared_types::kvs::KvsBucket; // KvsBucket トレイト
+// KVS バケット関連の use 文を削除
+// use shared_macros::define_kvs_bucket;
+// use shared_types::kvs::KvsBucket;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use tracing::info;
@@ -45,39 +48,47 @@ impl EpgNotifierTrait for JsEpgNotifier {
     }
 }
 
-// KVSバケット定義
-#[define_kvs_bucket(bucket_name = "kurec_epg")]
-struct EpgKvsBucket;
+// KVSバケット定義マクロを削除
+// #[define_kvs_bucket(bucket_name = "kurec_epg")]
+// struct EpgKvsBucket;
 
 /// EPG更新ワーカーを実行 (StreamWorker を使用)
 pub async fn run_epg_updater(config: &crate::AppConfig, shutdown: CancellationToken) -> Result<()> {
     info!("Starting EPG updater worker...");
 
-    // JetStreamの設定
-    let js_ctx = Arc::new(infra_jetstream::connect(&config.nats_url).await?);
-    infra_jetstream::setup_all_streams(&js_ctx.js).await?; // ストリーム設定は必要
-
-    // KVSストアを取得または作成 (マクロで定義した設定を使用)
-    let kv_store = js_ctx
-        .js
-        .create_key_value(EpgKvsBucket::config()) // マクロで生成された config を使用
+    // NATS 接続 (infra_nats を使用)
+    let nats_client = infra_nats::connect(&config.nats_url)
         .await
-        .context("Failed to create/get KV store")?;
+        .context("NATS への接続に失敗しました")?;
 
-    // KVSリポジトリの作成
-    let program_repository: Arc<dyn KurecProgramRepository> =
-        Arc::new(NatsKvProgramRepository::new(kv_store));
+    // JetStream ストリームの設定 (infra_jetstream を使用)
+    setup_all_streams(nats_client.jetstream_context())
+        .await
+        .context("JetStream ストリームのセットアップに失敗しました")?;
+
+    // KVSストアの直接作成を削除
+    // let kv_store = js_ctx
+    //     .js
+    //     .create_key_value(EpgKvsBucket::config()) // マクロで生成された config を使用
+    //     .await
+    //     .context("Failed to create/get KV store")?;
+
+    // KVSリポジトリの作成 (NatsClient を渡す)
+    let repo_result = NatsKvProgramRepository::new(nats_client.clone())
+        .await
+        .context("KVS プログラムリポジトリの作成に失敗しました"); // Result に context を適用
+    let program_repository: Arc<dyn KurecProgramRepository> = Arc::new(repo_result?); // Result を処理してから Arc::new
 
     // MirakcClientFactory の作成
     let mirakc_api_factory = Arc::new(MirakcClientFactoryImpl::new());
 
-    // EventSource (JsSubscriber) の作成
+    // EventSource (JsSubscriber) の作成 (NatsClient を渡す)
     let source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> =
-        Arc::new(JsSubscriber::from_event_type(js_ctx.clone())); // js_ctx.clone() を渡す
+        Arc::new(JsSubscriber::from_event_type(nats_client.clone())); // nats_client.clone() を渡す
 
-    // EventSink (JsPublisher) の作成 (EpgStoredEvent 用)
+    // EventSink (JsPublisher) の作成 (EpgStoredEvent 用) (NatsClient を渡す)
     let sink: Arc<dyn EventSink<EpgStoredEvent>> =
-        Arc::new(JsPublisher::from_event_type(js_ctx.clone())); // js_ctx.clone() を渡す
+        Arc::new(JsPublisher::from_event_type(nats_client.clone())); // nats_client.clone() を渡す
 
     // EpgNotifier (JsEpgNotifier) の作成
     let epg_notifier: Arc<dyn EpgNotifierTrait> = Arc::new(JsEpgNotifier::new(sink.clone()));
