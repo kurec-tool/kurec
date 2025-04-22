@@ -1,10 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use domain::event::Event;
-use domain::ports::{EventSink, EventSource};
+use domain::ports::{event_sink::EventSink, event_source::EventSource};
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use infra_common::ackable_event::AckableEvent;
 use shared_core::error_handling::{ClassifyError, ErrorAction};
 use std::marker::PhantomData;
 use std::sync::Arc;

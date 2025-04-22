@@ -25,7 +25,7 @@ use tracing::{debug, error, info};
 pub async fn run_mirakc_events(
     // _config: &crate::AppConfig // AppConfig型が見つからないため削除
     _mirakc_url: &str, // mirakc_url は source 作成にしか使わないので不要
-    source: Arc<dyn EventSource<MirakcEventDto>>, // Source を引数で受け取る
+    source: Arc<dyn EventSource<MirakcEventDto, anyhow::Error>>, // Source を引数で受け取る
     sinks: MirakcEventSinks,
     shutdown: CancellationToken,
 ) -> Result<()> {
