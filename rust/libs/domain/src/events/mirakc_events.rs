@@ -5,6 +5,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use shared_core::dtos::mirakc_event::*;
+use shared_core::event::Event; // shared_core::event::Event をインポート
 use shared_macros::event;
 
 /// mirakcのTunerStatusChangedイベント
@@ -19,6 +20,18 @@ pub struct TunerStatusChangedEvent {
     pub received_at: DateTime<Utc>,
 }
 
+// TunerStatusChangedEvent に Event トレイトを手動実装 (マクロが機能しない場合の確認用)
+// TODO: マクロが修正されたら削除
+// impl Event for TunerStatusChangedEvent {
+impl Event for TunerStatusChangedEvent {
+    fn event_name() -> &'static str {
+        "tuner_status_changed" // #[event] マクロが生成するであろう名前
+    }
+    fn stream_name() -> &'static str {
+        "mirakc-events" // #[event(stream = "...")] で指定された名前
+    }
+}
+
 /// mirakcのEpgProgramsUpdatedイベント
 #[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -29,6 +42,18 @@ pub struct EpgProgramsUpdatedEvent {
     pub data: EpgProgramsUpdatedDto,
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
+}
+
+// EpgProgramsUpdatedEvent に Event トレイトを手動実装 (マクロが機能しない場合の確認用)
+// TODO: マクロが修正されたら削除
+// impl Event for EpgProgramsUpdatedEvent {
+impl Event for EpgProgramsUpdatedEvent {
+    fn event_name() -> &'static str {
+        "epg_programs_updated" // #[event] マクロが生成するであろう名前
+    }
+    fn stream_name() -> &'static str {
+        "mirakc-events" // #[event(stream = "...")] で指定された名前
+    }
 }
 
 /// mirakcのRecordingStartedイベント

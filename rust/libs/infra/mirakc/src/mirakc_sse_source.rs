@@ -5,11 +5,10 @@ use async_trait::async_trait;
 use backoff::{backoff::Backoff, ExponentialBackoff};
 use bytes::Bytes;
 use chrono::Utc;
+use domain::ports::event_source::{AckHandle, EventSource}; // domain::ports::event_source からインポート
 use eventsource_stream::Eventsource;
 use futures::{future, stream::BoxStream, Stream, StreamExt};
 use shared_core::dtos::mirakc_event::MirakcEventDto;
-// EventSource と AckHandle のインポートは不要になったので削除
-// use shared_core::event_source::{AckHandle, EventSource};
 use std::time::Duration;
 
 /// mirakc SSEイベントソース
@@ -95,7 +94,8 @@ impl MirakcSseSource {
     // 代わりに、MirakcEventDto を返すストリームを提供するメソッドを追加する
 
     /// MirakcEventDto のストリームを取得する
-    pub async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventDto>> {
+    /// EventSource トレイトの実装で使用するためのヘルパーメソッド
+    async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventDto>> {
         let mirakc_url = self.mirakc_url.clone();
         tracing::info!("Starting event stream from mirakc URL: {}", mirakc_url);
 
@@ -147,3 +147,24 @@ impl MirakcSseSource {
         Ok(event_stream)
     }
 } // impl MirakcSseSource の閉じ括弧を追加
+
+/// MirakcSseSource に EventSource<MirakcEventDto> トレイトを実装
+#[async_trait]
+impl EventSource<MirakcEventDto> for MirakcSseSource {
+    /// MirakcEventDto のストリームを購読する
+    async fn subscribe(&self) -> Result<BoxStream<'static, (MirakcEventDto, AckHandle)>> {
+        // イベントストリームを取得
+        let event_stream = self.event_stream().await?;
+
+        // 各イベントに AckHandle を付与
+        let stream_with_ack = event_stream
+            .map(|event| {
+                // 常に成功する単純な AckHandle を作成
+                let ack_handle = AckHandle::new(Box::new(|| Box::pin(async { Ok(()) })));
+                (event, ack_handle)
+            })
+            .boxed();
+
+        Ok(stream_with_ack)
+    }
+}

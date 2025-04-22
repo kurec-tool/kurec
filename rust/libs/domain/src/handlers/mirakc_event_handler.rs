@@ -34,18 +34,19 @@ impl ClassifyError for MirakcEventError {
 
 // 各イベントに対応する EventSink を保持する構造体
 // Box<dyn Any> を使うか、個別のフィールドにするか検討 -> 個別フィールドの方が型安全
+#[derive(Default)] // Default トレイトを derive
 pub struct MirakcEventSinks {
-    pub tuner_status_changed: Arc<dyn EventSink<TunerStatusChangedEvent>>,
-    pub epg_programs_updated: Arc<dyn EventSink<EpgProgramsUpdatedEvent>>,
-    pub recording_started: Arc<dyn EventSink<RecordingStartedEvent>>,
-    pub recording_stopped: Arc<dyn EventSink<RecordingStoppedEvent>>,
-    pub recording_failed: Arc<dyn EventSink<RecordingFailedEvent>>,
-    pub recording_rescheduled: Arc<dyn EventSink<RecordingRescheduledEvent>>,
-    pub recording_record_saved: Arc<dyn EventSink<RecordingRecordSavedEvent>>,
-    pub recording_record_removed: Arc<dyn EventSink<RecordingRecordRemovedEvent>>,
-    pub recording_content_removed: Arc<dyn EventSink<RecordingContentRemovedEvent>>,
-    pub recording_record_broken: Arc<dyn EventSink<RecordingRecordBrokenEvent>>,
-    pub onair_program_changed: Arc<dyn EventSink<OnairProgramChangedEvent>>,
+    pub tuner_status_changed: Option<Arc<dyn EventSink<TunerStatusChangedEvent>>>, // Option でラップ
+    pub epg_programs_updated: Option<Arc<dyn EventSink<EpgProgramsUpdatedEvent>>>, // Option でラップ
+    pub recording_started: Option<Arc<dyn EventSink<RecordingStartedEvent>>>, // Option でラップ
+    pub recording_stopped: Option<Arc<dyn EventSink<RecordingStoppedEvent>>>, // Option でラップ
+    pub recording_failed: Option<Arc<dyn EventSink<RecordingFailedEvent>>>,   // Option でラップ
+    pub recording_rescheduled: Option<Arc<dyn EventSink<RecordingRescheduledEvent>>>, // Option でラップ
+    pub recording_record_saved: Option<Arc<dyn EventSink<RecordingRecordSavedEvent>>>, // Option でラップ
+    pub recording_record_removed: Option<Arc<dyn EventSink<RecordingRecordRemovedEvent>>>, // Option でラップ
+    pub recording_content_removed: Option<Arc<dyn EventSink<RecordingContentRemovedEvent>>>, // Option でラップ
+    pub recording_record_broken: Option<Arc<dyn EventSink<RecordingRecordBrokenEvent>>>, // Option でラップ
+    pub onair_program_changed: Option<Arc<dyn EventSink<OnairProgramChangedEvent>>>, // Option でラップ
 }
 
 /// mirakcイベントハンドラ
@@ -83,8 +84,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at, // received_at は Copy なのでムーブされない
                 };
                 debug!("Publishing TunerStatusChangedEvent to JetStream");
-                self.sinks.tuner_status_changed.publish(event).await?;
-                info!("Successfully published TunerStatusChangedEvent");
+                if let Some(sink) = &self.sinks.tuner_status_changed {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published TunerStatusChangedEvent");
+                } else {
+                    info!("Sink for TunerStatusChangedEvent is not configured, skipping publish.");
+                }
             }
             "epg.programs-updated" => {
                 let data: shared_core::dtos::mirakc_event::EpgProgramsUpdatedDto =
@@ -95,8 +101,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing EpgProgramsUpdatedEvent to JetStream");
-                self.sinks.epg_programs_updated.publish(event).await?;
-                info!("Successfully published EpgProgramsUpdatedEvent");
+                if let Some(sink) = &self.sinks.epg_programs_updated {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published EpgProgramsUpdatedEvent");
+                } else {
+                    info!("Sink for EpgProgramsUpdatedEvent is not configured, skipping publish.");
+                }
             }
             "recording.started" => {
                 let data: shared_core::dtos::mirakc_event::RecordingStartedDto =
@@ -107,8 +118,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingStartedEvent to JetStream");
-                self.sinks.recording_started.publish(event).await?;
-                info!("Successfully published RecordingStartedEvent");
+                if let Some(sink) = &self.sinks.recording_started {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingStartedEvent");
+                } else {
+                    info!("Sink for RecordingStartedEvent is not configured, skipping publish.");
+                }
             }
             "recording.stopped" => {
                 let data: shared_core::dtos::mirakc_event::RecordingStoppedDto =
@@ -119,8 +135,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingStoppedEvent to JetStream");
-                self.sinks.recording_stopped.publish(event).await?;
-                info!("Successfully published RecordingStoppedEvent");
+                if let Some(sink) = &self.sinks.recording_stopped {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingStoppedEvent");
+                } else {
+                    info!("Sink for RecordingStoppedEvent is not configured, skipping publish.");
+                }
             }
             "recording.failed" => {
                 let data: shared_core::dtos::mirakc_event::RecordingFailedDto =
@@ -131,8 +152,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingFailedEvent to JetStream");
-                self.sinks.recording_failed.publish(event).await?;
-                info!("Successfully published RecordingFailedEvent");
+                if let Some(sink) = &self.sinks.recording_failed {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingFailedEvent");
+                } else {
+                    info!("Sink for RecordingFailedEvent is not configured, skipping publish.");
+                }
             }
             "recording.rescheduled" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRescheduledDto =
@@ -143,8 +169,15 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingRescheduledEvent to JetStream");
-                self.sinks.recording_rescheduled.publish(event).await?;
-                info!("Successfully published RecordingRescheduledEvent");
+                if let Some(sink) = &self.sinks.recording_rescheduled {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingRescheduledEvent");
+                } else {
+                    info!(
+                        "Sink for RecordingRescheduledEvent is not configured, skipping publish."
+                    );
+                }
             }
             "recording.record-saved" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRecordSavedDto =
@@ -155,8 +188,15 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingRecordSavedEvent to JetStream");
-                self.sinks.recording_record_saved.publish(event).await?;
-                info!("Successfully published RecordingRecordSavedEvent");
+                if let Some(sink) = &self.sinks.recording_record_saved {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingRecordSavedEvent");
+                } else {
+                    info!(
+                        "Sink for RecordingRecordSavedEvent is not configured, skipping publish."
+                    );
+                }
             }
             "recording.record-removed" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRecordRemovedDto =
@@ -167,8 +207,15 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingRecordRemovedEvent to JetStream");
-                self.sinks.recording_record_removed.publish(event).await?;
-                info!("Successfully published RecordingRecordRemovedEvent");
+                if let Some(sink) = &self.sinks.recording_record_removed {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingRecordRemovedEvent");
+                } else {
+                    info!(
+                        "Sink for RecordingRecordRemovedEvent is not configured, skipping publish."
+                    );
+                }
             }
             "recording.content-removed" => {
                 let data: shared_core::dtos::mirakc_event::RecordingContentRemovedDto =
@@ -179,8 +226,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingContentRemovedEvent to JetStream");
-                self.sinks.recording_content_removed.publish(event).await?;
-                info!("Successfully published RecordingContentRemovedEvent");
+                if let Some(sink) = &self.sinks.recording_content_removed {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingContentRemovedEvent");
+                } else {
+                    info!("Sink for RecordingContentRemovedEvent is not configured, skipping publish.");
+                }
             }
             "recording.record-broken" => {
                 let data: shared_core::dtos::mirakc_event::RecordingRecordBrokenDto =
@@ -191,8 +243,15 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing RecordingRecordBrokenEvent to JetStream");
-                self.sinks.recording_record_broken.publish(event).await?;
-                info!("Successfully published RecordingRecordBrokenEvent");
+                if let Some(sink) = &self.sinks.recording_record_broken {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published RecordingRecordBrokenEvent");
+                } else {
+                    info!(
+                        "Sink for RecordingRecordBrokenEvent is not configured, skipping publish."
+                    );
+                }
             }
             "onair.program-changed" => {
                 let data: shared_core::dtos::mirakc_event::OnairProgramChangedDto =
@@ -203,8 +262,13 @@ impl MirakcEventHandler {
                     received_at: event_dto.received_at,
                 };
                 debug!("Publishing OnairProgramChangedEvent to JetStream");
-                self.sinks.onair_program_changed.publish(event).await?;
-                info!("Successfully published OnairProgramChangedEvent");
+                if let Some(sink) = &self.sinks.onair_program_changed {
+                    // Option をチェック
+                    sink.publish(event).await?;
+                    info!("Successfully published OnairProgramChangedEvent");
+                } else {
+                    info!("Sink for OnairProgramChangedEvent is not configured, skipping publish.");
+                }
             }
             _ => {
                 // 未知のイベントタイプはログに記録するだけ

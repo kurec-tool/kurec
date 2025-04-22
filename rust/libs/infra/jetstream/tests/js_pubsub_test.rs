@@ -2,14 +2,13 @@ use std::sync::Arc;
 // use std::sync::Arc; // 重複削除
 use std::time::Duration;
 
+use domain::ports::{event_sink::DomainEventSink, event_source::EventSource}; // パス修正
 use futures::StreamExt;
-use infra_jetstream::{JsPublisher, JsSubscriber}; // connect を削除
-use infra_nats::connect as nats_connect; // infra_nats::connect をインポート
+use infra_jetstream::{JsPublisher, JsSubscriber};
+use infra_nats::connect as nats_connect;
 use serde::{Deserialize, Serialize};
-use shared_core::event_metadata::Event;
-use shared_core::event_sink::EventSink; // リネーム
-use shared_core::event_source::EventSource; // リネーム
-use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt}; // ContainerAsyncをインポート
+use shared_core::event::Event; // パス修正
+use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct TestEvent {
@@ -47,12 +46,12 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 
     // infra_nats::connect を使用
     let nats_client = nats_connect(&url).await?;
-    let js = nats_client.jetstream_context(); // NatsClient から JetStream Context を取得
+    let js = nats_client.jetstream_context();
 
     let _stream = js
         .create_stream(&async_nats::jetstream::stream::Config {
             name: TestEvent::stream_name().to_string(),
-            subjects: vec![TestEvent::stream_subject().to_string()],
+            subjects: vec![TestEvent::event_name().to_string()], // stream_subject -> event_name
             ..Default::default()
         })
         .await?;
@@ -94,12 +93,12 @@ async fn test_from_event_type() -> anyhow::Result<()> {
 
     // infra_nats::connect を使用
     let nats_client = nats_connect(&url).await?;
-    let js = nats_client.jetstream_context(); // NatsClient から JetStream Context を取得
+    let js = nats_client.jetstream_context();
 
     let _stream = js
         .create_stream(&async_nats::jetstream::stream::Config {
             name: TestEvent::stream_name().to_string(),
-            subjects: vec![TestEvent::stream_subject().to_string()],
+            subjects: vec![TestEvent::event_name().to_string()], // stream_subject -> event_name
             ..Default::default()
         })
         .await?;

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-// use shared_core::event_metadata::Event; // #[event] マクロが自動で実装するため不要
+use shared_core::event::Event; // shared_core::event::Event をインポート
+                               // use shared_core::event_metadata::Event; // #[event] マクロが自動で実装するため不要
 use shared_macros::event; // #[event] マクロをインポート
 
 /// EPG情報がKVSに保存されたことを示すイベント。
@@ -12,6 +13,18 @@ pub struct EpgStoredEvent {
     pub mirakc_url: String,
     /// 更新されたEPGのサービスID (Mirakurun Service ID)
     pub service_id: i64, // i32 -> i64
+}
+
+// EpgStoredEvent に Event トレイトを手動実装 (マクロが機能しない場合の確認用)
+// TODO: マクロが修正されたら削除
+// impl Event for EpgStoredEvent {
+impl Event for EpgStoredEvent {
+    fn event_name() -> &'static str {
+        "epg_stored" // #[event] マクロが生成するであろう名前
+    }
+    fn stream_name() -> &'static str {
+        "kurec-epg-updated" // #[event(stream = "...")] で指定された名前
+    }
 }
 
 #[cfg(test)]

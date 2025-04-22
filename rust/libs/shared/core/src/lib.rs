@@ -4,6 +4,7 @@ use shared_types::stream::Stream;
 
 pub mod dtos;
 pub mod error_handling;
+pub mod event; // 追加
 pub mod event_metadata;
 pub mod event_sink; // 追加
 pub mod event_source; // 追加

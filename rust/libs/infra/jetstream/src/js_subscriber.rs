@@ -1,13 +1,13 @@
 use anyhow::Result;
 use async_nats::jetstream;
 use async_trait::async_trait;
+use domain::ports::event_source::{AckHandle, EventSource as DomainEventSource}; // ドメイン層の EventSource を別名でインポート
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use heck::ToSnakeCase;
-use shared_core::event_metadata::Event;
-use shared_core::event_source::{AckHandle, EventSource}; // event_subscriber -> event_source
+use shared_core::event::Event; // shared_core の Event をインポート
 use std::marker::PhantomData;
-use std::sync::Arc; // Arc をインポート
+use std::sync::Arc;
 
 // infra_nats クレートの NatsClient をインポート
 use infra_nats::NatsClient;
@@ -23,7 +23,7 @@ fn generate_durable_name<E: Event>() -> String {
     let type_name_snake = event_type.replace("::", "_").to_snake_case();
 
     // ストリーム名と型情報を組み合わせる
-    format!("consumer_{}_{}", E::stream_name(), type_name_snake)
+    format!("consumer_{}_{}", E::stream_name(), type_name_snake) // stream_name() を使用
 }
 
 /// JetStreamを使用したイベント購読者
@@ -44,25 +44,27 @@ impl<E: Event> JsSubscriber<E> {
 }
 
 #[async_trait]
-// EventSubscriber -> EventSource
-impl<E: Event> EventSource<E> for JsSubscriber<E> {
+// ドメイン層の EventSource トレイトを実装
+impl<E: Event + 'static> DomainEventSource<E> for JsSubscriber<E> {
     async fn subscribe(&self) -> Result<BoxStream<'static, (E, AckHandle)>> {
         // JetStream コンテキストを取得
         let js_ctx = self.nats_client.jetstream_context();
 
         // JetStreamからストリームを取得
-        let stream = js_ctx.get_stream(E::stream_name()).await?;
+        // ストリーム名を取得 (Event トレイトから)
+        let stream_name = E::stream_name(); // event_name() の仮実装を削除し、stream_name() を使用
+        let stream = js_ctx.get_stream(stream_name).await?;
 
         // イベント型から一意なdurable nameを生成
-        let durable_name = generate_durable_name::<E>();
+        let durable_name = generate_durable_name::<E>(); // 引数を削除
 
         // ストリーム設定を取得（存在すれば）
-        let config = shared_core::streams::get_stream_config(E::stream_name());
+        let config = shared_core::streams::get_stream_config(&stream_name); // stream_config -> streams (再修正)
 
         // プルコンシューマーを作成
         let mut consumer_config = jetstream::consumer::pull::Config {
             durable_name: Some(durable_name),
-            filter_subject: E::stream_subject().to_string(),
+            filter_subject: E::event_name().to_string(), // stream_subject() -> event_name()
             ..Default::default()
         };
 

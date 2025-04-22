@@ -3,113 +3,122 @@
 //! このモジュールはEPG更新イベントを処理するコマンドを提供します。
 
 use anyhow::{Context, Result};
-use async_trait::async_trait; // EpgNotifier の実装に必要
+// use async_trait::async_trait; // 不要になった
+use domain::ports::event_source::EventSource; // domain::ports::event_source をインポート
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
-    handlers::epg_update_handler::EpgUpdateHandler, // 新しいハンドラ
+    handlers::epg_update_handler::EpgUpdateHandler,
     ports::{
-        notifiers::epg_notifier::EpgNotifier as EpgNotifierTrait, // EpgNotifier トレイト
-        repositories::kurec_program_repository::KurecProgramRepository,
+        event_sink::DomainEventSink, repositories::kurec_program_repository::KurecProgramRepository,
     },
 };
-// infra_nats::connect をインポート
-use infra_jetstream::{setup_all_streams, JsPublisher, JsSubscriber}; // setup_all_streams をインポート
+use futures::StreamExt; // StreamExt をインポート
 use infra_kvs::nats_kv::NatsKvProgramRepository;
 use infra_mirakc::factory::MirakcClientFactoryImpl;
-use infra_nats;
-use shared_core::{
-    event_sink::EventSink,       // EventSink トレイト
-    event_source::EventSource,   // EventSource トレイト
-    stream_worker::StreamWorker, // StreamWorker
-};
-// KVS バケット関連の use 文を削除
-// use shared_macros::define_kvs_bucket;
-// use shared_types::kvs::KvsBucket;
+use shared_core::error_handling::{ClassifyError, ErrorAction}; // event_source, stream_worker を削除
+use shared_core::stream_worker::StreamHandler; // StreamHandler をインポート
+                                               // use shared_core::{ ... }; // まとめていたものを削除
 use std::sync::Arc;
+use tokio::select; // select! マクロをインポート
 use tokio_util::sync::CancellationToken;
-use tracing::info;
+use tracing::{error, info}; // error, info をインポート
 
-// EpgNotifier トレイトを実装するためのラッパー構造体
-struct JsEpgNotifier {
-    // EpgStoredEvent を発行できる EventSink (JsPublisher) を保持
-    sink: Arc<dyn EventSink<EpgStoredEvent>>,
-}
+// JsEpgNotifier 構造体と実装を削除
 
-impl JsEpgNotifier {
-    fn new(sink: Arc<dyn EventSink<EpgStoredEvent>>) -> Self {
-        Self { sink }
-    }
-}
-
-#[async_trait]
-impl EpgNotifierTrait for JsEpgNotifier {
-    async fn notify_epg_stored(&self, event: EpgStoredEvent) -> Result<()> {
-        self.sink.publish(event).await
-    }
-}
-
-// KVSバケット定義マクロを削除
-// #[define_kvs_bucket(bucket_name = "kurec_epg")]
-// struct EpgKvsBucket;
-
-/// EPG更新ワーカーを実行 (StreamWorker を使用)
-pub async fn run_epg_updater(config: &crate::AppConfig, shutdown: CancellationToken) -> Result<()> {
+/// EPG更新ワーカーを実行 (手動ループ)
+pub async fn run_epg_updater(
+    nats_client: Arc<infra_nats::NatsClient>, // Arc<NatsClient> を引数で受け取る
+    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>>, // EventSource を引数で受け取る
+    sink: Arc<dyn DomainEventSink<EpgStoredEvent>>, // DomainEventSink を引数で受け取る
+    shutdown: CancellationToken,
+) -> Result<()> {
     info!("Starting EPG updater worker...");
 
-    // NATS 接続 (infra_nats を使用)
-    let nats_client = infra_nats::connect(&config.nats_url)
+    // KVSリポジトリの作成
+    let repo_result = NatsKvProgramRepository::new(nats_client) // すでに Arc<NatsClient> なので Arc::new は不要
         .await
-        .context("NATS への接続に失敗しました")?;
-
-    // JetStream ストリームの設定 (infra_jetstream を使用)
-    setup_all_streams(nats_client.jetstream_context())
-        .await
-        .context("JetStream ストリームのセットアップに失敗しました")?;
-
-    // KVSストアの直接作成を削除
-    // let kv_store = js_ctx
-    //     .js
-    //     .create_key_value(EpgKvsBucket::config()) // マクロで生成された config を使用
-    //     .await
-    //     .context("Failed to create/get KV store")?;
-
-    // KVSリポジトリの作成 (NatsClient を渡す)
-    let repo_result = NatsKvProgramRepository::new(nats_client.clone())
-        .await
-        .context("KVS プログラムリポジトリの作成に失敗しました"); // Result に context を適用
-    let program_repository: Arc<dyn KurecProgramRepository> = Arc::new(repo_result?); // Result を処理してから Arc::new
+        .context("KVS プログラムリポジトリの作成に失敗しました");
+    let program_repository: Arc<dyn KurecProgramRepository> = Arc::new(repo_result?);
 
     // MirakcClientFactory の作成
-    let mirakc_api_factory = Arc::new(MirakcClientFactoryImpl::new());
+    let _mirakc_api_factory = Arc::new(MirakcClientFactoryImpl::new());
 
-    // EventSource (JsSubscriber) の作成 (NatsClient を渡す)
-    let source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> =
-        Arc::new(JsSubscriber::from_event_type(nats_client.clone())); // nats_client.clone() を渡す
-
-    // EventSink (JsPublisher) の作成 (EpgStoredEvent 用) (NatsClient を渡す)
-    let sink: Arc<dyn EventSink<EpgStoredEvent>> =
-        Arc::new(JsPublisher::from_event_type(nats_client.clone())); // nats_client.clone() を渡す
-
-    // EpgNotifier (JsEpgNotifier) の作成
-    let epg_notifier: Arc<dyn EpgNotifierTrait> = Arc::new(JsEpgNotifier::new(sink.clone()));
-
-    // StreamHandler (EpgUpdateHandler) の作成
-    // TODO: EpgUpdateHandler::new に mirakc_api_factory を渡すように修正が必要
+    // EpgUpdateHandler の作成
+    // TODO: EpgUpdateHandler::new のシグネチャも修正が必要
     let handler = Arc::new(EpgUpdateHandler::new(
         program_repository,
-        epg_notifier,
-        // mirakc_api_factory, // TODO: ハンドラに追加
+        sink.clone(), // sink を渡す
+                      // mirakc_api_factory, // TODO: ハンドラに追加
     ));
 
-    // StreamWorker の構築
-    // 入力: EpgProgramsUpdatedEvent, 出力: Option<EpgStoredEvent>, エラー: EpgUpdateError
-    // sink は Option<EpgStoredEvent> を直接扱えないため、StreamWorker 内部で Some の場合のみ publish される
-    let worker: StreamWorker<EpgProgramsUpdatedEvent, EpgStoredEvent, _> =
-        StreamWorker::new(source, sink, handler).durable("epg-updater-worker"); // durable name を設定
+    // StreamWorker 関連のコードは完全に削除されていることを確認
 
-    // ワーカーの実行
-    info!("Starting StreamWorker for EPG updates...");
-    worker.run(shutdown).await?;
+    // イベント処理ループ
+    let mut event_stream = source.subscribe().await?; // event_stream() -> subscribe() に変更
+    let shutdown_token = shutdown.clone();
+
+    loop {
+        select! {
+            // シャットダウントークンが発火したら終了
+            _ = shutdown_token.cancelled() => {
+                info!("Shutdown signal received, stopping EPG updater worker.");
+                break;
+            }
+            // イベントを受信したら処理
+            maybe_event = event_stream.next() => {
+                match maybe_event {
+                    Some((event, _ack_handle)) => {
+                        info!(
+                            service_id = event.data.service_id,
+                            "Received EpgProgramsUpdatedEvent"
+                        );
+                        // ハンドラでイベントを処理
+                        match handler.handle(event.clone()).await {
+                            Ok(Some(stored_event)) => {
+                                // StreamWorker がないので、ここで明示的に Sink に発行
+                                if let Err(e) = sink.publish(stored_event).await {
+                                     error!("Failed to publish EpgStoredEvent: {}", e);
+                                     // エラー処理: リトライ or 無視など検討
+                                } else {
+                                     info!("Successfully processed EPG update and published EpgStoredEvent");
+                                }
+                            }
+                            Ok(None) => {
+                                info!("EPG update handled, no event to publish.");
+                            }
+                            Err(e) => {
+                                // エラー処理 (ClassifyError に基づく)
+                                error!("Error handling EPG update: {}", e);
+                                match e.error_action() {
+                                    shared_core::error_handling::ErrorAction::Retry => {
+                                        // リトライロジック (必要であれば)
+                                        error!("Retry action requested for EPG update error.");
+                                    }
+                                    shared_core::error_handling::ErrorAction::Ignore => {
+                                        // 無視
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        error!("EPG update event stream ended unexpectedly. Attempting to reconnect...");
+                        // ストリームが終了したら再接続を試みる (EventSource が対応していれば)
+                        match source.subscribe().await { // event_stream() -> subscribe() に変更
+                            Ok(new_stream) => {
+                                info!("Successfully reconnected to EPG update event stream");
+                                event_stream = new_stream;
+                            }
+                            Err(e) => {
+                                error!("Failed to reconnect to EPG update event stream: {:?}. Exiting.", e);
+                                break; // 再接続に失敗したらループを抜ける
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     info!("EPG updater worker stopped gracefully.");
     Ok(())
