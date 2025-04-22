@@ -23,3 +23,6 @@ shared_core = { version = "0.0.1", path = "../../shared/core" }
 thiserror = "1.0"
 tokio = { version = "1.44", features = ["full"] }
 tracing = "0.1"
+
+[dev-dependencies]
+wiremock = "0.5"
