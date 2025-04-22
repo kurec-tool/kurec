@@ -232,19 +232,19 @@ where
                 // メッセージを受信したら処理
                 message = stream.next() => {
                     match message {
-                        Some((event, ack)) => {
+                        Some(Ok(event)) => {
                             // ミドルウェアチェーンを実行
                             let result = Self::execute_middleware_chain(
                                 Arc::clone(&handler),
                                 &middlewares,
                                 event,
-                                context.clone(),
+                                context.clone()
                             ).await;
 
-                            // 結果に基づいてack/nackを行う
+                            // 結果に基づいて処理
                             match result {
                                 Ok(_) => {
-                                    ack.ack().await?;
+                                    // 処理成功
                                 }
                                 Err(e) => {
                                     // エラーがClassifyErrorを実装している場合は、エラーアクションに基づいて処理
@@ -253,18 +253,24 @@ where
                                             shared_core::error_handling::ErrorAction::Retry => {
                                                 // nack（再試行）
                                                 // JetStreamの場合、ackしないと自動的に再配信される
+                                                // 何もしない
                                             }
                                             shared_core::error_handling::ErrorAction::Ignore => {
-                                                // エラーを無視してack
-                                                ack.ack().await?;
+                                                // エラーを無視
+                                                // ack は削除
                                             }
                                         }
                                     } else {
                                         // ClassifyErrorを実装していない場合はデフォルトでRetry
                                         // nack（再試行）
+                                        // 何もしない
                                     }
                                 }
                             }
+                        }
+                        Some(Err(e)) => {
+                            // エラーログを出力
+                            eprintln!("Error receiving event: {:?}", e);
                         }
                         None => {
                             // ストリームが終了したら終了

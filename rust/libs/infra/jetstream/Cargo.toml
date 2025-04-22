@@ -13,11 +13,13 @@ async-trait = "0.1.88"
 ctor = "0.2.7"
 futures = "0.3.31"
 heck = "0.4.1"
+humantime = "2.1" # 追加: 期間パース用
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.114"
 domain = { path = "../../domain" } # 追加
 shared_core = { version = "0.0.1", path = "../../shared/core" }
 shared_macros = { version = "0.0.1", path = "../../shared/macros" }
+thiserror = "1.0" # 追加: エラー型定義用
 tracing = "0.1" # 追加
 shared_types = { version = "0.0.1", path = "../../shared/types" }
 infra_nats = { path = "../nats" } # NATS接続クレートを追加

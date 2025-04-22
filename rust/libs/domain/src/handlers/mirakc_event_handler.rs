@@ -3,10 +3,11 @@
 use crate::events::mirakc_events::*;
 use anyhow::{Context, Result}; // Context を追加
                                // use async_trait::async_trait; // 削除済み
+use crate::ports::event_sink::EventSink; // 正しいパスからインポート
 use shared_core::{
     dtos::mirakc_event::MirakcEventDto,
     error_handling::{ClassifyError, ErrorAction},
-    event_sink::EventSink,
+    // event_sink::EventSink, // 削除
     // stream_worker::StreamHandler, // 削除済み
 };
 use std::sync::Arc;

@@ -1,64 +1,9 @@
 use proc_macro::TokenStream;
-#[cfg(test)]
-use std::time::Duration;
 
-mod event;
+// event, stream モジュールは削除
 mod kvs;
-mod stream; // KVSバケット定義マクロ用モジュール
 
-#[cfg(test)]
-fn parse_duration(opt: &Option<String>) -> Option<Duration> {
-    opt.as_ref().map(|s| {
-        humantime::parse_duration(s)
-            .unwrap_or_else(|e| panic!("invalid duration literal `{}`: {}", s, e))
-    })
-}
-
-#[proc_macro_attribute]
-pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
-    event::event_impl(attr, item)
-}
-
-/// ストリームを定義するマクロ
-///
-/// このマクロは、型にStreamトレイトを実装し、自動的にストリームレジストリに登録します。
-///
-/// # 属性パラメータ
-///
-/// - `name = "ストリーム名"`: ストリーム名を指定します（省略時は型名をケバブケースに変換）
-/// - `max_age = "期間"`: メッセージの最大保持期間を指定します（例: "7d", "24h"）
-/// - `max_msgs = 数値`: 最大メッセージ数を指定します
-/// - `max_bytes = 数値`: 最大バイト数を指定します
-/// - `max_msg_size = 数値`: 最大メッセージサイズを指定します
-/// - `storage = "タイプ"`: ストレージタイプを指定します（"file" または "memory"）
-/// - `discard = "ポリシー"`: 破棄ポリシーを指定します（"old" または "new"）
-/// - `duplicate_window = "期間"`: 重複検出ウィンドウを指定します（例: "2m", "1h"）
-/// - `allow_rollup = 真偽値`: ロールアップを許可するかどうかを指定します
-/// - `deny_delete = 真偽値`: 削除を拒否するかどうかを指定します
-/// - `deny_purge = 真偽値`: パージを拒否するかどうかを指定します
-/// - `description = "説明"`: ストリームの説明を指定します
-///
-/// # 使用例
-///
-/// ```ignore
-/// use shared_macros::stream;
-///
-/// #[stream(max_age = "7d")]
-/// enum MirakcEvents;
-///
-/// #[stream(
-///     max_age = "3d",
-///     max_msgs = 10000,
-///     storage = "file",
-///     discard = "old",
-///     description = "KuRec events stream"
-/// )]
-/// enum KurecEvents;
-/// ```
-#[proc_macro_attribute]
-pub fn stream(attr: TokenStream, item: TokenStream) -> TokenStream {
-    stream::stream_impl(attr, item)
-}
+// parse_duration は stream マクロで使われていたので削除
 
 /// KVSバケットを定義するマクロ
 ///
@@ -92,25 +37,11 @@ pub fn define_kvs_bucket(attr: TokenStream, item: TokenStream) -> TokenStream {
     kvs::kvs_bucket_impl(attr, item)
 }
 
+// tests モジュール内の parse_duration テストも削除
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::time::Duration;
+    // use super::*; // 不要になる可能性
+    // use std::time::Duration; // 不要になる可能性
 
-    #[test]
-    fn test_parse_duration() {
-        assert_eq!(
-            parse_duration(&Some("1s".to_string())),
-            Some(Duration::new(1, 0))
-        );
-        assert_eq!(
-            parse_duration(&Some("1m".to_string())),
-            Some(Duration::new(60, 0))
-        );
-        assert_eq!(
-            parse_duration(&Some("1h".to_string())),
-            Some(Duration::new(3600, 0))
-        );
-        assert_eq!(parse_duration(&None), None);
-    }
+    // test_parse_duration は削除
 }

@@ -1,21 +1,22 @@
-use crate::error_handling::{ClassifyError, ErrorAction};
-use crate::event_metadata::Event;
-use crate::event_source::EventSource; // リネーム
 use anyhow::Result;
 use async_trait::async_trait;
+use domain::ports::EventSource; // domain::ports からインポート
 use futures::future::BoxFuture;
 use futures::StreamExt;
+use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
+
+use serde::{de::DeserializeOwned, Serialize}; // 追加
 
 /// ワーカーのミドルウェアトレイト
 /// イベント処理の前後に処理を挟むことができる
 #[async_trait]
 pub trait Middleware<E, Ctx>: Send + Sync + 'static
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
 {
     async fn handle(&self, event: E, ctx: Ctx, next: Next<'_, E, Ctx>) -> Result<()>;
@@ -24,7 +25,7 @@ where
 /// ミドルウェアチェーンの次の処理を表す構造体
 pub struct Next<'a, E, Ctx>
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
 {
     pub(crate) handler:
@@ -34,7 +35,7 @@ where
 
 impl<E, Ctx> Next<'_, E, Ctx>
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
 {
     pub fn new(
@@ -55,7 +56,7 @@ where
 #[async_trait]
 pub trait Handler<E, Ctx>: Send + Sync + 'static
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
 {
     async fn handle(&self, event: E, ctx: Ctx) -> Result<()>;
@@ -64,7 +65,7 @@ where
 /// 関数をハンドラとして扱うためのラッパー
 pub struct FnHandler<E, Ctx, F>
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
     F: Fn(E, Ctx) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
 {
@@ -74,7 +75,7 @@ where
 
 impl<E, Ctx, F> FnHandler<E, Ctx, F>
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
     F: Fn(E, Ctx) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
 {
@@ -89,7 +90,7 @@ where
 #[async_trait]
 impl<E, Ctx, F> Handler<E, Ctx> for FnHandler<E, Ctx, F>
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
     F: Fn(E, Ctx) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
 {
@@ -100,7 +101,7 @@ where
 
 impl<E, Ctx> Clone for Next<'_, E, Ctx>
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     Ctx: Clone + Send + Sync + 'static,
 {
     fn clone(&self) -> Self {
@@ -113,30 +114,34 @@ where
 
 /// ワーカービルダー
 /// イベントの購読と処理を行うワーカーを構築する
-pub struct WorkerBuilder<E, H, Ctx>
+pub struct WorkerBuilder<E, H, Ctx, Src>
+// EventSource をジェネリックに
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     H: Handler<E, Ctx>,
     Ctx: Clone + Send + Sync + 'static,
+    Src: EventSource<E> + 'static, // EventSource トレイト境界を追加
 {
-    source: Arc<dyn EventSource<E>>, // subscriber -> source にリネーム
+    source: Arc<Src>, // Arc<dyn EventSource<E>> -> Arc<Src>
     handler: H,
     context: Ctx,
     middlewares: Vec<Arc<dyn Middleware<E, Ctx>>>,
     durable_name: Option<String>,
 }
 
-impl<E, H, Ctx> WorkerBuilder<E, H, Ctx>
+impl<E, H, Ctx, Src> WorkerBuilder<E, H, Ctx, Src>
+// ジェネリックパラメータ追加
 where
-    E: Event,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static,
     H: Handler<E, Ctx> + Clone,
     Ctx: Clone + Send + Sync + 'static,
+    Src: EventSource<E> + 'static, // EventSource トレイト境界を追加
 {
     /// 新しいWorkerBuilderを作成
-    pub fn new(source: Arc<dyn EventSource<E>>, handler: H, context: Ctx) -> Self {
-        // subscriber -> source
+    pub fn new(source: Arc<Src>, handler: H, context: Ctx) -> Self {
+        // 引数型変更
         Self {
-            source, // subscriber -> source
+            source,
             handler,
             context,
             middlewares: Vec::new(),
@@ -147,7 +152,7 @@ where
     /// ミドルウェアを追加
     pub fn with_middleware<M>(mut self, middleware: M) -> Self
     where
-        M: Middleware<E, Ctx> + 'static,
+        M: Middleware<E, Ctx> + 'static, // Middleware の E 境界は修正済みのはず
     {
         self.middlewares.push(Arc::new(middleware));
         self
@@ -212,6 +217,7 @@ where
     /// ワーカーを実行
     pub async fn run(self, shutdown: CancellationToken) -> Result<()> {
         // source からメッセージストリームを取得 (subscriber -> source)
+        // EventSource::subscribe の戻り値型が仮実装 (Result<BoxStream<'static, Result<E, anyhow::Error>>>) であることに注意
         let mut stream = self.source.subscribe().await?;
         let shutdown_token = shutdown.clone();
 
@@ -228,51 +234,39 @@ where
                     break;
                 }
                 // メッセージを受信したら処理
-                message = stream.next() => {
-                    match message {
-                        Some((event, ack)) => {
+                message_result = stream.next() => { // 変数名を変更
+                    match message_result {
+                        // subscribe の仮実装に合わせる (Result<E, anyhow::Error>)
+                        Some(Ok(event)) => {
                             // ミドルウェアチェーンを実行
                             let result = Self::execute_middleware_chain(
                                 Arc::clone(&handler),
                                 &middlewares,
-                                event,
+                                event, // event を直接渡す
                                 context.clone(),
                             ).await;
 
-                            // 結果に基づいてack/nackを行う
-                            match result {
-                                Ok(_) => {
-                                    ack.ack().await?;
-                                }
-                                Err(e) => {
-                                    // エラーがClassifyErrorを実装している場合は、エラーアクションに基づいて処理
-                                    if let Some(classify_error) = e.downcast_ref::<Box<dyn ClassifyError>>() {
-                                        match classify_error.error_action() {
-                                            ErrorAction::Retry => {
-                                                // nack（再試行）
-                                                // JetStreamの場合、ackしないと自動的に再配信される
-                                            }
-                                            ErrorAction::Ignore => {
-                                                // エラーを無視してack
-                                                ack.ack().await?;
-                                            }
-                                        }
-                                    } else {
-                                        // ClassifyErrorを実装していない場合はデフォルトでRetry
-                                        // nack（再試行）
-                                    }
-                                }
+                            // 結果に基づいてログ出力 (Ack/Nack は EventSource 側で行う想定)
+                            if let Err(e) = result {
+                                // TODO: エラー処理の詳細化 (ClassifyError を使うなど)
+                                eprintln!("Worker handler error: {:?}", e);
                             }
+                            // TODO: 本来はここで Ack/Nack を行う必要があるが、
+                            //       EventSource のシグネチャが仮実装のため、一旦何もしない。
+                        }
+                        Some(Err(e)) => {
+                            // subscribe ストリーム自体のエラー
+                            eprintln!("Subscription error: {:?}", e);
+                            // エラーによってはリトライや終了処理が必要かもしれない
                         }
                         None => {
-                            // ストリームが終了したら終了
+                            // ストリームが終了したらループを抜ける
                             break;
                         }
                     }
                 }
             }
         }
-
         Ok(())
     }
 }

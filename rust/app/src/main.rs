@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     handlers::mirakc_event_handler::MirakcEventSinks,
-    ports::{event_sink::DomainEventSink, event_source::EventSource},
+    ports::{event_sink::EventSink, event_source::EventSource},
 };
 use infra_jetstream::{self, JsPublisher, JsSubscriber}; // infra_jetstream とその要素をインポート
 use infra_mirakc::MirakcSseSource; // MirakcSseSource をインポート
@@ -171,7 +171,6 @@ async fn main() -> Result<()> {
 
             // mirakcイベント処理コマンドを実行
             if let Err(e) = cmd::mirakc_events::run_mirakc_events(
-                &app_config,
                 &mirakc_url, // _mirakc_url として受け取るので渡す必要はある
                 mirakc_source,
                 sinks,
@@ -190,14 +189,19 @@ async fn main() -> Result<()> {
             println!("Starting EPG updater worker...");
 
             // 依存関係の初期化
-            let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> =
-                Arc::new(JsSubscriber::<EpgProgramsUpdatedEvent>::from_event_type(
-                    nats_client.clone(),
-                    // Consumer 名は JsSubscriber 内部で自動生成されるため不要
-                ));
-            let epg_stored_sink: Arc<dyn DomainEventSink<EpgStoredEvent>> = Arc::new(
-                JsPublisher::<EpgStoredEvent>::from_event_type(nats_client.clone()),
+            // ストリーム定義を取得
+            let mirakc_stream = streams_def::mirakc_event_stream::<EpgProgramsUpdatedEvent>();
+            let kurec_stream = streams_def::kurec_event_stream::<EpgStoredEvent>();
+
+            // JsSubscriber と JsPublisher を作成
+            let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> = Arc::new(
+                JsSubscriber::<EpgProgramsUpdatedEvent>::new(nats_client.clone(), mirakc_stream),
             );
+            let epg_stored_sink: Arc<dyn EventSink<EpgStoredEvent>> =
+                Arc::new(JsPublisher::<EpgStoredEvent>::new(
+                    nats_client.clone(),
+                    kurec_stream,
+                ));
 
             // シャットダウントークンのクローンを作成
             let worker_shutdown = shutdown.clone();
