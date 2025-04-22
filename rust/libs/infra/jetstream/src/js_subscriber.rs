@@ -196,10 +196,8 @@ where
                         error!(consumer = %durable_name_clone, error = %e, "Unknown error occurred");
                     },
                 }
-                
                 let error = JsEventError::Stream { source: e };
                 error.log();
-                
                 error
             })
             .and_then(|msg| async move {
@@ -216,15 +214,12 @@ where
                             source: e,
                             payload: msg.payload.to_vec(),
                         };
-                        
                         error.log();
-                        
                         // デシリアライズエラーの場合はAckする
                         // (再試行しても同じエラーになるため)
                         if let Err(ack_err) = msg.ack().await {
                             error!(error = %ack_err, "Failed to ack message after deserialization error");
                         }
-                        
                         Err(error)
                     }
                 }
