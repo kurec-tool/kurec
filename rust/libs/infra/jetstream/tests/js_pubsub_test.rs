@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use domain::event::Event; // 新しい Event トレイトをインポート
-use domain::ports::{event_sink::EventSink, event_source::EventSource}; // パス修正
+use domain::event::Event;
+use domain::ports::{event_sink::EventSink, event_source::EventSource};
 use futures::StreamExt;
-use infra_jetstream::{EventStream, JsPublisher, JsSubscriber};
+use infra_jetstream::{EventStream, JsEventError, JsPublisher, JsSubscriber};
 use infra_nats::connect as nats_connect;
 use serde::{Deserialize, Serialize};
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt};
@@ -73,7 +73,8 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 
     publisher.publish(test_event.clone()).await?;
 
-    let mut stream = subscriber.subscribe().await?;
+    // アダプター関数を使用してsubscribeを呼び出す
+    let mut stream = infra_common::event_source::adapt_event_source(&subscriber).await?;
 
     let received = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         if let Some(Ok(event)) = stream.next().await {

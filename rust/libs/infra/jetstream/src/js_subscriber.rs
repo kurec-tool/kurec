@@ -1,20 +1,18 @@
-use crate::error::{AckError, SubscribeError}; // エラー型をインポート
-use crate::message::EventMessage; // EventMessage をインポート
+use crate::ack::JsAck;
+use crate::error::JsEventError;
 use anyhow::Result;
 use async_nats::jetstream::{self, consumer::pull::MessagesErrorKind};
 use async_trait::async_trait;
-use domain::event::Event; // 新しい Event トレイトをインポート
-use domain::ports::event_source::EventSource;
-use futures::stream::{BoxStream, StreamExt, TryStreamExt}; // TryStreamExt を追加
+use domain::event::Event;
+use futures::stream::{BoxStream, StreamExt, TryStreamExt};
 use heck::ToSnakeCase;
-use serde::de::DeserializeOwned; // DeserializeOwned をインポート
+use infra_common::ackable_event::AckableEvent;
+use infra_common::event_source::EventSource;
 use std::any::type_name;
-use std::fmt::Debug; // Debug をインポート
-use std::marker::PhantomData;
+use std::fmt::Debug;
 use std::sync::Arc;
-use tracing::{debug, error, info, instrument, warn}; // ログレベルを追加
+use tracing::{debug, error, info, warn};
 
-// infra_nats クレートの NatsClient をインポート
 use infra_nats::NatsClient;
 
 /// 型情報を使用してdurable nameを生成する関数 (stream_name を削除)
@@ -60,13 +58,11 @@ impl<E: Event> JsSubscriber<E> {
 }
 
 #[async_trait]
-impl<E> EventSource<E> for JsSubscriber<E>
+impl<E> EventSource<E, JsEventError> for JsSubscriber<E>
 where
-    E: Event + DeserializeOwned + Debug + Send + Sync + 'static,
-    // STREAM_NAME 定数を持つことを前提とする
+    E: Event + Debug + Send + Sync + 'static,
 {
-    // EventSource トレイトに合わせて戻り値の型を Result<BoxStream<'static, Result<E, anyhow::Error>>> に変更
-    async fn subscribe(&self) -> Result<BoxStream<'static, Result<E, anyhow::Error>>> {
+    async fn subscribe(&self) -> Result<BoxStream<'static, Result<AckableEvent<E>, JsEventError>>> {
         let stream_name = self.event_stream.stream_name();
         let subject_filter = type_name_to_snake_case::<E>(); // 型名からサブジェクト名を生成
         let durable_name = generate_durable_name::<E>(); // コンシューマ名
@@ -200,28 +196,36 @@ where
                         error!(consumer = %durable_name_clone, error = %e, "Unknown error occurred");
                     },
                 }
-                anyhow::anyhow!("Messages stream error: {}", e) // anyhow::Error に変換
+                
+                let error = JsEventError::Stream { source: e };
+                error.log();
+                
+                error
             })
             .and_then(|msg| async move {
                 // メッセージをデシリアライズ
                 match serde_json::from_slice::<E>(&msg.payload) {
                     Ok(event) => {
-                        // イベントを直接返す
-                        // 注: EventMessage は作成せず、イベントのみを返す
-                        // これにより、Ack/Nack 機能は失われるが、EventSource トレイトの要件を満たす
-                        // 自動的に Ack する
-                        if let Err(ack_err) = msg.ack().await {
-                            warn!(error = %ack_err, "Failed to ack message, but continuing");
-                        }
-                        Ok(event)
+                        // AckableEventを作成して返す
+                        let ack_fn = Box::new(JsAck::new(msg));
+                        Ok(AckableEvent::new(event, ack_fn))
                     }
                     Err(e) => {
-                        error!(error = %e, payload = ?String::from_utf8_lossy(&msg.payload), "Failed to deserialize message payload");
-                        // デシリアライズ失敗時はメッセージを Nack する (再配信させる)
-                        if let Err(nack_err) = msg.ack().await {
-                             error!(error = %nack_err, "Failed to ack message after deserialization error");
+                        // デシリアライズエラー結果を返す
+                        let error = JsEventError::Deserialize {
+                            source: e,
+                            payload: msg.payload.to_vec(),
+                        };
+                        
+                        error.log();
+                        
+                        // デシリアライズエラーの場合はAckする
+                        // (再試行しても同じエラーになるため)
+                        if let Err(ack_err) = msg.ack().await {
+                            error!(error = %ack_err, "Failed to ack message after deserialization error");
                         }
-                        Err(anyhow::anyhow!("Deserialization error: {}", e)) // anyhow::Error に変換
+                        
+                        Err(error)
                     }
                 }
             });

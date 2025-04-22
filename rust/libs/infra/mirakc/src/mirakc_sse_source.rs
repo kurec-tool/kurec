@@ -5,11 +5,42 @@ use async_trait::async_trait;
 use backoff::{backoff::Backoff, ExponentialBackoff};
 use bytes::Bytes;
 use chrono::Utc;
-use domain::ports::event_source::EventSource; // domain::ports::event_source からインポート
+use domain::event::Event as DomainEvent;
+use domain::ports::event_source::EventSource;
 use eventsource_stream::Eventsource;
-use futures::{future, stream::BoxStream, Stream, StreamExt};
+use futures::{future, stream::BoxStream, Stream, StreamExt, TryStreamExt};
+use serde::{Deserialize, Serialize};
 use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::time::Duration;
+use tracing::{debug, error, info};
+
+/// MirakcEventDtoをラップしてdomain::event::Eventトレイトを実装するアダプター
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MirakcEventAdapter {
+    inner: MirakcEventDto,
+}
+
+impl MirakcEventAdapter {
+    /// 新しいMirakcEventAdapterを作成
+    pub fn new(inner: MirakcEventDto) -> Self {
+        Self { inner }
+    }
+
+    /// 内部のMirakcEventDtoを取得
+    pub fn inner(&self) -> &MirakcEventDto {
+        &self.inner
+    }
+
+    /// 内部のMirakcEventDtoを消費して返す
+    pub fn into_inner(self) -> MirakcEventDto {
+        self.inner
+    }
+}
+
+/// MirakcEventAdapterにdomain::event::Eventトレイトを実装
+impl DomainEvent for MirakcEventAdapter {}
+
+use crate::error::SseEventError;
 
 /// mirakc SSEイベントソース
 pub struct MirakcSseSource {
@@ -148,17 +179,62 @@ impl MirakcSseSource {
     }
 } // impl MirakcSseSource の閉じ括弧を追加
 
-/// MirakcSseSource に EventSource<MirakcEventDto> トレイトを実装
+/// MirakcSseSource に EventSource<MirakcEventAdapter, SseEventError> トレイトを実装
 #[async_trait]
-impl EventSource<MirakcEventDto> for MirakcSseSource {
-    /// MirakcEventDto のストリームを購読する
-    async fn subscribe(&self) -> Result<BoxStream<'static, Result<MirakcEventDto, anyhow::Error>>> {
-        // イベントストリームを取得
-        let event_stream = self.event_stream().await?;
+impl EventSource<MirakcEventAdapter, SseEventError> for MirakcSseSource {
+    /// MirakcEventAdapter のストリームを購読する
+    async fn subscribe(
+        &self,
+    ) -> Result<BoxStream<'static, Result<MirakcEventAdapter, SseEventError>>> {
+        let mirakc_url = self.mirakc_url.clone();
+        info!("Starting event stream from mirakc URL: {}", mirakc_url);
 
-        // Result<MirakcEventDto, anyhow::Error> を返すストリームに変換
-        let result_stream = event_stream.map(|event| Ok(event)).boxed();
+        // SSEストリームを取得
+        debug!("Attempting to get SSE stream...");
+        let stream = match self.get_sse_stream().await {
+            Ok(s) => {
+                info!("Successfully obtained SSE stream");
+                s
+            }
+            Err(e) => {
+                error!("Failed to get SSE stream: {:?}. This will prevent events from being processed.", e);
+                return Err(e);
+            }
+        };
 
-        Ok(result_stream)
+        // SSEストリームを MirakcEventDto ストリームに変換
+        debug!("Converting SSE stream to MirakcEventDto stream");
+        let event_stream = stream
+            .eventsource()
+            .map_err(move |e| {
+                let error = SseEventError::Stream { source: e.into() };
+                error.log();
+                error
+            })
+            .and_then(move |event| {
+                let mirakc_url = mirakc_url.clone(); // 各イベント用にURLをクローン
+                async move {
+                    // MirakcEventDtoを作成
+                    info!(
+                        event_type = %event.event,
+                        "Received SSE event - will be processed"
+                    );
+
+                    let dto = MirakcEventDto {
+                        mirakc_url,
+                        event_type: event.event,
+                        data: event.data,
+                        received_at: Utc::now(),
+                    };
+
+                    // MirakcEventAdapterでラップして返す
+                    let adapter = MirakcEventAdapter::new(dto);
+                    Ok(adapter)
+                }
+            })
+            .boxed();
+
+        info!("Event stream setup complete. Events will be processed as they arrive.");
+        Ok(event_stream)
     }
 }

@@ -1,23 +1,24 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::ports::{EventSink, EventSource}; // domain::ports からインポート
+use domain::event::Event;
+use domain::ports::{EventSink, EventSource};
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use shared_core::error_handling::ClassifyError; // shared_core からインポート
+use infra_common::ackable_event::AckableEvent;
+use shared_core::error_handling::{ClassifyError, ErrorAction};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
-
-use serde::{de::DeserializeOwned, Serialize}; // 追加
+use tracing::{error, warn};
 
 /// ストリームワーカーのミドルウェアトレイト
 /// 入力イベントを処理して出力イベントを生成する前後に処理を挟むことができる
 #[async_trait]
 pub trait StreamMiddleware<I, O, E>: Send + Sync + 'static
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Serialize + DeserializeOwned + Send + Sync + 'static,
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
     // 戻り値を Option<O> に変更
@@ -27,8 +28,8 @@ where
 /// ミドルウェアチェーンの次の処理を表す構造体
 pub struct StreamNext<'a, I, O, E>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Serialize + DeserializeOwned + Send + Sync + 'static,
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
     // ハンドラの型と戻り値を Option<O> に変更
@@ -39,8 +40,8 @@ where
 
 impl<I, O, E> StreamNext<'_, I, O, E>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Serialize + DeserializeOwned + Send + Sync + 'static,
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
     // ハンドラの型と戻り値を Option<O> に変更
@@ -61,8 +62,8 @@ where
 
 impl<I, O, E> Clone for StreamNext<'_, I, O, E>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Serialize + DeserializeOwned + Send + Sync + 'static,
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
     // ハンドラの型を Option<O> に変更
@@ -78,8 +79,8 @@ where
 #[async_trait]
 pub trait StreamHandler<I, O, E>: Send + Sync + 'static
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    // O は Event である必要はない
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
 {
     // 戻り値を Option<O> に変更
@@ -89,8 +90,8 @@ where
 /// 関数をハンドラとして扱うためのラッパー
 pub struct FnStreamHandler<I, O, E, F>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    // O は Event である必要はない
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
     // 関数の戻り値を Option<O> に変更
     F: Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static,
@@ -101,8 +102,8 @@ where
 
 impl<I, O, E, F> FnStreamHandler<I, O, E, F>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    // O は Event である必要はない
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
     // 関数の戻り値を Option<O> に変更
     F: Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static,
@@ -118,8 +119,8 @@ where
 #[async_trait]
 impl<I, O, E, F> StreamHandler<I, O, E> for FnStreamHandler<I, O, E, F>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Send + Sync + 'static,
+    I: Event,
+    O: Event,
     E: ClassifyError + Send + Sync + 'static,
     // 関数の戻り値を Option<O> に変更
     F: Fn(I) -> BoxFuture<'static, Result<Option<O>, E>> + Send + Sync + 'static,
@@ -132,31 +133,30 @@ where
 
 /// ストリームワーカー
 /// 入力イベントを処理して出力イベントを生成するワーカー
-// ジェネリック F を削除し、ハンドラをトレイトオブジェクトに変更
-pub struct StreamWorker<I, O, E>
+pub struct StreamWorker<I, O, IErr, E>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Serialize + DeserializeOwned + Send + Sync + 'static, // Sink が要求
+    I: Event,
+    O: Event,
+    IErr: Send + Sync + 'static,
     E: ClassifyError + Send + Sync + 'static,
 {
-    source: Arc<dyn EventSource<I>>, // domain::ports::EventSource を使用
-    sink: Arc<dyn EventSink<O>>,     // publisher -> sink にリネーム
-    handler: Arc<dyn StreamHandler<I, O, E>>, // F -> Arc<dyn StreamHandler> に変更
+    source: Arc<dyn EventSource<I, IErr>>,
+    sink: Arc<dyn EventSink<O>>,
+    handler: Arc<dyn StreamHandler<I, O, E>>,
     middlewares: Vec<Arc<dyn StreamMiddleware<I, O, E>>>,
     durable_name: Option<String>,
 }
 
-// ジェネリック F を削除
-impl<I, O, E> StreamWorker<I, O, E>
+impl<I, O, IErr, E> StreamWorker<I, O, IErr, E>
 where
-    I: Serialize + DeserializeOwned + Send + Sync + 'static,
-    O: Serialize + DeserializeOwned + Send + Sync + 'static, // Sink が要求
+    I: Event,
+    O: Event,
+    IErr: Send + Sync + 'static,
     E: ClassifyError + Send + Sync + 'static,
 {
     /// 新しいStreamWorkerを作成
-    // シグネチャを変更
     pub fn new(
-        source: Arc<dyn EventSource<I>>,
+        source: Arc<dyn EventSource<I, IErr>>,
         sink: Arc<dyn EventSink<O>>,
         handler: Arc<dyn StreamHandler<I, O, E>>,
     ) -> Self {
@@ -240,14 +240,14 @@ where
 
     /// ワーカーを実行
     pub async fn run(self, shutdown: CancellationToken) -> Result<()> {
-        // source からメッセージストリームを取得 (subscriber -> source)
+        // sourceからメッセージストリームを取得
         let mut stream = self.source.subscribe().await?;
         let shutdown_token = shutdown.clone();
 
-        // ハンドラとミドルウェアをArcでラップ (handler は既に Arc)
-        let handler = self.handler; // clone 不要
+        // ハンドラとミドルウェアをArcでラップ
+        let handler = self.handler;
         let middlewares: Vec<Arc<dyn StreamMiddleware<I, O, E>>> = self.middlewares;
-        let sink = self.sink; // publisher -> sink
+        let sink = self.sink;
 
         // メッセージ処理ループ
         loop {
@@ -260,46 +260,50 @@ where
                 message = stream.next() => {
                     match message {
                         Some(Ok(event)) => {
-                            // ミドルウェアチェーンを実行 (handler.clone() 不要)
+                            // 通常の処理
                             let result = Self::execute_middleware_chain(
-                                handler.clone(), // handler は Arc なので clone
+                                handler.clone(),
                                 &middlewares,
                                 event
                             ).await;
 
                             match result {
-                                // 戻り値が Option<O> になったので Some の場合のみ publish
                                 Ok(Some(output_event)) => {
-                                    // 出力イベントを sink に発行 (publisher -> sink)
-                                    sink.publish(output_event).await?;
-                                    // ack は削除
+                                    // 出力イベントをSinkに発行
+                                    if let Err(e) = sink.publish(output_event).await {
+                                        error!(error = %e, "Failed to publish output event");
+                                        // パブリッシュに失敗した場合は再試行
+                                        continue;
+                                    }
                                 }
                                 Ok(None) => {
                                     // 出力イベントがない場合は何もしない
-                                    // ack は削除
                                 }
                                 Err(e) => {
                                     // エラーアクションに基づいて処理
                                     match e.error_action() {
-                                        shared_core::error_handling::ErrorAction::Retry => { // パス修正
-                                            // nack（再試行）
-                                            // JetStreamの場合、ackしないと自動的に再配信される
-                                            // 何もしない
+                                        ErrorAction::Retry => {
+                                            // 再試行の場合はログを出力
+                                            warn!(error = %e, "Error processing event, will retry");
+                                            continue;
                                         }
-                                        shared_core::error_handling::ErrorAction::Ignore => { // パス修正
-                                            // エラーを無視
-                                            // ack は削除
+                                        ErrorAction::Ignore => {
+                                            // エラーを無視する場合はログを出力
+                                            warn!(error = %e, "Error processing event, ignoring");
                                         }
                                     }
                                 }
                             }
                         }
-                        Some(Err(e)) => {
-                            // エラーログを出力
-                            eprintln!("Error receiving event: {:?}", e);
+                        Some(Err(error)) => {
+                            // エラーの処理
+                            // ログは既にソース側で記録済み
+
+                            // 必要に応じて追加の処理
+                            // metrics::increment_counter!("event_errors", "type" => error.type_str());
                         }
                         None => {
-                            // ストリームが終了したら終了
+                            // ストリームが終了
                             break;
                         }
                     }

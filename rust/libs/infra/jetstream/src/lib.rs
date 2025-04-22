@@ -13,6 +13,7 @@ use async_nats::jetstream; // Keep jetstream context import
 // use infra_nats::NatsClient; // This will be used in js_publisher/js_subscriber
 
 // 新しいモジュールを追加
+pub mod ack;
 pub mod config;
 pub mod error;
 pub mod event_stream;
@@ -21,6 +22,8 @@ pub mod message;
 mod js_publisher;
 mod js_subscriber;
 
+pub use ack::JsAck;
+pub use error::JsEventError;
 pub use event_stream::EventStream;
 pub use js_publisher::JsPublisher;
 pub use js_subscriber::JsSubscriber;
