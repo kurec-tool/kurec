@@ -11,7 +11,6 @@ use domain::{
 use futures::StreamExt;
 // use infra_jetstream::EventStream;
 // use infra_mirakc::MirakcSseSource; // Source は引数で受け取るため削除
-use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
