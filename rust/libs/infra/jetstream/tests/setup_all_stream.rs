@@ -1,16 +1,20 @@
 use std::time::Duration;
 
-use infra_jetstream::setup_all_streams; // connect を削除
-use infra_nats::connect as nats_connect; // infra_nats::connect をインポート
+use domain::event::Event; // 新しい Event トレイトをインポート
+use infra_jetstream::{setup_all_streams, EventStream}; // EventStream をインポート
+use infra_nats::connect as nats_connect;
 use serde::{Deserialize, Serialize};
-use shared_core::streams::get_all_stream_configs;
-use shared_macros::event;
 use testcontainers::{core::WaitFor, runners::AsyncRunner, GenericImage, ImageExt};
 
 // イベント型の定義
-#[event(stream = "test-stream")]
 #[derive(Serialize, Deserialize, Debug)]
 struct TestEvent;
+
+// 新しい Event トレイトを実装
+impl Event for TestEvent {}
+
+// テスト用のストリーム定義
+const TEST_STREAM_NAME: &str = "test-stream";
 
 async fn ensure_docker() {
     for _ in 0..20 {
@@ -30,8 +34,6 @@ async fn ensure_docker() {
 async fn stream_defs_are_applied() -> anyhow::Result<()> {
     ensure_docker().await;
 
-    // テスト前にストリーム設定をクリアできないため、テストの期待値を変更
-
     // ---- Spin‑up test JetStream -------------------------------------------
     let container = GenericImage::new("nats", "latest")
         .with_exposed_port(4222u16.into())
@@ -49,48 +51,44 @@ async fn stream_defs_are_applied() -> anyhow::Result<()> {
         .await?;
     let host = container.get_host().await?;
     let port = container.get_host_port_ipv4(4222u16).await?;
-    let url = format!("nats://{}:{}", host, port); // スキームを追加
+    let url = format!("nats://{}:{}", host, port);
 
     // ---- Use infra_nats::connect to get NatsClient ----------------------
     let nats_client = nats_connect(&url).await?;
-    let js = nats_client.jetstream_context(); // NatsClient から JetStream Context を取得
+    let js = nats_client.jetstream_context();
+
+    // テスト用のEventStreamを作成
+    let test_stream = EventStream::<TestEvent>::new(
+        TEST_STREAM_NAME,
+        infra_jetstream::config::StreamConfig {
+            max_age: Some(Duration::from_secs(3600)), // 1時間
+            max_messages: None,
+            max_bytes: None,
+            max_message_size: None,
+            storage: None,
+            retention: None,
+            discard: None,
+            duplicate_window: None,
+            allow_rollup: None,
+            deny_delete: None,
+            deny_purge: None,
+            description: None,
+        },
+    );
 
     // ---- Apply all StreamDefs ---------------------------------------------
     println!("setup_all_streams calling...");
     setup_all_streams(js).await?;
     println!("setup_all_streams done");
 
-    // 登録されたストリーム設定を取得
-    let configs = get_all_stream_configs();
-    // TODO: 初期設定されるようにしたらテストをちゃんとやる
-    // // test_streamとmirakc-eventsの2つのストリームが存在することを確認
-    // assert_eq!(configs.len(), 2, "should have exactly two stream configs");
-
-    // ---- Assert every Stream now exists --------------------------------
-    for config in configs {
-        assert!(
-            js.get_stream_no_info(&config.name).await.is_ok(),
-            "stream {} should exist",
-            config.name
-        );
-
-        // ストリーム名に応じて期待値を変更
-        let expected_max_age = match config.name.as_str() {
-            "test_stream" => Duration::from_secs(3600), // 1時間
-            "mirakc-events" => Duration::from_secs(7 * 24 * 60 * 60), // 7日間
-            _ => panic!("Unexpected stream name: {}", config.name),
-        };
-
-        // get_stream の戻り値の型が変更されたため、info() の呼び出し方を修正
-        // StreamInfo を取得してから config にアクセス
-        let _stream_info = js.get_stream(&config.name).await?; // stream_info を一旦無視
-                                                               // TODO: Stream から max_age を取得する公開メソッドを確認する
-                                                               // assert_eq!(
-                                                               //     stream_info.info.config.max_age, expected_max_age,
-                                                               //     "Stream {} should have correct max_age",
-                                                               //     config.name
-                                                               // ); // 閉じ括弧をコメントアウト
-    }
+    // ---- Assert Stream exists --------------------------------
+    assert!(
+        js.get_stream_no_info(test_stream.stream_name())
+            .await
+            .is_ok(),
+        "stream {} should exist",
+        test_stream.stream_name()
+    );
 
     Ok(())
 }
@@ -99,8 +97,6 @@ async fn stream_defs_are_applied() -> anyhow::Result<()> {
 async fn idempotend_check() -> anyhow::Result<()> {
     ensure_docker().await;
 
-    // テスト前にストリーム設定をクリアできないため、テストの期待値を変更
-
     // ---- Spin‑up test JetStream -------------------------------------------
     let container = GenericImage::new("nats", "latest")
         .with_exposed_port(4222u16.into())
@@ -118,25 +114,43 @@ async fn idempotend_check() -> anyhow::Result<()> {
         .await?;
     let host = container.get_host().await?;
     let port = container.get_host_port_ipv4(4222u16).await?;
-    let url = format!("nats://{}:{}", host, port); // スキームを追加
+    let url = format!("nats://{}:{}", host, port);
 
     // ---- Use infra_nats::connect to get NatsClient ----------------------
     let nats_client = nats_connect(&url).await?;
-    let js = nats_client.jetstream_context(); // NatsClient から JetStream Context を取得
+    let js = nats_client.jetstream_context();
+
+    // テスト用のEventStreamを作成
+    let test_stream = EventStream::<TestEvent>::new(
+        TEST_STREAM_NAME,
+        infra_jetstream::config::StreamConfig {
+            max_age: Some(Duration::from_secs(3600)), // 1時間
+            max_messages: None,
+            max_bytes: None,
+            max_message_size: None,
+            storage: None,
+            retention: None,
+            discard: None,
+            duplicate_window: None,
+            allow_rollup: None,
+            deny_delete: None,
+            deny_purge: None,
+            description: None,
+        },
+    );
 
     // ---- Apply all StreamDefs ---------------------------------------------
     setup_all_streams(js).await?;
     setup_all_streams(js).await?;
 
-    // ---- Assert every Stream now exists --------------------------------
-    let configs = get_all_stream_configs();
-    for config in configs {
-        assert!(
-            js.get_stream_no_info(&config.name).await.is_ok(),
-            "stream {} should exist",
-            config.name
-        );
-    }
+    // ---- Assert Stream exists --------------------------------
+    assert!(
+        js.get_stream_no_info(test_stream.stream_name())
+            .await
+            .is_ok(),
+        "stream {} should exist",
+        test_stream.stream_name()
+    );
 
     Ok(())
 }

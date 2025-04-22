@@ -54,7 +54,7 @@ pub async fn run_mirakc_events(
             // イベントを受信したら処理
             maybe_event_dto = event_stream.next() => {
                 match maybe_event_dto {
-                    Some((event_dto, _ack_handle)) => {
+                    Some(Ok(event_dto)) => {
                         // イベント受信のログを追加
                         info!(
                             event_type = %event_dto.event_type,
@@ -71,17 +71,15 @@ pub async fn run_mirakc_events(
                             Err(e) => {
                                 // エラー処理 (ClassifyError に基づく)
                                 error!("Error handling mirakc event: {}", e);
-                                match e.error_action() {
-                                    shared_core::error_handling::ErrorAction::Retry => {
-                                        // SSE ではリトライできないため、エラーログのみ
-                                        error!("Retry action requested, but SSE source cannot retry. Ignoring error.");
-                                    }
-                                    shared_core::error_handling::ErrorAction::Ignore => {
-                                        // 無視 (エラーログは既に出力済み)
-                                    }
-                                }
+                                // エラーログを出力するだけ
+                                error!("Error handling mirakc event: {}. Continuing...", e);
                             }
                         }
+                    }
+                    Some(Err(e)) => {
+                        error!("Error receiving mirakc event: {}", e);
+                        // エラーログを出力するだけ
+                        error!("Error receiving mirakc event: {}. Continuing...", e);
                     }
                     None => {
                         error!("Mirakc event stream ended unexpectedly. Attempting to reconnect...");

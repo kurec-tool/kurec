@@ -1,13 +1,12 @@
 use std::sync::Arc;
-// use std::sync::Arc; // 重複削除
 use std::time::Duration;
 
-use domain::ports::{event_sink::DomainEventSink, event_source::EventSource}; // パス修正
+use domain::event::Event; // 新しい Event トレイトをインポート
+use domain::ports::{event_sink::EventSink, event_source::EventSource}; // パス修正
 use futures::StreamExt;
-use infra_jetstream::{JsPublisher, JsSubscriber};
+use infra_jetstream::{EventStream, JsPublisher, JsSubscriber};
 use infra_nats::connect as nats_connect;
 use serde::{Deserialize, Serialize};
-use shared_core::event::Event; // パス修正
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -16,15 +15,11 @@ struct TestEvent {
     pub message: String,
 }
 
-impl Event for TestEvent {
-    fn stream_name() -> &'static str {
-        "test-pubsub-stream"
-    }
+// 新しい Event トレイトを実装
+impl Event for TestEvent {}
 
-    fn event_name() -> &'static str {
-        "test-event"
-    }
-}
+// テスト用のストリーム定義
+const TEST_STREAM_NAME: &str = "test-pubsub-stream";
 
 async fn ensure_docker() {
     for _ in 0..20 {
@@ -48,19 +43,28 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
     let nats_client = nats_connect(&url).await?;
     let js = nats_client.jetstream_context();
 
-    let _stream = js
-        .create_stream(&async_nats::jetstream::stream::Config {
-            name: TestEvent::stream_name().to_string(),
-            subjects: vec![TestEvent::event_name().to_string()], // stream_subject -> event_name
-            ..Default::default()
-        })
-        .await?;
+    // EventStream を作成
+    let event_stream = EventStream::<TestEvent>::new(
+        TEST_STREAM_NAME,
+        infra_jetstream::config::StreamConfig {
+            max_age: None,
+            max_messages: None,
+            max_bytes: None,
+            max_message_size: None,
+            storage: None,
+            retention: None,
+            discard: None,
+            duplicate_window: None,
+            allow_rollup: None,
+            deny_delete: None,
+            deny_purge: None,
+            description: None,
+        },
+    );
 
-    // Removed manual consumer creation to let JsSubscriber create its own consumer.
-
-    // NatsClient を渡すように変更
-    let publisher = JsPublisher::<TestEvent>::from_event_type(nats_client.clone());
-    let subscriber = JsSubscriber::<TestEvent>::from_event_type(nats_client.clone());
+    // NatsClient と EventStream を渡す
+    let publisher = JsPublisher::<TestEvent>::new(nats_client.clone(), event_stream.clone());
+    let subscriber = JsSubscriber::<TestEvent>::new(nats_client.clone(), event_stream);
 
     let test_event = TestEvent {
         id: 1,
@@ -72,53 +76,7 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
     let mut stream = subscriber.subscribe().await?;
 
     let received = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        if let Some((event, ack)) = stream.next().await {
-            ack.ack().await?;
-            Ok::<_, anyhow::Error>(event)
-        } else {
-            Err(anyhow::anyhow!("Stream ended unexpectedly"))
-        }
-    })
-    .await??;
-
-    assert_eq!(received.id, test_event.id);
-    assert_eq!(received.message, test_event.message);
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_from_event_type() -> anyhow::Result<()> {
-    let (_container, url) = setup_nats().await?;
-
-    // infra_nats::connect を使用
-    let nats_client = nats_connect(&url).await?;
-    let js = nats_client.jetstream_context();
-
-    let _stream = js
-        .create_stream(&async_nats::jetstream::stream::Config {
-            name: TestEvent::stream_name().to_string(),
-            subjects: vec![TestEvent::event_name().to_string()], // stream_subject -> event_name
-            ..Default::default()
-        })
-        .await?;
-
-    // NatsClient を渡すように変更
-    let publisher = JsPublisher::<TestEvent>::from_event_type(nats_client.clone());
-    let subscriber = JsSubscriber::<TestEvent>::from_event_type(nats_client.clone());
-
-    let test_event = TestEvent {
-        id: 2,
-        message: "Hello from from_event_type!".to_string(),
-    };
-
-    publisher.publish(test_event.clone()).await?;
-
-    let mut stream = subscriber.subscribe().await?;
-
-    let received = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        if let Some((event, ack)) = stream.next().await {
-            ack.ack().await?;
+        if let Some(Ok(event)) = stream.next().await {
             Ok::<_, anyhow::Error>(event)
         } else {
             Err(anyhow::anyhow!("Stream ended unexpectedly"))

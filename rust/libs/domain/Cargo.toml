@@ -6,14 +6,17 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
+# async-nats = { workspace = true } # 削除 (infra_macros が直接参照しなくなったため)
+infra_macros = { path = "../infra/macros" }
+# infra_jetstream = { path = "../infra/jetstream" } # 削除 (infra_macros が直接参照しなくなったため)
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 semver = "1.0.26"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 shared_core = { path = "../shared/core" }
-shared_macros = { path = "../shared/macros" }
-shared_types = { version = "0.0.1", path = "../shared/types" }
+# shared_macros = { path = "../shared/macros" } # 削除 (infra_macros を使用)
+# shared_types = { version = "0.0.1", path = "../shared/types" } # 削除 (関連型は domain, infra に移動)
 thiserror = "1.0" # 追加
 tokio = { version = "1.0", features = ["full", "test-util"] }
 tokio-util = { version = "0.7.10", features = ["full"] }

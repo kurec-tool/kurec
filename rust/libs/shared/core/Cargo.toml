@@ -9,13 +9,14 @@ edition.workspace = true
 [dependencies]
 anyhow = "1.0.98"
 async-trait = "0.1.88"
+# domain = { path = "../../domain" } # 循環依存のため削除
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3.31"
 humantime = "2.2.0"
 inventory = "0.3.20"
 once_cell = "1.19.0"
 serde = { version = "1.0.219", features = ["derive"] }
-shared_types = { path = "../types" }
+# shared_types = { path = "../types" } # 削除
 tokio = { version = "1.36.0", features = ["full"] }
 tokio-util = { version = "0.7.10", features = ["full"] }
-# domain = { path = "../../domain" } # 循環依存のため削除
+# domain = { path = "../../domain" } # 削除済み (重複していたコメント)

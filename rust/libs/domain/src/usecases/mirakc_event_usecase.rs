@@ -3,9 +3,10 @@
 //! このモジュールはmirakcイベントを処理するユースケースを定義します。
 
 use crate::events::mirakc_events::*;
+use crate::ports::event_sink::EventSink; // 正しいパスからインポート
 use crate::ports::repositories::mirakc_event_repository::MirakcEventRepository;
 use futures::StreamExt;
-use shared_core::event_sink::EventSink; // event_publisher -> event_sink
+// use shared_core::event_sink::EventSink; // 削除
 
 /// mirakcイベントユースケース
 pub struct MirakcEventUseCase<R, S>

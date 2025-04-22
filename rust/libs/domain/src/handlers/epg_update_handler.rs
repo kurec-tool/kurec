@@ -3,17 +3,26 @@
 use crate::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     ports::{
-        event_sink::DomainEventSink, // EpgNotifier -> DomainEventSink
+        event_sink::EventSink, // DomainEventSink -> EventSink
         repositories::kurec_program_repository::KurecProgramRepository,
     },
 };
-use anyhow::{Context, Result}; // Context を追加 (From 実装で使用)
+use anyhow::{Context, Result};
 use async_trait::async_trait;
-use shared_core::{
-    error_handling::{ClassifyError, ErrorAction},
-    stream_worker::StreamHandler,
-};
+// TODO: StreamHandler は app::worker に移動したが、domain から app に依存できない。
+//       StreamHandler トレイト自体を domain::ports に移動するか、
+//       このハンドラを app クレートに移動する必要がある。
+//       一旦、コンパイルエラーを許容して進める。
+// use app::worker::stream_worker::StreamHandler;
+use shared_core::error_handling::{ClassifyError, ErrorAction}; // これは shared_core のままで良い
 use std::sync::Arc;
+
+// 仮の StreamHandler トレイト定義 (コンパイルを通すため)
+// TODO: 上記 TODO を解決したら削除
+#[async_trait]
+pub trait StreamHandler<I, O, E>: Send + Sync + 'static {
+    async fn handle(&self, event: I) -> Result<Option<O>, E>;
+}
 
 // EpgUpdateError の定義と実装
 #[derive(Debug, thiserror::Error)] // thiserror を使用
@@ -51,21 +60,21 @@ impl ClassifyError for EpgUpdateError {
 /// EPG更新イベントハンドラ
 pub struct EpgUpdateHandler {
     program_repository: Arc<dyn KurecProgramRepository>,
-    kurec_event_sink: Arc<dyn DomainEventSink<EpgStoredEvent>>, // epg_notifier -> kurec_event_sink
-                                                                // TODO: Add MirakcClientFactory if needed for fetching program details
+    kurec_event_sink: Arc<dyn EventSink<EpgStoredEvent>>, // DomainEventSink -> EventSink
+                                                          // TODO: Add MirakcClientFactory if needed for fetching program details
 }
 
 impl EpgUpdateHandler {
     /// 新しいEpgUpdateHandlerを作成
     pub fn new(
         program_repository: Arc<dyn KurecProgramRepository>,
-        kurec_event_sink: Arc<dyn DomainEventSink<EpgStoredEvent>>, // epg_notifier -> kurec_event_sink
-                                                                    // TODO: Add MirakcClientFactory if needed
+        kurec_event_sink: Arc<dyn EventSink<EpgStoredEvent>>, // DomainEventSink -> EventSink
+                                                              // TODO: Add MirakcClientFactory if needed
     ) -> Self {
         Self {
             program_repository,
-            kurec_event_sink, // epg_notifier -> kurec_event_sink
-                              // TODO: Initialize MirakcClientFactory if added
+            kurec_event_sink,
+            // TODO: Initialize MirakcClientFactory if added
         }
     }
 }

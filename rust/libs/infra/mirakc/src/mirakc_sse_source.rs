@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use backoff::{backoff::Backoff, ExponentialBackoff};
 use bytes::Bytes;
 use chrono::Utc;
-use domain::ports::event_source::{AckHandle, EventSource}; // domain::ports::event_source からインポート
+use domain::ports::event_source::EventSource; // domain::ports::event_source からインポート
 use eventsource_stream::Eventsource;
 use futures::{future, stream::BoxStream, Stream, StreamExt};
 use shared_core::dtos::mirakc_event::MirakcEventDto;
@@ -152,19 +152,13 @@ impl MirakcSseSource {
 #[async_trait]
 impl EventSource<MirakcEventDto> for MirakcSseSource {
     /// MirakcEventDto のストリームを購読する
-    async fn subscribe(&self) -> Result<BoxStream<'static, (MirakcEventDto, AckHandle)>> {
+    async fn subscribe(&self) -> Result<BoxStream<'static, Result<MirakcEventDto, anyhow::Error>>> {
         // イベントストリームを取得
         let event_stream = self.event_stream().await?;
 
-        // 各イベントに AckHandle を付与
-        let stream_with_ack = event_stream
-            .map(|event| {
-                // 常に成功する単純な AckHandle を作成
-                let ack_handle = AckHandle::new(Box::new(|| Box::pin(async { Ok(()) })));
-                (event, ack_handle)
-            })
-            .boxed();
+        // Result<MirakcEventDto, anyhow::Error> を返すストリームに変換
+        let result_stream = event_stream.map(|event| Ok(event)).boxed();
 
-        Ok(stream_with_ack)
+        Ok(result_stream)
     }
 }

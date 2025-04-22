@@ -33,3 +33,4 @@ infra_kvs = { path = "../libs/infra/kvs" }
 infra_nats = { path = "../libs/infra/nats" } # 追加
 domain = { path = "../libs/domain" }
 mirakc-client = { path = "../../server/mirakc-client" } # 追加
+app_macros = { path = "./macros" } # 追加

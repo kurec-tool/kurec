@@ -2,15 +2,15 @@
 //!
 //! このモジュールはmirakcから受信するイベントを定義します。
 
+use crate::event::Event; // 新しい Event トレイトをインポート
 use chrono::{DateTime, Utc};
+use infra_macros::define_event_stream; // 新しいマクロをインポート
 use serde::{Deserialize, Serialize};
-use shared_core::dtos::mirakc_event::*;
-use shared_core::event::Event; // shared_core::event::Event をインポート
-use shared_macros::event;
+use shared_core::dtos::mirakc_event::*; // DTO はそのまま利用
 
 /// mirakcのTunerStatusChangedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct TunerStatusChangedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -19,22 +19,11 @@ pub struct TunerStatusChangedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
-
-// TunerStatusChangedEvent に Event トレイトを手動実装 (マクロが機能しない場合の確認用)
-// TODO: マクロが修正されたら削除
-// impl Event for TunerStatusChangedEvent {
-impl Event for TunerStatusChangedEvent {
-    fn event_name() -> &'static str {
-        "tuner_status_changed" // #[event] マクロが生成するであろう名前
-    }
-    fn stream_name() -> &'static str {
-        "mirakc-events" // #[event(stream = "...")] で指定された名前
-    }
-}
+impl Event for TunerStatusChangedEvent {} // Event トレイトを実装
 
 /// mirakcのEpgProgramsUpdatedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct EpgProgramsUpdatedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -43,22 +32,11 @@ pub struct EpgProgramsUpdatedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
-
-// EpgProgramsUpdatedEvent に Event トレイトを手動実装 (マクロが機能しない場合の確認用)
-// TODO: マクロが修正されたら削除
-// impl Event for EpgProgramsUpdatedEvent {
-impl Event for EpgProgramsUpdatedEvent {
-    fn event_name() -> &'static str {
-        "epg_programs_updated" // #[event] マクロが生成するであろう名前
-    }
-    fn stream_name() -> &'static str {
-        "mirakc-events" // #[event(stream = "...")] で指定された名前
-    }
-}
+impl Event for EpgProgramsUpdatedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingStartedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingStartedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -67,10 +45,11 @@ pub struct RecordingStartedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingStartedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingStoppedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingStoppedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -79,10 +58,11 @@ pub struct RecordingStoppedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingStoppedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingFailedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingFailedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -91,10 +71,11 @@ pub struct RecordingFailedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingFailedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingRescheduledイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingRescheduledEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -103,10 +84,11 @@ pub struct RecordingRescheduledEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingRescheduledEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingRecordSavedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingRecordSavedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -115,10 +97,11 @@ pub struct RecordingRecordSavedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingRecordSavedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingRecordRemovedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingRecordRemovedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -127,10 +110,11 @@ pub struct RecordingRecordRemovedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingRecordRemovedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingContentRemovedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingContentRemovedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -139,10 +123,11 @@ pub struct RecordingContentRemovedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingContentRemovedEvent {} // Event トレイトを実装
 
 /// mirakcのRecordingRecordBrokenイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct RecordingRecordBrokenEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -151,10 +136,11 @@ pub struct RecordingRecordBrokenEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for RecordingRecordBrokenEvent {} // Event トレイトを実装
 
 /// mirakcのOnairProgramChangedイベント
-#[event(stream = "mirakc-events")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
 pub struct OnairProgramChangedEvent {
     /// イベント元のmirakc URL
     pub mirakc_url: String,
@@ -163,3 +149,4 @@ pub struct OnairProgramChangedEvent {
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
 }
+impl Event for OnairProgramChangedEvent {} // Event トレイトを実装

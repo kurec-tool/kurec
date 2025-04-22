@@ -1,31 +1,29 @@
+use crate::event::Event; // domain クレート内の Event トレイトを使用
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use shared_core::event::Event; // shared_core の Event トレイトを使用
+// AckHandle は削除
 
-/// AckHandle: 非同期でメッセージの確認応答を行うハンドル
-pub struct AckHandle {
-    ack_fn: Box<dyn Fn() -> BoxFuture<'static, Result<()>> + Send + Sync>,
-}
+// TODO: 戻り値の型を infra 層に依存しない形にする必要がある。
+//       例えば、ペイロードと Ack/Nack 機能を持つジェネリックなトレイトを定義するなど。
+//       現状は infra_jetstream の型を使う仮実装とする。
+// use infra_jetstream::error::SubscribeError;
+// use infra_jetstream::message::EventMessage;
 
-impl AckHandle {
-    /// 新しいAckHandleを作成
-    pub fn new(ack_fn: Box<dyn Fn() -> BoxFuture<'static, Result<()>> + Send + Sync>) -> Self {
-        Self { ack_fn }
-    }
+use serde::de::DeserializeOwned; // 追加
 
-    /// メッセージを確認応答（ack）する
-    pub async fn ack(self) -> Result<()> {
-        (self.ack_fn)().await
-    }
-}
-
-/// EventSource: 指定された subject を購読し、
-/// `(Message, AckHandle)` のストリームを返すトレイト
+/// ドメインイベントを購読するためのインターフェース (ポート)
 #[async_trait]
-pub trait EventSource<E: Event>: Send + Sync + 'static {
-    // トレイト境界を domain::event::Event に変更
-    /// 指定 subject と durable 名で購読し、メッセージと AckHandle のストリームを返す
-    async fn subscribe(&self) -> Result<BoxStream<'static, (E, AckHandle)>>;
+pub trait EventSource<E>: Send + Sync + 'static
+where
+    E: DeserializeOwned + Send + Sync + 'static,
+{
+    /// イベントを購読し、Ack/Nack 可能なメッセージのストリームを返す。
+    /// TODO: 戻り値の型を修正する (infra に依存しないように)
+    async fn subscribe(
+        &self,
+    ) -> Result<
+        BoxStream<'static, Result</* EventMessage<E> */ E, /* SubscribeError */ anyhow::Error>>,
+    >;
+    // 仮実装: Result<E, anyhow::Error> を返すようにしておく
 }

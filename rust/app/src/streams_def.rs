@@ -2,61 +2,49 @@
 //!
 //! このモジュールはJetStreamストリームの定義を提供します。
 
-use shared_types;
-use shared_types::stream::Stream;
-use shared_types::stream::{DiscardPolicy, RetentionPolicy, StorageType, StreamConfig};
-use std::time::Duration;
+use app_macros::define_event_stream;
+use domain::event::Event;
+use infra_jetstream::EventStream;
+use serde::{Deserialize, Serialize};
 
-/// mirakcイベントストリーム
-pub struct MirakcEvents;
+/// mirakcイベントストリーム定義
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[define_event_stream(
+    stream = "mirakc-events",
+    max_age = "7d",
+    storage = "file",
+    retention = "limits",
+    discard = "old",
+    description = "mirakc events stream"
+)]
+pub struct MirakcEventStreamDef;
+impl Event for MirakcEventStreamDef {}
 
-impl Stream for MirakcEvents {
-    const NAME: &'static str = "mirakc-events";
+/// kurecイベントストリーム定義
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[define_event_stream(
+    stream = "kurec-events",
+    max_age = "7d",
+    storage = "file",
+    retention = "limits",
+    discard = "old",
+    description = "kurec events stream"
+)]
+pub struct KurecEventStreamDef;
+impl Event for KurecEventStreamDef {}
 
-    fn config() -> StreamConfig {
-        StreamConfig {
-            name: Self::NAME.to_string(),
-            subjects: None,
-            retention: Some(RetentionPolicy::Limits),
-            max_consumers: None,
-            max_msgs: None,
-            max_bytes: None,
-            max_age: Some(Duration::from_secs(60 * 60 * 24 * 7)), // 7d
-            max_msg_size: None,
-            storage: Some(StorageType::File),
-            discard: Some(DiscardPolicy::Old),
-            duplicate_window: None,
-            allow_rollup: None,
-            deny_delete: None,
-            deny_purge: None,
-            description: Some("mirakc events stream".to_string()),
-        }
-    }
+/// mirakcイベント用のEventStreamを取得
+pub fn mirakc_event_stream<E: Event>() -> EventStream<E> {
+    EventStream::new(
+        MirakcEventStreamDef::EVENT_STREAM.stream_name(),
+        MirakcEventStreamDef::EVENT_STREAM.config().clone(),
+    )
 }
 
-/// kurecイベントストリーム
-pub struct KurecEvents;
-
-impl Stream for KurecEvents {
-    const NAME: &'static str = "kurec-events";
-
-    fn config() -> StreamConfig {
-        StreamConfig {
-            name: Self::NAME.to_string(),
-            subjects: None,
-            retention: Some(RetentionPolicy::Limits),
-            max_consumers: None,
-            max_msgs: None,
-            max_bytes: None,
-            max_age: Some(Duration::from_secs(60 * 60 * 24 * 7)), // 7d
-            max_msg_size: None,
-            storage: Some(StorageType::File),
-            discard: Some(DiscardPolicy::Old),
-            duplicate_window: None,
-            allow_rollup: None,
-            deny_delete: None,
-            deny_purge: None,
-            description: Some("kurec events stream".to_string()),
-        }
-    }
+/// kurecイベント用のEventStreamを取得
+pub fn kurec_event_stream<E: Event>() -> EventStream<E> {
+    EventStream::new(
+        KurecEventStreamDef::EVENT_STREAM.stream_name(),
+        KurecEventStreamDef::EVENT_STREAM.config().clone(),
+    )
 }

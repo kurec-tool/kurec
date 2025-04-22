@@ -98,6 +98,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "app_macros"
+version = "0.1.0"
+dependencies = [
+ "heck 0.4.1",
+ "humantime",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "assert-json-diff"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -612,12 +623,11 @@ dependencies = [
  "async-trait",
  "chrono",
  "futures",
+ "infra_macros",
  "semver",
  "serde",
  "serde_json",
  "shared_core",
- "shared_macros",
- "shared_types",
  "thiserror 1.0.69",
  "tokio",
  "tokio-util",
@@ -1460,6 +1470,7 @@ dependencies = [
  "domain",
  "futures",
  "heck 0.4.1",
+ "humantime",
  "infra_nats",
  "serde",
  "serde_json",
@@ -1467,6 +1478,7 @@ dependencies = [
  "shared_macros",
  "shared_types",
  "testcontainers",
+ "thiserror 1.0.69",
  "tokio",
  "tracing",
 ]
@@ -1491,6 +1503,17 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "infra_macros"
+version = "0.1.0"
+dependencies = [
+ "heck 0.5.0",
+ "humantime",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1582,6 +1605,7 @@ name = "kurec-app"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "app_macros",
  "async-nats",
  "async-trait",
  "chrono",
@@ -2534,7 +2558,6 @@ dependencies = [
  "inventory",
  "once_cell",
  "serde",
- "shared_types",
  "tokio",
  "tokio-util",
 ]

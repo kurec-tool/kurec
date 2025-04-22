@@ -7,17 +7,16 @@ use anyhow::{Context, Result};
 use domain::ports::event_source::EventSource; // domain::ports::event_source をインポート
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
-    handlers::epg_update_handler::EpgUpdateHandler,
+    handlers::epg_update_handler::{EpgUpdateHandler, StreamHandler},
     ports::{
-        event_sink::DomainEventSink, repositories::kurec_program_repository::KurecProgramRepository,
+        event_sink::EventSink, repositories::kurec_program_repository::KurecProgramRepository,
     },
 };
 use futures::StreamExt; // StreamExt をインポート
 use infra_kvs::nats_kv::NatsKvProgramRepository;
 use infra_mirakc::factory::MirakcClientFactoryImpl;
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // event_source, stream_worker を削除
-use shared_core::stream_worker::StreamHandler; // StreamHandler をインポート
-                                               // use shared_core::{ ... }; // まとめていたものを削除
+use shared_core::error_handling::ClassifyError; // ErrorAction を削除
+                                                // use shared_core::{ ... }; // まとめていたものを削除
 use std::sync::Arc;
 use tokio::select; // select! マクロをインポート
 use tokio_util::sync::CancellationToken;
@@ -29,7 +28,7 @@ use tracing::{error, info}; // error, info をインポート
 pub async fn run_epg_updater(
     nats_client: Arc<infra_nats::NatsClient>, // Arc<NatsClient> を引数で受け取る
     source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>>, // EventSource を引数で受け取る
-    sink: Arc<dyn DomainEventSink<EpgStoredEvent>>, // DomainEventSink を引数で受け取る
+    sink: Arc<dyn EventSink<EpgStoredEvent>>, // EventSink を引数で受け取る
     shutdown: CancellationToken,
 ) -> Result<()> {
     info!("Starting EPG updater worker...");
@@ -67,7 +66,7 @@ pub async fn run_epg_updater(
             // イベントを受信したら処理
             maybe_event = event_stream.next() => {
                 match maybe_event {
-                    Some((event, _ack_handle)) => {
+                    Some(Ok(event)) => {
                         info!(
                             service_id = event.data.service_id,
                             "Received EpgProgramsUpdatedEvent"
@@ -89,17 +88,16 @@ pub async fn run_epg_updater(
                             Err(e) => {
                                 // エラー処理 (ClassifyError に基づく)
                                 error!("Error handling EPG update: {}", e);
-                                match e.error_action() {
-                                    shared_core::error_handling::ErrorAction::Retry => {
-                                        // リトライロジック (必要であれば)
-                                        error!("Retry action requested for EPG update error.");
-                                    }
-                                    shared_core::error_handling::ErrorAction::Ignore => {
-                                        // 無視
-                                    }
-                                }
+                        // エラーログを出力するだけ
+                        error!("EPG update error: {}. Continuing...", e);
                             }
                         }
+                    }
+                    Some(Err(e)) => {
+                        error!("Error receiving EPG update event: {}", e);
+                        // エラー処理 (ClassifyError に基づく)
+                        // エラーログを出力するだけ
+                        error!("EPG update event error: {}. Continuing...", e);
                     }
                     None => {
                         error!("EPG update event stream ended unexpectedly. Attempting to reconnect...");

@@ -1,44 +1,44 @@
-use async_nats::jetstream::{
-    context::{CreateStreamError, GetStreamError, PublishError, UpdateStreamError},
-    stream::InfoError, // stream モジュールから InfoError をインポート
-};
+//! infra/jetstream クレートのエラー定義
+
 use thiserror::Error;
 
+/// イベント発行時のエラー
 #[derive(Error, Debug)]
-pub enum JetstreamError {
+pub enum PublishError {
+    #[error("Failed to serialize event: {0}")]
+    SerializationError(serde_json::Error),
+    #[error("Failed to get stream info: {0}")]
+    GetStreamError(async_nats::Error),
+    #[error("Failed to create stream: {0}")]
+    CreateStreamError(async_nats::Error),
+    #[error("Failed to publish message: {0}")]
+    PublishError(async_nats::jetstream::context::PublishError),
     #[error("NATS client error: {0}")]
-    Nats(#[from] async_nats::Error),
-
-    // JetStream API エラーを個別に定義
-    #[error("JetStream get stream error: {0}")]
-    GetStream(GetStreamError),
-
-    #[error("JetStream create stream error: {0}")]
-    CreateStream(CreateStreamError),
-
-    #[error("JetStream update stream error: {0}")]
-    UpdateStream(UpdateStreamError),
-
-    #[error("JetStream get stream info error: {0}")]
-    GetStreamInfo(#[from] InfoError), // From<InfoError> を実装 (これは衝突しないはず)
-
-    #[error("JetStream publish error: {0}")]
-    Publish(#[from] PublishError),
-
-    #[error("Stream configuration error: {0}")]
-    StreamConfig(String),
-
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
-
-    #[error("Subscribe error: {0}")]
-    Subscribe(String),
-
-    #[error("Other error: {0}")]
-    Other(#[from] anyhow::Error),
+    NatsClientError(anyhow::Error),
+    #[error("Internal error: {0}")]
+    Internal(anyhow::Error),
 }
 
-// 衝突するため、GetStreamError, CreateStreamError, UpdateStreamError の From 実装は削除
-// impl From<GetStreamError> for JetstreamError { ... }
-// impl From<CreateStreamError> for JetstreamError { ... }
-// impl From<UpdateStreamError> for JetstreamError { ... }
+/// イベント購読時のエラー
+#[derive(Error, Debug)]
+pub enum SubscribeError {
+    #[error("Failed to get stream info: {0}")]
+    GetStreamError(async_nats::Error),
+    #[error("Failed to create consumer: {0}")]
+    CreateConsumerError(async_nats::Error),
+    #[error("Failed to get messages from consumer: {0}")]
+    MessagesError(async_nats::Error),
+    #[error("NATS client error: {0}")]
+    NatsClientError(anyhow::Error),
+    #[error("Internal error: {0}")]
+    Internal(anyhow::Error),
+    #[error("Failed to deserialize message: {0}")]
+    DeserializationError(serde_json::Error),
+}
+
+/// メッセージ Ack 時のエラー
+#[derive(Error, Debug)]
+pub enum AckError {
+    #[error("Failed to send ack to NATS: {0}")]
+    NatsError(async_nats::Error),
+}

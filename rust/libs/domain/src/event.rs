@@ -1,13 +1,10 @@
 use serde::{de::DeserializeOwned, Serialize};
 
-/// イベントのメタデータを定義するトレイト
+/// ドメインイベントを示すマーカートレイト。
 ///
-/// イベントの種類を一意に識別するための情報を提供します。
-/// また、シリアライズ/デシリアライズ可能であることを要求します。
-pub trait Event: Serialize + DeserializeOwned + Send + Sync + 'static {
-    /// イベント名を返します。
-    ///
-    /// イベントの種類を一意に識別するために使用されます。
-    /// 通常は構造体名をスネークケースにしたものが使われます。
-    fn event_name() -> &'static str;
-}
+/// イベントはシリアライズ/デシリアライズ可能で、スレッドセーフである必要があります。
+pub trait Event: Serialize + DeserializeOwned + Send + Sync + 'static {}
+
+// 注意: 以前の Event トレイトにあった event_name() は削除されました。
+// イベントのサブジェクト名は、インフラ層 (例: JetStreamPublisher) が
+// イベントの型名から自動的に導出します (例: ProgramUpdated -> "program_updated")。
