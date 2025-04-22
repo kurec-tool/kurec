@@ -43,13 +43,16 @@ pub struct JsSubscriber<E: Event> {
 
 impl<E: Event> JsSubscriber<E> {
     /// 新しいJsSubscriberを作成
-    pub fn new(nats_client: Arc<NatsClient>, event_stream: crate::event_stream::EventStream<E>) -> Self {
+    pub fn new(
+        nats_client: Arc<NatsClient>,
+        event_stream: crate::event_stream::EventStream<E>,
+    ) -> Self {
         Self {
             nats_client,
             event_stream,
         }
     }
-    
+
     /// イベントストリームを取得
     pub fn event_stream(&self) -> &crate::event_stream::EventStream<E> {
         &self.event_stream
@@ -151,7 +154,10 @@ where
                         }
                         Err(create_err) => {
                             error!(consumer = %durable_name, error = %create_err, "Failed to create consumer");
-                            return Err(anyhow::anyhow!("Failed to create consumer: {}", create_err));
+                            return Err(anyhow::anyhow!(
+                                "Failed to create consumer: {}",
+                                create_err
+                            ));
                         }
                     }
                 } else {
@@ -172,7 +178,7 @@ where
 
         // durable_nameをクローンして'staticライフタイムを持つようにする
         let durable_name_clone = durable_name.clone();
-        
+
         // メッセージをイベントに変換するストリームを作成
         let event_stream = message_stream
             .map_err(move |e| {
@@ -203,12 +209,10 @@ where
                         // イベントを直接返す
                         // 注: EventMessage は作成せず、イベントのみを返す
                         // これにより、Ack/Nack 機能は失われるが、EventSource トレイトの要件を満たす
-                        
                         // 自動的に Ack する
                         if let Err(ack_err) = msg.ack().await {
                             warn!(error = %ack_err, "Failed to ack message, but continuing");
                         }
-                        
                         Ok(event)
                     }
                     Err(e) => {
