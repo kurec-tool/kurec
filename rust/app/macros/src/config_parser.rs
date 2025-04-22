@@ -101,31 +101,43 @@ impl From<StreamConfigArgs> for StreamAttributes {
 // StreamAttributes を TokenStream2 に変換してマクロで使えるようにする
 impl ToTokens for StreamAttributes {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-        let max_age = self
-            .max_age
-            .as_ref()
-            .map_or(quote!(None), |ts| quote!(Some(#ts)));
-        let max_msgs = self
-            .max_msgs
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
-        let max_bytes = self
-            .max_bytes
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
-        let max_msg_size = self
-            .max_msg_size
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
-        let storage = self.storage.as_ref().map_or(quote!(None), |l| {
+        // map_orの代わりにif letを使用して、constコンテキストで使用できるようにする
+        let max_age = if let Some(ts) = self.max_age.as_ref() {
+            quote!(Some(#ts))
+        } else {
+            quote!(None)
+        };
+
+        let max_msgs = if let Some(l) = self.max_msgs.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
+
+        let max_bytes = if let Some(l) = self.max_bytes.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
+
+        let max_msg_size = if let Some(l) = self.max_msg_size.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
+
+        let storage = if let Some(l) = self.storage.as_ref() {
             let value = l.value();
             match value.as_str() {
                 "file" => quote!(Some(::async_nats::jetstream::stream::StorageType::File)),
                 "memory" => quote!(Some(::async_nats::jetstream::stream::StorageType::Memory)),
                 _ => quote!(None),
             }
-        });
-        let retention = self.retention.as_ref().map_or(quote!(None), |l| {
+        } else {
+            quote!(None)
+        };
+
+        let retention = if let Some(l) = self.retention.as_ref() {
             let value = l.value();
             match value.as_str() {
                 "limits" => quote!(Some(
@@ -139,35 +151,50 @@ impl ToTokens for StreamAttributes {
                 )),
                 _ => quote!(None),
             }
-        });
-        let discard = self.discard.as_ref().map_or(quote!(None), |l| {
+        } else {
+            quote!(None)
+        };
+
+        let discard = if let Some(l) = self.discard.as_ref() {
             let value = l.value();
             match value.as_str() {
                 "old" => quote!(Some(::async_nats::jetstream::stream::DiscardPolicy::Old)),
                 "new" => quote!(Some(::async_nats::jetstream::stream::DiscardPolicy::New)),
                 _ => quote!(None),
             }
-        });
-        let duplicate_window = self
-            .duplicate_window
-            .as_ref()
-            .map_or(quote!(None), |ts| quote!(Some(#ts)));
-        let allow_rollup = self
-            .allow_rollup
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
-        let deny_delete = self
-            .deny_delete
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
-        let deny_purge = self
-            .deny_purge
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
-        let description = self
-            .description
-            .as_ref()
-            .map_or(quote!(None), |l| quote!(Some(#l)));
+        } else {
+            quote!(None)
+        };
+
+        let duplicate_window = if let Some(ts) = self.duplicate_window.as_ref() {
+            quote!(Some(#ts))
+        } else {
+            quote!(None)
+        };
+
+        let allow_rollup = if let Some(l) = self.allow_rollup.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
+
+        let deny_delete = if let Some(l) = self.deny_delete.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
+
+        let deny_purge = if let Some(l) = self.deny_purge.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
+
+        let description = if let Some(l) = self.description.as_ref() {
+            quote!(Some(#l))
+        } else {
+            quote!(None)
+        };
 
         // StreamConfig 構造体の初期化コードを生成
         let expanded = quote! {
@@ -183,7 +210,7 @@ impl ToTokens for StreamAttributes {
                 allow_rollup: #allow_rollup,
                 deny_delete: #deny_delete,
                 deny_purge: #deny_purge,
-                description: #description.map(|s| s.to_string()),
+                description: #description,
             }
         };
         expanded.to_tokens(tokens);

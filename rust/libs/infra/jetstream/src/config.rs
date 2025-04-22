@@ -35,7 +35,7 @@ pub struct StreamConfig {
     pub allow_rollup: Option<bool>,
     pub deny_delete: Option<bool>,
     pub deny_purge: Option<bool>,
-    pub description: Option<String>,
+    pub description: Option<&'static str>,
     // 必要に応じて他の async_nats::jetstream::stream::Config フィールドを追加
 }
 
@@ -62,7 +62,7 @@ impl From<&StreamConfig> for async_nats::jetstream::stream::Config {
             deny_purge: config.deny_purge.unwrap_or(false),
             allow_direct: true, // デフォルト (変更が必要なら StreamConfig に追加)
             mirror_direct: false, // デフォルト (変更が必要なら StreamConfig に追加)
-            description: config.description.clone(),
+            description: config.description.map(|s| s.to_string()),
             // 以下、必要に応じて StreamConfig から設定するフィールドを追加
             ..Default::default() // 他のフィールドは async_nats のデフォルト値を使用
         }
