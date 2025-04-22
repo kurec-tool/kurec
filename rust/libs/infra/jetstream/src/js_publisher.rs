@@ -1,12 +1,9 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use std::sync::Arc; // コメント解除
-                    // use domain::events::kurec_events::EpgStoredEvent; // EpgNotifier 関連削除
-                    // use domain::ports::notifiers::EpgNotifier; // EpgNotifier 関連削除
-use shared_core::event_metadata::Event;
-use shared_core::event_sink::EventSink; // event_publisher -> event_sink
+use domain::ports::event_sink::DomainEventSink; // ドメイン層の DomainEventSink をインポート
+use shared_core::event::Event; // shared_core の Event をインポート
 use std::marker::PhantomData;
-// use std::sync::Arc; // 重複しているため削除 (上部でインポート済み)
+use std::sync::Arc;
 use tracing::{debug, error, instrument}; // debug, error マクロを追加
 
 // infra_nats クレートの NatsClient をインポート
@@ -40,11 +37,11 @@ impl<E: Event> JsPublisher<E> {
 }
 
 #[async_trait]
-// EventPublisher -> EventSink
-impl<E: Event> EventSink<E> for JsPublisher<E> {
-    #[instrument(skip(self, event), fields(subject = %E::stream_subject()))]
+// ドメイン層の DomainEventSink トレイトを実装
+impl<E: Event + 'static> DomainEventSink<E> for JsPublisher<E> {
+    #[instrument(skip(self, event), fields(subject = %E::event_name()))] // stream_subject -> event_name
     async fn publish(&self, event: E) -> Result<()> {
-        let subject = E::stream_subject();
+        let subject = E::event_name(); // stream_subject -> event_name
         debug!(subject = %subject, "Serializing event for JetStream");
 
         // イベントをJSONにシリアライズ

@@ -3,7 +3,7 @@
 use crate::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     ports::{
-        notifiers::epg_notifier::EpgNotifier,
+        event_sink::DomainEventSink, // EpgNotifier -> DomainEventSink
         repositories::kurec_program_repository::KurecProgramRepository,
     },
 };
@@ -21,8 +21,8 @@ pub enum EpgUpdateError {
     #[error("Repository error: {0}")]
     Repository(#[from] anyhow::Error), // anyhow::Error からの変換を実装
 
-    #[error("Notification error: {0}")]
-    Notifier(anyhow::Error), // From は手動で実装
+    #[error("Event sink error: {0}")] // Notification error -> Event sink error
+    SinkError(anyhow::Error), // Notifier -> SinkError
 
     #[error("Mirakc client error: {0}")]
     MirakcClient(anyhow::Error), // From は手動で実装
@@ -38,8 +38,8 @@ impl ClassifyError for EpgUpdateError {
             // リポジトリや Mirakc クライアントのエラーはリトライ可能かもしれない
             EpgUpdateError::Repository(_) => ErrorAction::Retry,
             EpgUpdateError::MirakcClient(_) => ErrorAction::Retry,
-            // 通知エラーやシリアライズエラーはリトライしても無駄な可能性が高い
-            EpgUpdateError::Notifier(_) => ErrorAction::Ignore,
+            // イベント発行エラーやシリアライズエラーはリトライしても無駄な可能性が高い
+            EpgUpdateError::SinkError(_) => ErrorAction::Ignore, // Notifier -> SinkError
             EpgUpdateError::Serialization(_) => ErrorAction::Ignore,
         }
     }
@@ -51,21 +51,21 @@ impl ClassifyError for EpgUpdateError {
 /// EPG更新イベントハンドラ
 pub struct EpgUpdateHandler {
     program_repository: Arc<dyn KurecProgramRepository>,
-    epg_notifier: Arc<dyn EpgNotifier>,
-    // TODO: Add MirakcClientFactory if needed for fetching program details
+    kurec_event_sink: Arc<dyn DomainEventSink<EpgStoredEvent>>, // epg_notifier -> kurec_event_sink
+                                                                // TODO: Add MirakcClientFactory if needed for fetching program details
 }
 
 impl EpgUpdateHandler {
     /// 新しいEpgUpdateHandlerを作成
     pub fn new(
         program_repository: Arc<dyn KurecProgramRepository>,
-        epg_notifier: Arc<dyn EpgNotifier>,
-        // TODO: Add MirakcClientFactory if needed
+        kurec_event_sink: Arc<dyn DomainEventSink<EpgStoredEvent>>, // epg_notifier -> kurec_event_sink
+                                                                    // TODO: Add MirakcClientFactory if needed
     ) -> Self {
         Self {
             program_repository,
-            epg_notifier,
-            // TODO: Initialize MirakcClientFactory if added
+            kurec_event_sink, // epg_notifier -> kurec_event_sink
+                              // TODO: Initialize MirakcClientFactory if added
         }
     }
 }
@@ -87,10 +87,13 @@ impl StreamHandler<EpgProgramsUpdatedEvent, EpgStoredEvent, EpgUpdateError> for 
         // This logic should be moved from app/src/cmd/epg_updater.rs
         // - Fetch programs from mirakc using MirakcClient (needs factory)
         // - Store programs using program_repository
-        // - Notify using epg_notifier if successful
+        // - Publish EpgStoredEvent using kurec_event_sink if successful
         // - Return Ok(Some(EpgStoredEvent)) on success, Ok(None) if no update needed, Err(EpgUpdateError) on failure.
 
         // 仮実装: 何もせず成功（出力なし）
+        // 実際の処理では、成功時に self.kurec_event_sink.publish(...) を呼び出す必要はない。
+        // このハンドラは StreamWorker から使われることを想定しており、
+        // StreamWorker が Ok(Some(event)) を受け取ったら自動的に Sink に publish するため。
         Ok(None)
     }
 }

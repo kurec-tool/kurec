@@ -2,6 +2,7 @@
 //!
 //! このモジュールはmirakcから受信するイベントのDTOを定義します。
 
+use crate::event::Event; // crate::event::Event をインポート
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +17,17 @@ pub struct MirakcEventDto {
     pub data: String,
     /// イベント受信時刻
     pub received_at: DateTime<Utc>,
+}
+
+// MirakcEventDto に Event トレイトを実装
+impl Event for MirakcEventDto {
+    fn event_name() -> &'static str {
+        "mirakc_event_dto"
+    }
+    fn stream_name() -> &'static str {
+        // MirakcEventDto は特定のストリームに属さないため空文字列
+        ""
+    }
 }
 
 /// TunerStatusChangedイベントDTO

@@ -1,8 +1,15 @@
-use anyhow::{Context, Result}; // Context をインポート
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use infra_jetstream as jetstream; // setup_all_streams を使うために残す
-use infra_nats; // infra_nats をインポート
-use std::env;
+use domain::{
+    events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
+    handlers::mirakc_event_handler::MirakcEventSinks,
+    ports::{event_sink::DomainEventSink, event_source::EventSource},
+};
+use infra_jetstream::{self, JsPublisher, JsSubscriber}; // infra_jetstream とその要素をインポート
+use infra_mirakc::MirakcSseSource; // MirakcSseSource をインポート
+use infra_nats;
+use shared_core::dtos::mirakc_event::MirakcEventDto; // MirakcEventDto をインポート
+use std::{env, sync::Arc}; // Arc をインポート
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 
@@ -65,7 +72,7 @@ async fn main() -> Result<()> {
         .context("NATS への接続に失敗しました")?;
 
     // 共通ストリームを設定
-    jetstream::setup_all_streams(nats_client.jetstream_context())
+    infra_jetstream::setup_all_streams(nats_client.jetstream_context()) // jetstream:: -> infra_jetstream::
         .await
         .context("JetStream ストリームのセットアップに失敗しました")?;
     // KuRec 固有リソースの設定は infra_nats または infra_kvs で行うため削除
@@ -150,13 +157,27 @@ async fn main() -> Result<()> {
         WorkerType::MirakcEvents { mirakc_url } => {
             println!("Starting mirakc events worker with URL: {}...", mirakc_url);
 
+            // 依存関係の初期化
+            let mirakc_source: Arc<dyn EventSource<MirakcEventDto>> =
+                Arc::new(MirakcSseSource::new(mirakc_url.clone()));
+
+            // TODO: MirakcEventSinks の初期化 (必要な Sink を作成して渡す)
+            // 例: let epg_updated_sink = Arc::new(JsPublisher::new(nats_client.clone(), "mirakc-events"));
+            //     let sinks = MirakcEventSinks { epg_programs_updated: Some(epg_updated_sink), ... };
+            let sinks = MirakcEventSinks::default(); // 仮実装
+
             // シャットダウントークンのクローンを作成
             let worker_shutdown = shutdown.clone();
 
             // mirakcイベント処理コマンドを実行
-            if let Err(e) =
-                cmd::mirakc_events::run_mirakc_events(&app_config, &mirakc_url, worker_shutdown)
-                    .await
+            if let Err(e) = cmd::mirakc_events::run_mirakc_events(
+                &app_config,
+                &mirakc_url, // _mirakc_url として受け取るので渡す必要はある
+                mirakc_source,
+                sinks,
+                worker_shutdown,
+            )
+            .await
             {
                 eprintln!("mirakc events worker error: {}", e);
                 std::process::exit(1);
@@ -166,16 +187,30 @@ async fn main() -> Result<()> {
             shutdown.cancel();
         }
         WorkerType::EpgUpdater => {
-            // mirakc_url を削除
-            println!("Starting EPG updater worker..."); // URL表示を削除
+            println!("Starting EPG updater worker...");
+
+            // 依存関係の初期化
+            let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> =
+                Arc::new(JsSubscriber::<EpgProgramsUpdatedEvent>::from_event_type(
+                    nats_client.clone(),
+                    // Consumer 名は JsSubscriber 内部で自動生成されるため不要
+                ));
+            let epg_stored_sink: Arc<dyn DomainEventSink<EpgStoredEvent>> = Arc::new(
+                JsPublisher::<EpgStoredEvent>::from_event_type(nats_client.clone()),
+            );
 
             // シャットダウントークンのクローンを作成
             let worker_shutdown = shutdown.clone();
 
-            // EPG更新ワーカーを実行 (mirakc_url 引数を削除)
+            // EPG更新ワーカーを実行
             let _epg_updater_handle = tokio::spawn(async move {
-                if let Err(e) = cmd::epg_updater::run_epg_updater(&app_config, worker_shutdown) // mirakc_url を削除
-                    .await
+                if let Err(e) = cmd::epg_updater::run_epg_updater(
+                    nats_client.clone(), // NatsClient を渡す
+                    epg_updated_source,
+                    epg_stored_sink,
+                    worker_shutdown,
+                )
+                .await
                 {
                     eprintln!("EPG updater worker error: {}", e);
                 }

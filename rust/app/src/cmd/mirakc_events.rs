@@ -2,18 +2,19 @@
 //!
 //! このモジュールはmirakcイベントを処理するコマンドを提供します。
 
-use anyhow::{Context, Result}; // Context をインポート
+use anyhow::{Context, Result};
 use domain::{
     events::mirakc_events::*,
-    handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks}, // 新しいハンドラ
+    handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
+    ports::event_source::EventSource, // EventSource をインポート
 };
 use futures::StreamExt;
-use infra_jetstream::JsPublisher; // Sink 実装
-use infra_mirakc::MirakcSseSource; // Source 実装
+// use infra_jetstream::EventStream;
+// use infra_mirakc::MirakcSseSource; // Source は引数で受け取るため削除
 use shared_core::{
-    error_handling::ClassifyError, // エラー分類用
-    event_sink::EventSink,         // EventSink トレイト
-    stream_worker::StreamHandler,  // StreamHandler トレイト (ハンドラが実装)
+    dtos::mirakc_event::MirakcEventDto,
+    error_handling::ClassifyError,
+    // stream_worker::StreamHandler, // StreamHandler を削除
 };
 use std::sync::Arc;
 use tokio::select;
@@ -22,46 +23,25 @@ use tracing::{debug, error, info};
 
 /// mirakcイベント処理コマンドを実行
 pub async fn run_mirakc_events(
-    config: &crate::AppConfig,
-    mirakc_url: &str,
+    _config: &crate::AppConfig,
+    _mirakc_url: &str, // mirakc_url は source 作成にしか使わないので不要
+    source: Arc<dyn EventSource<MirakcEventDto>>, // Source を引数で受け取る
+    sinks: MirakcEventSinks,
     shutdown: CancellationToken,
 ) -> Result<()> {
-    info!("Starting mirakc events command with URL: {}", mirakc_url);
+    info!("Starting mirakc events command..."); // URL表示を削除
 
-    // NATS 接続 (infra_nats を使用)
-    let nats_client = infra_nats::connect(&config.nats_url)
-        .await
-        .context("NATS への接続に失敗しました")?;
+    // SSEイベントソースは引数で受け取るため削除
+    // let source = MirakcSseSource::new(mirakc_url.to_string());
 
-    // JetStream ストリームの設定 (infra_jetstream を使用)
-    infra_jetstream::setup_all_streams(nats_client.jetstream_context())
-        .await
-        .context("JetStream ストリームのセットアップに失敗しました")?;
+    // Sink 構築ロジックは削除済み
 
-    // SSEイベントソースの作成
-    let source = MirakcSseSource::new(mirakc_url.to_string());
-
-    // 各イベント型に対応する EventSink (JsPublisher) を作成 (NatsClient を渡す)
-    let sinks = MirakcEventSinks {
-        tuner_status_changed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        epg_programs_updated: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_started: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_stopped: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_failed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_rescheduled: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_record_saved: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_record_removed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_content_removed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        recording_record_broken: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-        onair_program_changed: Arc::new(JsPublisher::from_event_type(nats_client.clone())),
-    };
-
-    // イベントハンドラの作成
+    // イベントハンドラの作成 (引数で受け取った sinks を使用)
     let handler = MirakcEventHandler::new(sinks);
 
     // イベント処理ループ
     info!("Starting to process mirakc events...");
-    let mut event_stream = source.event_stream().await?;
+    let mut event_stream = source.subscribe().await?; // event_stream() -> subscribe()
     let shutdown_token = shutdown.clone();
 
     loop {
@@ -74,7 +54,7 @@ pub async fn run_mirakc_events(
             // イベントを受信したら処理
             maybe_event_dto = event_stream.next() => {
                 match maybe_event_dto {
-                    Some(event_dto) => {
+                    Some((event_dto, _ack_handle)) => {
                         // イベント受信のログを追加
                         info!(
                             event_type = %event_dto.event_type,
@@ -83,7 +63,7 @@ pub async fn run_mirakc_events(
                         );
 
                         // ハンドラでイベントを処理
-                        match handler.handle(event_dto).await {
+                        match handler.handle(event_dto.clone()).await {
                             Ok(_) => {
                                 // 処理成功のログを追加
                                 debug!("Successfully handled mirakc event");
@@ -106,7 +86,7 @@ pub async fn run_mirakc_events(
                     None => {
                         error!("Mirakc event stream ended unexpectedly. Attempting to reconnect...");
                         // ストリームが終了したら再接続を試みる
-                        match source.event_stream().await {
+                        match source.subscribe().await { // event_stream() -> subscribe()
                             Ok(new_stream) => {
                                 info!("Successfully reconnected to mirakc event stream");
                                 event_stream = new_stream;
