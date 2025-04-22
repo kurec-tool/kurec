@@ -27,7 +27,7 @@ fn generate_durable_name<E: Event>() -> String {
 
 // ヘルパー関数: 型名からスネークケースのサブジェクト名を取得 (js_publisher.rs と同じもの)
 // TODO: クレート内の共通 util モジュールに移動する方が良い
-fn type_name_to_snake_case<T: ?Sized + Event>() -> String {
+fn type_name_to_snake_case<T: Event>() -> String {
     let type_name_full = type_name::<T>();
     let type_name_short = type_name_full.split("::").last().unwrap_or(type_name_full);
     type_name_short.to_snake_case()

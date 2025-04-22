@@ -14,6 +14,12 @@ impl SseAck {
     }
 }
 
+impl Default for SseAck {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl Ack for SseAck {
     async fn ack(&self) -> Result<()> {

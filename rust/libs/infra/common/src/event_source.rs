@@ -3,7 +3,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use domain::event::Event;
-use domain::ports::event_source::EventSource as DomainEventSource;
 use futures::{stream::BoxStream, StreamExt};
 
 use crate::ackable_event::AckableEvent;

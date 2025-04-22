@@ -120,63 +120,7 @@ impl MirakcSseSource {
         } // loop の閉じ括弧を追加
     }
 
-    // #[async_trait] を削除
-    // EventSource<MirakcEventDto> の実装を削除
-    // 代わりに、MirakcEventDto を返すストリームを提供するメソッドを追加する
-
-    /// MirakcEventDto のストリームを取得する
-    /// EventSource トレイトの実装で使用するためのヘルパーメソッド
-    async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventDto>> {
-        let mirakc_url = self.mirakc_url.clone();
-        tracing::info!("Starting event stream from mirakc URL: {}", mirakc_url);
-
-        // SSEストリームを取得
-        tracing::debug!("Attempting to get SSE stream...");
-        let stream = match self.get_sse_stream().await {
-            Ok(s) => {
-                tracing::info!("Successfully obtained SSE stream");
-                s
-            }
-            Err(e) => {
-                tracing::error!("Failed to get SSE stream: {:?}. This will prevent events from being processed.", e);
-                return Err(e);
-            }
-        };
-
-        // SSEストリームを MirakcEventDto ストリームに変換
-        tracing::debug!("Converting SSE stream to MirakcEventDto stream");
-        let event_stream = stream
-            .eventsource()
-            .filter_map(move |event_result| {
-                let mirakc_url = mirakc_url.clone(); // 各イベント用にURLをクローン
-                future::ready(match event_result {
-                    Ok(event) => {
-                        // MirakcEventDtoを作成
-                        tracing::info!(
-                            event_type = %event.event,
-                            "Received SSE event - will be processed and published to JetStream"
-                        );
-                        Some(MirakcEventDto {
-                            mirakc_url,
-                            event_type: event.event,
-                            data: event.data,
-                            received_at: Utc::now(),
-                        })
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            "Error receiving SSE event: {:?}. Event will be skipped.",
-                            e
-                        );
-                        None // エラーが発生したイベントはスキップ
-                    }
-                })
-            })
-            .boxed();
-
-        tracing::info!("Event stream setup complete. Events will be processed as they arrive.");
-        Ok(event_stream)
-    }
+    // EventSource<MirakcEventAdapter, SseEventError> トレイトの実装は下記に定義
 } // impl MirakcSseSource の閉じ括弧を追加
 
 /// MirakcSseSource に EventSource<MirakcEventAdapter, SseEventError> トレイトを実装
