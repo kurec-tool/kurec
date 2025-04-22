@@ -2,20 +2,15 @@
 //!
 //! このモジュールはmirakcイベントを処理するコマンドを提供します。
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use domain::{
-    events::mirakc_events::*,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
     ports::event_source::EventSource, // EventSource をインポート
 };
 use futures::StreamExt;
 // use infra_jetstream::EventStream;
 // use infra_mirakc::MirakcSseSource; // Source は引数で受け取るため削除
-use shared_core::{
-    dtos::mirakc_event::MirakcEventDto,
-    error_handling::ClassifyError,
-    // stream_worker::StreamHandler, // StreamHandler を削除
-};
+use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;

@@ -4,7 +4,7 @@ use domain::event::Event;
 use domain::ports::event_source::EventSource; // domain::ports からインポート
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
+// use shared_core::error_handling::{ClassifyError, ErrorAction}; // 未使用なので削除
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::select;

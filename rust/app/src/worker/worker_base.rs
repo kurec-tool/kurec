@@ -1,5 +1,5 @@
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // crate:: -> shared_core::
-                                                               // use crate::event_metadata::Event; // 削除
+use shared_core::error_handling::ClassifyError; // crate:: -> shared_core::
+                                                // use crate::event_metadata::Event; // 削除
 use anyhow::Result;
 use async_trait::async_trait;
 use domain::event::Event;

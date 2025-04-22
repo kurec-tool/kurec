@@ -14,9 +14,9 @@ use domain::{
 };
 use futures::StreamExt; // StreamExt をインポート
 use infra_kvs::nats_kv::NatsKvProgramRepository;
-use infra_mirakc::factory::MirakcClientFactoryImpl;
-use shared_core::error_handling::ClassifyError; // ErrorAction を削除
-                                                // use shared_core::{ ... }; // まとめていたものを削除
+// use infra_mirakc::factory::MirakcClientFactoryImpl; // 存在しないモジュールなので削除
+// use shared_core::error_handling::ClassifyError; // 未使用なので削除
+// use shared_core::{ ... }; // まとめていたものを削除
 use std::sync::Arc;
 use tokio::select; // select! マクロをインポート
 use tokio_util::sync::CancellationToken;
@@ -39,8 +39,8 @@ pub async fn run_epg_updater(
         .context("KVS プログラムリポジトリの作成に失敗しました");
     let program_repository: Arc<dyn KurecProgramRepository> = Arc::new(repo_result?);
 
-    // MirakcClientFactory の作成
-    let _mirakc_api_factory = Arc::new(MirakcClientFactoryImpl::new());
+    // MirakcClientFactory の作成 (存在しないモジュールなので削除)
+    // let _mirakc_api_factory = Arc::new(MirakcClientFactoryImpl::new());
 
     // EpgUpdateHandler の作成
     // TODO: EpgUpdateHandler::new のシグネチャも修正が必要

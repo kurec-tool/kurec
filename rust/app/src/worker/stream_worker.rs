@@ -294,7 +294,7 @@ where
                                 }
                             }
                         }
-                        Some(Err(error)) => {
+                        Some(Err(_error)) => {
                             // エラーの処理
                             // ログは既にソース側で記録済み
 
