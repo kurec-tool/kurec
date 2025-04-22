@@ -4,7 +4,6 @@
 
 use crate::event::Event; // crate::event::Event をインポート
 use chrono::{DateTime, Utc};
-use domain::event::Event as DomainEvent; // domain::event::Event をインポート
 use serde::{Deserialize, Serialize};
 
 /// mirakcイベントDTO
@@ -30,9 +29,6 @@ impl Event for MirakcEventDto {
         ""
     }
 }
-
-// MirakcEventDto に domain::event::Event トレイトを実装
-impl DomainEvent for MirakcEventDto {}
 
 /// TunerStatusChangedイベントDTO
 #[derive(Debug, Clone, Serialize, Deserialize)]

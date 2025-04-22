@@ -5,40 +5,13 @@ use async_trait::async_trait;
 use backoff::{backoff::Backoff, ExponentialBackoff};
 use bytes::Bytes;
 use chrono::Utc;
-use domain::event::Event as DomainEvent;
+use domain::events::mirakc_events::MirakcEventAdapter;
 use domain::ports::event_source::EventSource;
 use eventsource_stream::Eventsource;
 use futures::{future, stream::BoxStream, Stream, StreamExt, TryStreamExt};
-use serde::{Deserialize, Serialize};
 use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::time::Duration;
 use tracing::{debug, error, info};
-
-/// MirakcEventDtoをラップしてdomain::event::Eventトレイトを実装するアダプター
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MirakcEventAdapter {
-    inner: MirakcEventDto,
-}
-
-impl MirakcEventAdapter {
-    /// 新しいMirakcEventAdapterを作成
-    pub fn new(inner: MirakcEventDto) -> Self {
-        Self { inner }
-    }
-
-    /// 内部のMirakcEventDtoを取得
-    pub fn inner(&self) -> &MirakcEventDto {
-        &self.inner
-    }
-
-    /// 内部のMirakcEventDtoを消費して返す
-    pub fn into_inner(self) -> MirakcEventDto {
-        self.inner
-    }
-}
-
-/// MirakcEventAdapterにdomain::event::Eventトレイトを実装
-impl DomainEvent for MirakcEventAdapter {}
 
 use crate::error::SseEventError;
 
@@ -172,7 +145,7 @@ impl EventSource<MirakcEventAdapter, SseEventError> for MirakcSseSource {
                     };
 
                     // MirakcEventAdapterでラップして返す
-                    let adapter = MirakcEventAdapter::new(dto);
+                    let adapter = MirakcEventAdapter::from(dto);
                     Ok(adapter)
                 }
             })

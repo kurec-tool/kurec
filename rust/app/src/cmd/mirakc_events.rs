@@ -4,6 +4,7 @@
 
 use anyhow::Result;
 use domain::{
+    events::mirakc_events::MirakcEventAdapter,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
     ports::event_source::EventSource, // EventSource をインポート
 };
@@ -20,7 +21,7 @@ use tracing::{debug, error, info};
 pub async fn run_mirakc_events(
     // _config: &crate::AppConfig // AppConfig型が見つからないため削除
     _mirakc_url: &str, // mirakc_url は source 作成にしか使わないので不要
-    source: Arc<dyn EventSource<MirakcEventDto, anyhow::Error>>, // Source を引数で受け取る
+    source: Arc<dyn EventSource<MirakcEventAdapter, anyhow::Error>>, // MirakcEventAdapter を使用
     sinks: MirakcEventSinks,
     shutdown: CancellationToken,
 ) -> Result<()> {
@@ -52,13 +53,13 @@ pub async fn run_mirakc_events(
                     Some(Ok(event_dto)) => {
                         // イベント受信のログを追加
                         info!(
-                            event_type = %event_dto.event_type,
-                            received_at = %event_dto.received_at,
+                            event_type = %event_dto.event_dto.event_type,
+                            received_at = %event_dto.event_dto.received_at,
                             "Received mirakc event"
                         );
 
                         // ハンドラでイベントを処理
-                        match handler.handle(event_dto.clone()).await {
+                        match handler.handle(event_dto.event_dto.clone()).await {
                             Ok(_) => {
                                 // 処理成功のログを追加
                                 debug!("Successfully handled mirakc event");
