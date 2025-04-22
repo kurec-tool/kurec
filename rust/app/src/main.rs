@@ -171,7 +171,6 @@ async fn main() -> Result<()> {
 
             // mirakcイベント処理コマンドを実行
             if let Err(e) = cmd::mirakc_events::run_mirakc_events(
-                &app_config,
                 &mirakc_url, // _mirakc_url として受け取るので渡す必要はある
                 mirakc_source,
                 sinks,

@@ -19,8 +19,4 @@ mod error_handling_test;
 // #[cfg(test)] // 削除
 // mod event_subscriber_test; // 削除
 
-#[cfg(test)]
-mod worker_test;
-
-#[cfg(test)]
-mod stream_worker_test;
+// worker_test と stream_worker_test は app::worker に移動したため削除

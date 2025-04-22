@@ -259,12 +259,12 @@ where
                 // メッセージを受信したら処理
                 message = stream.next() => {
                     match message {
-                        Some((event, ack)) => {
+                        Some(Ok(event)) => {
                             // ミドルウェアチェーンを実行 (handler.clone() 不要)
                             let result = Self::execute_middleware_chain(
                                 handler.clone(), // handler は Arc なので clone
                                 &middlewares,
-                                event,
+                                event
                             ).await;
 
                             match result {
@@ -272,11 +272,11 @@ where
                                 Ok(Some(output_event)) => {
                                     // 出力イベントを sink に発行 (publisher -> sink)
                                     sink.publish(output_event).await?;
-                                    ack.ack().await?;
+                                    // ack は削除
                                 }
                                 Ok(None) => {
-                                    // 出力イベントがない場合は ack のみ
-                                    ack.ack().await?;
+                                    // 出力イベントがない場合は何もしない
+                                    // ack は削除
                                 }
                                 Err(e) => {
                                     // エラーアクションに基づいて処理
@@ -287,12 +287,16 @@ where
                                             // 何もしない
                                         }
                                         shared_core::error_handling::ErrorAction::Ignore => { // パス修正
-                                            // エラーを無視してack
-                                            ack.ack().await?;
+                                            // エラーを無視
+                                            // ack は削除
                                         }
                                     }
                                 }
                             }
+                        }
+                        Some(Err(e)) => {
+                            // エラーログを出力
+                            eprintln!("Error receiving event: {:?}", e);
                         }
                         None => {
                             // ストリームが終了したら終了

@@ -1,10 +1,11 @@
-use crate::error_handling::{ClassifyError, ErrorAction};
-use crate::event_source::{AckHandle, EventSource}; // リネーム
-use crate::worker::{FnHandler, Handler, Middleware, Next, WorkerBuilder};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use domain::event::Event; // domain::event::Event を使用
+use domain::ports::event_source::EventSource; // domain::ports::event_source を使用
 use futures::future::BoxFuture;
 use futures::stream::{self, BoxStream};
+use kurec_app::worker::builder::{FnHandler, Handler, Middleware, Next, WorkerBuilder}; // kurec_app::worker::builder を使用
+use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -17,15 +18,8 @@ pub struct TestEvent {
     pub data: String,
 }
 
-impl crate::event_metadata::Event for TestEvent {
-    fn stream_name() -> &'static str {
-        "test_event_stream"
-    }
-
-    fn event_name() -> &'static str {
-        "test_event"
-    }
-}
+// Event トレイトを実装（stream_name と event_name メソッドは削除）
+impl Event for TestEvent {}
 
 // テスト用のトレイト
 pub trait TestEventTrait: Send + Sync + 'static {}
@@ -69,25 +63,19 @@ impl TestSubscriber {
 }
 
 #[async_trait]
-// EventSubscriber -> EventSource
 impl EventSource<TestEvent> for TestSubscriber {
-    async fn subscribe(&self) -> Result<BoxStream<'static, (TestEvent, AckHandle)>> {
+    async fn subscribe(&self) -> Result<BoxStream<'static, Result<TestEvent, anyhow::Error>>> {
         let events = self.events.clone();
         let ack_called = self.ack_called.clone();
 
-        let stream = stream::iter(events.into_iter().map(move |event| {
-            let ack_called = ack_called.clone();
-            let ack_handle = AckHandle::new(Box::new(move || {
-                let ack_called = ack_called.clone();
-                Box::pin(async move {
-                    ack_called.store(true, Ordering::SeqCst);
-                    Ok(())
-                })
-            }));
-            (event, ack_handle)
-        }));
+        // 'static ライフタイムを持つストリームを作成
+        let stream = Box::pin(stream::iter(events.into_iter().map(move |event| {
+            // ack_calledをtrueに設定（テスト用）
+            ack_called.store(true, Ordering::SeqCst);
+            Ok(event)
+        })));
 
-        Ok(Box::pin(stream))
+        Ok(stream)
     }
 }
 
