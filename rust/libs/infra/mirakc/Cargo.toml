@@ -16,7 +16,7 @@ domain = { path = "../../domain" }
 eventsource-stream = "0.2"
 futures = "0.3"
 infra_common = { path = "../common" }
-mirakc-client = { path = "../../../server/mirakc-client" }
+mirakc-client = { path = "../../../../server/mirakc-client" }
 reqwest = { version = "0.11", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
