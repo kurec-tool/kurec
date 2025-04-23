@@ -38,7 +38,6 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
 
     // infra_nats::connect を使用
     let nats_client = nats_connect(&url).await?;
-    let js = nats_client.jetstream_context();
 
     // EventStream を作成
     let event_stream = EventStream::new(

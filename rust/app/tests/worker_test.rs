@@ -1,15 +1,12 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use domain::event::Event; // domain::event::Event を使用
-use domain::ports::event_source::EventSource; // domain::ports::event_source を使用
 use futures::future::BoxFuture;
-use futures::stream::{self, BoxStream};
-use kurec_app::worker::builder::{FnHandler, Handler, Middleware, Next, WorkerBuilder}; // kurec_app::worker::builder を使用
+use kurec_app::worker::builder::{FnHandler, Handler, Middleware, Next}; // kurec_app::worker::builder を使用
 use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
 use std::fmt;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
 
 // テスト用のイベント型
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -47,35 +44,6 @@ impl ClassifyError for TestError {
         } else {
             ErrorAction::Ignore
         }
-    }
-}
-
-// テスト用のサブスクライバー
-struct TestSubscriber {
-    events: Vec<TestEvent>,
-    ack_called: Arc<AtomicBool>,
-}
-
-impl TestSubscriber {
-    fn new(events: Vec<TestEvent>, ack_called: Arc<AtomicBool>) -> Self {
-        Self { events, ack_called }
-    }
-}
-
-#[async_trait]
-impl EventSource<TestEvent> for TestSubscriber {
-    async fn subscribe(&self) -> Result<BoxStream<'static, Result<TestEvent, anyhow::Error>>> {
-        let events = self.events.clone();
-        let ack_called = self.ack_called.clone();
-
-        // 'static ライフタイムを持つストリームを作成
-        let stream = Box::pin(stream::iter(events.into_iter().map(move |event| {
-            // ack_calledをtrueに設定（テスト用）
-            ack_called.store(true, Ordering::SeqCst);
-            Ok(event)
-        })));
-
-        Ok(stream)
     }
 }
 

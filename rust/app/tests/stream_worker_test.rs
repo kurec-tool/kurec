@@ -10,7 +10,6 @@ use kurec_app::worker::stream_worker::{
 };
 use shared_core::error_handling::{ClassifyError, ErrorAction};
 use std::fmt;
-use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
