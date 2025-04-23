@@ -96,9 +96,11 @@ impl MirakcSseSource {
     // EventSource<MirakcEventAdapter, SseEventError> トレイトの実装は下記に定義
 } // impl MirakcSseSource の閉じ括弧を追加
 
-/// MirakcSseSource に EventSource<MirakcEventAdapter, SseEventError> トレイトを実装
+/// MirakcSseSource に infra_common::event_source::EventSource<MirakcEventAdapter, SseEventError> トレイトを実装
 #[async_trait]
-impl EventSource<MirakcEventAdapter, SseEventError> for MirakcSseSource {
+impl infra_common::event_source::EventSource<MirakcEventAdapter, SseEventError>
+    for MirakcSseSource
+{
     /// MirakcEventAdapter のストリームを購読する
     async fn subscribe(
         &self,

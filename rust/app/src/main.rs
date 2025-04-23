@@ -158,8 +158,32 @@ async fn main() -> Result<()> {
             println!("Starting mirakc events worker with URL: {}...", mirakc_url);
 
             // 依存関係の初期化
-            let mirakc_source: Arc<dyn EventSource<MirakcEventAdapter, SseEventError>> =
-                Arc::new(MirakcSseSource::new(mirakc_url.clone()));
+            let mirakc_source_impl = Arc::new(MirakcSseSource::new(mirakc_url.clone()));
+
+            // infra_common::event_source::adapt_event_source関数を使用して
+            // domain::ports::event_source::EventSourceとして使用できるようにする
+            let mirakc_source_stream =
+                infra_common::event_source::adapt_event_source(&*mirakc_source_impl).await?;
+
+            // アダプターを作成
+            struct EventSourceAdapter<E, Err> {
+                stream: BoxStream<'static, Result<E, Err>>,
+            }
+
+            #[async_trait::async_trait]
+            impl<E, Err> domain::ports::event_source::EventSource<E, Err> for EventSourceAdapter<E, Err>
+            where
+                E: domain::event::Event + Send + Sync + 'static,
+                Err: Send + Sync + 'static,
+            {
+                async fn subscribe(&self) -> Result<BoxStream<'static, Result<E, Err>>> {
+                    Ok(self.stream.clone())
+                }
+            }
+
+            let mirakc_source = Arc::new(EventSourceAdapter {
+                stream: mirakc_source_stream,
+            });
 
             // TODO: MirakcEventSinks の初期化 (必要な Sink を作成して渡す)
             // 例: let epg_updated_sink = Arc::new(JsPublisher::new(nats_client.clone(), "mirakc-events"));
