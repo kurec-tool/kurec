@@ -4,12 +4,12 @@
 
 use anyhow::Result;
 use domain::{
+    events::mirakc_events::MirakcEventAdapter,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
     ports::event_source::EventSource, // EventSource をインポート
 };
 use futures::StreamExt;
 use infra_mirakc::error::SseEventError;
-use shared_core::dtos::mirakc_event::MirakcEventDto;
 // use infra_jetstream::EventStream;
 // use infra_mirakc::MirakcSseSource; // Source は引数で受け取るため削除
 use std::sync::Arc;
