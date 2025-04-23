@@ -20,15 +20,7 @@ pub struct MirakcEventDto {
 }
 
 // MirakcEventDto に Event トレイトを実装
-impl Event for MirakcEventDto {
-    fn event_name() -> &'static str {
-        "mirakc_event_dto"
-    }
-    fn stream_name() -> &'static str {
-        // MirakcEventDto は特定のストリームに属さないため空文字列
-        ""
-    }
-}
+impl Event for MirakcEventDto {}
 
 /// TunerStatusChangedイベントDTO
 #[derive(Debug, Clone, Serialize, Deserialize)]
