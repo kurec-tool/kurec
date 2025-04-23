@@ -23,6 +23,7 @@ thiserror = "1.0" # 追加: エラー型定義用
 tracing = "0.1" # 追加
 shared_types = { version = "0.0.1", path = "../../shared/types" }
 infra_nats = { path = "../nats" } # NATS接続クレートを追加
+infra_common = { path = "../common" } # Ack機能を提供するクレートを追加
 
 [dev-dependencies]
 testcontainers = "0.23.3"

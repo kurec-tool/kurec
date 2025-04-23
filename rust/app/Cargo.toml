@@ -31,6 +31,7 @@ infra_jetstream = { path = "../libs/infra/jetstream" }
 infra_mirakc = { path = "../libs/infra/mirakc" }
 infra_kvs = { path = "../libs/infra/kvs" }
 infra_nats = { path = "../libs/infra/nats" } # 追加
+infra_common = { path = "../libs/infra/common" } # Ack機能を提供するクレートを追加
 domain = { path = "../libs/domain" }
 mirakc-client = { path = "../../server/mirakc-client" } # 追加
 app_macros = { path = "./macros" } # 追加

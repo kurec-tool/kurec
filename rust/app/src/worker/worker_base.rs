@@ -1,5 +1,5 @@
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // crate:: -> shared_core::
-                                                               // use crate::event_metadata::Event; // 削除
+use shared_core::error_handling::ClassifyError; // crate:: -> shared_core::
+                                                // use crate::event_metadata::Event; // 削除
 use anyhow::Result;
 use async_trait::async_trait;
 use domain::event::Event;
@@ -121,7 +121,7 @@ where
     H: Handler<E, Ctx>,
     Ctx: Clone + Send + Sync + 'static,
 {
-    source: Arc<dyn EventSource<E>>, // subscriber -> source にリネーム
+    source: Arc<dyn EventSource<E, anyhow::Error>>, // subscriber -> source にリネーム
     handler: H,
     context: Ctx,
     middlewares: Vec<Arc<dyn Middleware<E, Ctx>>>,
@@ -135,7 +135,7 @@ where
     Ctx: Clone + Send + Sync + 'static,
 {
     /// 新しいWorkerBuilderを作成
-    pub fn new(source: Arc<dyn EventSource<E>>, handler: H, context: Ctx) -> Self {
+    pub fn new(source: Arc<dyn EventSource<E, anyhow::Error>>, handler: H, context: Ctx) -> Self {
         // subscriber -> source
         Self {
             source, // subscriber -> source

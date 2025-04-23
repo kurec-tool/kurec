@@ -38,7 +38,7 @@ impl<E: Event> JsPublisher<E> {
 }
 
 // ヘルパー関数: 型名からスネークケースのサブジェクト名を取得
-fn type_name_to_snake_case<T: ?Sized + Event>() -> String {
+fn type_name_to_snake_case<T: Event>() -> String {
     let type_name_full = type_name::<T>();
     // フルパスから型名部分を抽出 (例: my_crate::events::MyEvent -> MyEvent)
     let type_name_short = type_name_full.split("::").last().unwrap_or(type_name_full);

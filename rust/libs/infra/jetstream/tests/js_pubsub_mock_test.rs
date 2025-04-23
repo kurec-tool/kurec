@@ -2,11 +2,13 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::event::Event; // 新しい Event トレイトをインポート
-use domain::ports::event_sink::EventSink; // 新しいパスからインポート
-use domain::ports::event_source::EventSource; // 新しいパスからインポート
+use domain::event::Event;
+use domain::ports::event_sink::EventSink;
 use futures::stream::{self, BoxStream};
 use futures::StreamExt;
+use infra_common::ack::Ack;
+use infra_common::ackable_event::AckableEvent;
+use infra_common::event_source::EventSource;
 use serde::{Deserialize, Serialize};
 
 // テスト用のイベント型1
@@ -103,11 +105,33 @@ impl<E: Event + Clone> MockSubscriber<E> {
     }
 }
 
+// モック用のAck実装
+struct MockAck {}
+
+impl MockAck {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
 #[async_trait]
-impl<E: Event + Clone + Send + Sync + 'static> EventSource<E> for MockSubscriber<E> {
-    async fn subscribe(&self) -> Result<BoxStream<'static, Result<E, anyhow::Error>>> {
+impl Ack for MockAck {
+    async fn ack(&self) -> Result<()> {
+        // モックなので何もしない
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl<E: Event + Clone + Send + Sync + 'static> EventSource<E, anyhow::Error> for MockSubscriber<E> {
+    async fn subscribe(
+        &self,
+    ) -> Result<BoxStream<'static, Result<AckableEvent<E>, anyhow::Error>>> {
         let events = self.events.clone();
-        let stream = stream::iter(events.into_iter().map(move |event| Ok(event)));
+        let stream = stream::iter(events.into_iter().map(move |event| {
+            let ack_fn = Box::new(MockAck::new());
+            Ok(AckableEvent::new(event, ack_fn))
+        }));
 
         Ok(Box::pin(stream))
     }
@@ -159,8 +183,8 @@ async fn test_subscriber_with_mock() -> Result<()> {
     // サブスクライバーを作成
     let subscriber = MockSubscriber::new(test_events.clone());
 
-    // サブスクライブしてイベントを受信
-    let mut stream = subscriber.subscribe().await?;
+    // アダプター関数を使用してsubscribeを呼び出す
+    let mut stream = infra_common::event_source::adapt_event_source(&subscriber).await?;
 
     // 最初のイベントを受信
     if let Some(Ok(event)) = stream.next().await {
@@ -244,8 +268,10 @@ async fn test_error_handling() -> Result<()> {
     }
 
     #[async_trait]
-    impl<E: Event + Send + Sync + 'static> EventSource<E> for ErrorSubscriber<E> {
-        async fn subscribe(&self) -> Result<BoxStream<'static, Result<E, anyhow::Error>>> {
+    impl<E: Event + Send + Sync + 'static> EventSource<E, anyhow::Error> for ErrorSubscriber<E> {
+        async fn subscribe(
+            &self,
+        ) -> Result<BoxStream<'static, Result<AckableEvent<E>, anyhow::Error>>> {
             Err(anyhow::anyhow!("Simulated subscribe error"))
         }
     }

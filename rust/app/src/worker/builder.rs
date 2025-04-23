@@ -1,9 +1,10 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::ports::EventSource; // domain::ports からインポート
+use domain::event::Event;
+use domain::ports::event_source::EventSource; // domain::ports からインポート
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
+// use shared_core::error_handling::{ClassifyError, ErrorAction}; // 未使用なので削除
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::select;
@@ -16,7 +17,7 @@ use serde::{de::DeserializeOwned, Serialize}; // 追加
 #[async_trait]
 pub trait Middleware<E, Ctx>: Send + Sync + 'static
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
 {
     async fn handle(&self, event: E, ctx: Ctx, next: Next<'_, E, Ctx>) -> Result<()>;
@@ -25,7 +26,7 @@ where
 /// ミドルウェアチェーンの次の処理を表す構造体
 pub struct Next<'a, E, Ctx>
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
 {
     pub(crate) handler:
@@ -35,7 +36,7 @@ where
 
 impl<E, Ctx> Next<'_, E, Ctx>
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
 {
     pub fn new(
@@ -56,7 +57,7 @@ where
 #[async_trait]
 pub trait Handler<E, Ctx>: Send + Sync + 'static
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
 {
     async fn handle(&self, event: E, ctx: Ctx) -> Result<()>;
@@ -65,7 +66,7 @@ where
 /// 関数をハンドラとして扱うためのラッパー
 pub struct FnHandler<E, Ctx, F>
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
     F: Fn(E, Ctx) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
 {
@@ -75,7 +76,7 @@ where
 
 impl<E, Ctx, F> FnHandler<E, Ctx, F>
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
     F: Fn(E, Ctx) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
 {
@@ -90,7 +91,7 @@ where
 #[async_trait]
 impl<E, Ctx, F> Handler<E, Ctx> for FnHandler<E, Ctx, F>
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
     F: Fn(E, Ctx) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
 {
@@ -101,7 +102,7 @@ where
 
 impl<E, Ctx> Clone for Next<'_, E, Ctx>
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     Ctx: Clone + Send + Sync + 'static,
 {
     fn clone(&self) -> Self {
@@ -117,10 +118,10 @@ where
 pub struct WorkerBuilder<E, H, Ctx, Src>
 // EventSource をジェネリックに
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     H: Handler<E, Ctx>,
     Ctx: Clone + Send + Sync + 'static,
-    Src: EventSource<E> + 'static, // EventSource トレイト境界を追加
+    Src: EventSource<E, anyhow::Error> + 'static, // EventSource トレイト境界を追加
 {
     source: Arc<Src>, // Arc<dyn EventSource<E>> -> Arc<Src>
     handler: H,
@@ -132,10 +133,10 @@ where
 impl<E, H, Ctx, Src> WorkerBuilder<E, H, Ctx, Src>
 // ジェネリックパラメータ追加
 where
-    E: Serialize + DeserializeOwned + Send + Sync + 'static,
+    E: Serialize + DeserializeOwned + Send + Sync + 'static + Event,
     H: Handler<E, Ctx> + Clone,
     Ctx: Clone + Send + Sync + 'static,
-    Src: EventSource<E> + 'static, // EventSource トレイト境界を追加
+    Src: EventSource<E, anyhow::Error> + 'static, // EventSource トレイト境界を追加
 {
     /// 新しいWorkerBuilderを作成
     pub fn new(source: Arc<Src>, handler: H, context: Ctx) -> Self {

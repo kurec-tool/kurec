@@ -1,28 +1,30 @@
 [package]
 name = "infra_mirakc"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
 
 [dependencies]
-mirakc-client = { path = "../../../../server/mirakc-client" }
-shared_core = { path = "../../shared/core" }
-domain = { path = "../../domain" }
 anyhow = "1.0"
 async-trait = "0.1"
 backoff = "0.4"
-bytes = "1.0"
+bytes = "1.5"
 chrono = { version = "0.4", features = ["serde"] }
+domain = { path = "../../domain" }
 eventsource-stream = "0.2"
 futures = "0.3"
-reqwest = { version = "0.12", features = ["json", "stream"] } # バージョンを mirakc-client に合わせる
+infra_common = { path = "../common" }
+mirakc-client = { path = "../../../../server/mirakc-client" }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-tokio-stream = { version = "0.1", features = ["net"] }
+shared_core = { version = "0.0.1", path = "../../shared/core" }
+thiserror = "1.0"
+tokio = { version = "1.44", features = ["full"] }
 tracing = "0.1"
-url = "2.5.0" # 追加
+url = "2.5"
 
 [dev-dependencies]
 wiremock = "0.5"
-tokio = { version = "1.0", features = ["full", "test-util"] }
-reqwest = { version = "0.12", features = ["json"] }

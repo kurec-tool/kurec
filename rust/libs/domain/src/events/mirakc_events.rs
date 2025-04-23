@@ -8,6 +8,34 @@ use infra_macros::define_event_stream; // 新しいマクロをインポート
 use serde::{Deserialize, Serialize};
 use shared_core::dtos::mirakc_event::*; // DTO はそのまま利用
 
+/// MirakcEventDtoをdomain::event::Eventとして扱うためのアダプター
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[define_event_stream(stream = "mirakc-events")]
+pub struct MirakcEventAdapter {
+    /// 元のMirakcEventDto
+    pub event_dto: MirakcEventDto,
+}
+
+impl Event for MirakcEventAdapter {}
+
+impl From<MirakcEventDto> for MirakcEventAdapter {
+    fn from(dto: MirakcEventDto) -> Self {
+        Self { event_dto: dto }
+    }
+}
+
+impl MirakcEventAdapter {
+    /// 内部のMirakcEventDtoを取得
+    pub fn inner(&self) -> &MirakcEventDto {
+        &self.event_dto
+    }
+
+    /// 内部のMirakcEventDtoを消費して返す
+    pub fn into_inner(self) -> MirakcEventDto {
+        self.event_dto
+    }
+}
+
 /// mirakcのTunerStatusChangedイベント
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[define_event_stream(stream = "mirakc-events")]
