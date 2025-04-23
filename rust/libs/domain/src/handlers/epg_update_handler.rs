@@ -89,7 +89,7 @@ impl StreamHandler<EpgProgramsUpdatedEvent, EpgStoredEvent, EpgUpdateError> for 
     ) -> Result<Option<EpgStoredEvent>, EpgUpdateError> {
         tracing::info!(
             "Handling EpgProgramsUpdatedEvent for service_id: {}",
-            event.data.service_id
+            event.service_id // data フィールドを削除
         );
 
         // TODO: Implement the actual EPG update logic here.

@@ -68,7 +68,7 @@ pub async fn run_epg_updater(
                 match maybe_event {
                     Some(Ok(event)) => {
                         info!(
-                            service_id = event.data.service_id,
+                            service_id = event.service_id, // data フィールドを削除
                             "Received EpgProgramsUpdatedEvent"
                         );
                         // ハンドラでイベントを処理

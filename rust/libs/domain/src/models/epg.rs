@@ -7,22 +7,31 @@ pub enum VideoType {
     /// 不明
     Unknown,
     /// SD 4:3
+    #[allow(non_camel_case_types)]
     SD_4_3,
     /// SD 16:9 パンベクトルあり
+    #[allow(non_camel_case_types)]
     SD_16_9_PanVector,
     /// SD 16:9 パンベクトルなし
+    #[allow(non_camel_case_types)]
     SD_16_9,
     /// SD 16:9超
+    #[allow(non_camel_case_types)]
     SD_Over16_9,
     /// HD 4:3
+    #[allow(non_camel_case_types)]
     HD_4_3,
     /// HD 16:9 パンベクトルあり
+    #[allow(non_camel_case_types)]
     HD_16_9_PanVector,
     /// HD 16:9 パンベクトルなし
+    #[allow(non_camel_case_types)]
     HD_16_9,
     /// HD 16:9超
+    #[allow(non_camel_case_types)]
     HD_Over16_9,
     /// UHD 16:9
+    #[allow(non_camel_case_types)]
     UHD_16_9,
 }
 
@@ -48,6 +57,7 @@ pub enum AudioType {
     /// 3/2モード
     Mode3_2,
     /// 3/2.1モード
+    #[allow(non_camel_case_types)]
     Mode3_2_LFE,
 }
 

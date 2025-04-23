@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use domain::events::MirakcEventInput; // MirakcEventInput をインポート
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     handlers::mirakc_event_handler::MirakcEventSinks,
@@ -8,7 +9,7 @@ use domain::{
 use infra_jetstream::{self, JsPublisher, JsSubscriber}; // infra_jetstream とその要素をインポート
 use infra_mirakc::MirakcSseSource; // MirakcSseSource をインポート
 use infra_nats;
-use shared_core::dtos::mirakc_event::MirakcEventDto; // MirakcEventDto をインポート
+// 不要な DTO インポートを削除: use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::{env, sync::Arc}; // Arc をインポート
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
@@ -89,11 +90,6 @@ async fn main() -> Result<()> {
         shutdown_clone.cancel();
     });
 
-    // アプリケーション設定を作成
-    let app_config = AppConfig {
-        nats_url: nats_url.clone(),
-    };
-
     // ワーカーを起動
     match cli.worker {
         WorkerType::CheckVersion { mirakc_url } => {
@@ -158,7 +154,8 @@ async fn main() -> Result<()> {
             println!("Starting mirakc events worker with URL: {}...", mirakc_url);
 
             // 依存関係の初期化
-            let mirakc_source: Arc<dyn EventSource<MirakcEventDto>> =
+            // EventSource の型パラメータを MirakcEventInput に変更
+            let mirakc_source: Arc<dyn EventSource<MirakcEventInput>> =
                 Arc::new(MirakcSseSource::new(mirakc_url.clone()));
 
             // TODO: MirakcEventSinks の初期化 (必要な Sink を作成して渡す)
