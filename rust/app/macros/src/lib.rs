@@ -58,7 +58,7 @@ pub fn define_event_stream(attr: TokenStream, item: TokenStream) -> TokenStream 
 
     // EventStream インスタンスの生成
     let event_stream_def = quote! {
-        pub const EVENT_STREAM: ::infra_jetstream::EventStream<Self> =
+        pub const EVENT_STREAM: ::infra_jetstream::EventStream =
             ::infra_jetstream::EventStream::new(
                 #stream_name_lit,
                 #stream_config

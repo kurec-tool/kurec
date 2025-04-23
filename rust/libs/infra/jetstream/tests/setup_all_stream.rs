@@ -58,7 +58,7 @@ async fn stream_defs_are_applied() -> anyhow::Result<()> {
     let js = nats_client.jetstream_context();
 
     // テスト用のEventStreamを作成
-    let test_stream = EventStream::<TestEvent>::new(
+    let test_stream = EventStream::new(
         TEST_STREAM_NAME,
         infra_jetstream::config::StreamConfig {
             max_age: Some(Duration::from_secs(3600)), // 1時間
@@ -121,7 +121,7 @@ async fn idempotend_check() -> anyhow::Result<()> {
     let js = nats_client.jetstream_context();
 
     // テスト用のEventStreamを作成
-    let test_stream = EventStream::<TestEvent>::new(
+    let test_stream = EventStream::new(
         TEST_STREAM_NAME,
         infra_jetstream::config::StreamConfig {
             max_age: Some(Duration::from_secs(3600)), // 1時間

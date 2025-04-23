@@ -35,23 +35,25 @@ fn type_name_to_snake_case<T: ?Sized + Event>() -> String {
 /// JetStreamを使用したイベント購読者
 pub struct JsSubscriber<E: Event> {
     nats_client: Arc<NatsClient>,
-    event_stream: crate::event_stream::EventStream<E>,
+    event_stream: crate::event_stream::EventStream,
+    _phantom: std::marker::PhantomData<E>, // 型パラメータを保持するためのフィールド
 }
 
 impl<E: Event> JsSubscriber<E> {
     /// 新しいJsSubscriberを作成
     pub fn new(
         nats_client: Arc<NatsClient>,
-        event_stream: crate::event_stream::EventStream<E>,
+        event_stream: crate::event_stream::EventStream,
     ) -> Self {
         Self {
             nats_client,
             event_stream,
+            _phantom: std::marker::PhantomData, // 型パラメータを保持
         }
     }
 
     /// イベントストリームを取得
-    pub fn event_stream(&self) -> &crate::event_stream::EventStream<E> {
+    pub fn event_stream(&self) -> &crate::event_stream::EventStream {
         &self.event_stream
     }
 }

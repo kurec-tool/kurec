@@ -3,7 +3,6 @@
 //! このモジュールはJetStreamストリームの定義を提供します。
 
 use app_macros::define_event_stream;
-use domain::event::Event;
 use infra_jetstream::EventStream;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +17,7 @@ use serde::{Deserialize, Serialize};
     description = "mirakc events stream"
 )]
 pub struct MirakcEventStreamDef;
-impl Event for MirakcEventStreamDef {}
+// 不要な Event 実装を削除: impl Event for MirakcEventStreamDef {}
 
 /// kurecイベントストリーム定義
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,10 +30,9 @@ impl Event for MirakcEventStreamDef {}
     description = "kurec events stream"
 )]
 pub struct KurecEventStreamDef;
-impl Event for KurecEventStreamDef {}
 
 /// mirakcイベント用のEventStreamを取得
-pub fn mirakc_event_stream<E: Event>() -> EventStream<E> {
+pub fn mirakc_event_stream() -> EventStream {
     EventStream::new(
         MirakcEventStreamDef::EVENT_STREAM.stream_name(),
         MirakcEventStreamDef::EVENT_STREAM.config().clone(),
@@ -42,7 +40,7 @@ pub fn mirakc_event_stream<E: Event>() -> EventStream<E> {
 }
 
 /// kurecイベント用のEventStreamを取得
-pub fn kurec_event_stream<E: Event>() -> EventStream<E> {
+pub fn kurec_event_stream() -> EventStream {
     EventStream::new(
         KurecEventStreamDef::EVENT_STREAM.stream_name(),
         KurecEventStreamDef::EVENT_STREAM.config().clone(),

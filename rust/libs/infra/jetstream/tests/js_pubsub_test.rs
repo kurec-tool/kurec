@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use domain::event::Event; // 新しい Event トレイトをインポート
 use domain::ports::{event_sink::EventSink, event_source::EventSource}; // パス修正
 use futures::StreamExt;
@@ -44,7 +41,7 @@ async fn test_publisher_subscriber() -> anyhow::Result<()> {
     let js = nats_client.jetstream_context();
 
     // EventStream を作成
-    let event_stream = EventStream::<TestEvent>::new(
+    let event_stream = EventStream::new(
         TEST_STREAM_NAME,
         infra_jetstream::config::StreamConfig {
             max_age: None,

@@ -187,8 +187,8 @@ async fn main() -> Result<()> {
 
             // 依存関係の初期化
             // ストリーム定義を取得
-            let mirakc_stream = streams_def::mirakc_event_stream::<EpgProgramsUpdatedEvent>();
-            let kurec_stream = streams_def::kurec_event_stream::<EpgStoredEvent>();
+            let mirakc_stream = streams_def::mirakc_event_stream();
+            let kurec_stream = streams_def::kurec_event_stream();
 
             // JsSubscriber と JsPublisher を作成
             let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> = Arc::new(
