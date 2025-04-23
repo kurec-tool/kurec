@@ -102,7 +102,12 @@ impl EventSource<MirakcEventAdapter, SseEventError> for MirakcSseSource {
     /// MirakcEventAdapter のストリームを購読する
     async fn subscribe(
         &self,
-    ) -> Result<BoxStream<'static, Result<MirakcEventAdapter, SseEventError>>> {
+    ) -> Result<
+        BoxStream<
+            'static,
+            Result<infra_common::ackable_event::AckableEvent<MirakcEventAdapter>, SseEventError>,
+        >,
+    > {
         let mirakc_url = self.mirakc_url.clone();
         info!("Starting event stream from mirakc URL: {}", mirakc_url);
 
@@ -144,9 +149,14 @@ impl EventSource<MirakcEventAdapter, SseEventError> for MirakcSseSource {
                         received_at: Utc::now(),
                     };
 
-                    // MirakcEventAdapterでラップして返す
+                    // MirakcEventAdapterでラップ
                     let adapter = MirakcEventAdapter::from(dto);
-                    Ok(adapter)
+
+                    // SseAckでラップしてAckableEventを作成
+                    let ack_fn = Box::new(crate::ack::SseAck::new());
+                    Ok(infra_common::ackable_event::AckableEvent::new(
+                        adapter, ack_fn,
+                    ))
                 }
             })
             .boxed();

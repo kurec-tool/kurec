@@ -27,7 +27,7 @@ use tracing::{error, info}; // error, info をインポート
 /// EPG更新ワーカーを実行 (手動ループ)
 pub async fn run_epg_updater(
     nats_client: Arc<infra_nats::NatsClient>, // Arc<NatsClient> を引数で受け取る
-    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent, anyhow::Error>>, // EventSource を引数で受け取る
+    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent, infra_jetstream::error::JsEventError>>, // EventSource を引数で受け取る
     sink: Arc<dyn EventSink<EpgStoredEvent>>, // EventSink を引数で受け取る
     shutdown: CancellationToken,
 ) -> Result<()> {

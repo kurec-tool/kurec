@@ -64,18 +64,48 @@ impl TestSubscriber {
 
 #[async_trait]
 impl EventSource<TestEvent, anyhow::Error> for TestSubscriber {
-    async fn subscribe(&self) -> Result<BoxStream<'static, Result<TestEvent, anyhow::Error>>> {
+    async fn subscribe(
+        &self,
+    ) -> Result<
+        BoxStream<
+            'static,
+            Result<infra_common::ackable_event::AckableEvent<TestEvent>, anyhow::Error>,
+        >,
+    > {
         let events = self.events.clone();
         let ack_called = self.ack_called.clone();
 
         // 'static ライフタイムを持つストリームを作成
         let stream = Box::pin(stream::iter(events.into_iter().map(move |event| {
             // ack_calledをtrueに設定（テスト用）
-            ack_called.store(true, Ordering::SeqCst);
-            Ok(event)
+            let ack_called_clone = ack_called.clone();
+
+            // テスト用のAck実装
+            let ack_fn = Box::new(TestAck {
+                ack_called: ack_called_clone,
+            });
+
+            // AckableEventを作成して返す
+            Ok(infra_common::ackable_event::AckableEvent::new(
+                event, ack_fn,
+            ))
         })));
 
         Ok(stream)
+    }
+}
+
+// テスト用のAck実装
+struct TestAck {
+    ack_called: Arc<AtomicBool>,
+}
+
+#[async_trait]
+impl infra_common::ack::Ack for TestAck {
+    async fn ack(&self) -> Result<()> {
+        // ack_calledをtrueに設定
+        self.ack_called.store(true, Ordering::SeqCst);
+        Ok(())
     }
 }
 

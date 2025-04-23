@@ -4,11 +4,12 @@
 
 use anyhow::Result;
 use domain::{
-    events::mirakc_events::MirakcEventAdapter,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
     ports::event_source::EventSource, // EventSource をインポート
 };
 use futures::StreamExt;
+use infra_mirakc::error::SseEventError;
+use shared_core::dtos::mirakc_event::MirakcEventDto;
 // use infra_jetstream::EventStream;
 // use infra_mirakc::MirakcSseSource; // Source は引数で受け取るため削除
 use std::sync::Arc;
@@ -20,7 +21,7 @@ use tracing::{debug, error, info};
 pub async fn run_mirakc_events(
     // _config: &crate::AppConfig // AppConfig型が見つからないため削除
     _mirakc_url: &str, // mirakc_url は source 作成にしか使わないので不要
-    source: Arc<dyn EventSource<MirakcEventAdapter, anyhow::Error>>, // MirakcEventAdapter を使用
+    source: Arc<dyn EventSource<MirakcEventAdapter, SseEventError>>, // MirakcEventAdapter と SseEventError を使用
     sinks: MirakcEventSinks,
     shutdown: CancellationToken,
 ) -> Result<()> {
