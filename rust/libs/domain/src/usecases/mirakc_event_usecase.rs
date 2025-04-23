@@ -3,7 +3,7 @@
 //! このモジュールはmirakcイベントを処理するユースケースを定義します。
 
 // MirakcEventInput をインポート
-use crate::events::{mirakc_events::*, MirakcEventInput};
+use crate::events::mirakc_events::*;
 use crate::ports::event_sink::EventSink; // 正しいパスからインポート
 use crate::ports::repositories::mirakc_event_repository::MirakcEventRepository;
 use futures::StreamExt;

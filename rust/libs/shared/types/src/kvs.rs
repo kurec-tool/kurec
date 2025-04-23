@@ -1,7 +1,6 @@
 //! JetStream Key-Value Store バケット定義用トレイト
 
 use async_nats::jetstream::kv::Config; // StorageType はマクロ側で処理するため削除
-use std::time::Duration;
 
 /// JetStream Key-Value Store バケットを表すトレイト。
 ///

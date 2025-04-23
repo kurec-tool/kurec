@@ -10,32 +10,11 @@ use syn::{
     DeriveInput,
     Expr,
     Lit,
-    LitBool,
-    LitInt,
-    LitStr,
     Meta, // NestedMeta を削除し Meta を使う
     MetaNameValue,
     // NestedMeta, // 削除
-    Path,
     Token,
 };
-
-// Helper function to parse literal to a specific type
-fn parse_lit<T: syn::parse::Parse>(lit: &Lit, attr_name: &str) -> syn::Result<T> {
-    let lit_str = match lit {
-        Lit::Str(s) => s.value(),
-        Lit::Int(i) => i.to_string(),
-        Lit::Bool(b) => b.value().to_string(),
-        _ => {
-            return Err(syn::Error::new_spanned(
-                lit,
-                format!("Invalid literal type for {}", attr_name),
-            ))
-        }
-    };
-    syn::parse_str::<T>(&lit_str)
-        .map_err(|e| syn::Error::new_spanned(lit, format!("Failed to parse {}: {}", attr_name, e)))
-}
 
 // Helper function to parse string literal
 fn parse_lit_str(lit: &Lit, attr_name: &str) -> syn::Result<String> {

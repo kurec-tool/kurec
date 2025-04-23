@@ -2,10 +2,10 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     spanned::Spanned,
-    Expr, Ident, Lit, LitBool, LitInt, LitStr, Meta, MetaNameValue, Result, Token,
+    Expr, Lit, LitBool, LitInt, LitStr, Meta, MetaNameValue, Result, Token,
 };
 
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
 
 /// マクロ属性のパラメータを保持する構造体 (解析用)
@@ -309,41 +309,5 @@ fn parse_lit_bool(value: Expr) -> Result<Option<LitBool>> {
         }
     } else {
         Err(syn::Error::new(value.span(), "Expected literal"))
-    }
-}
-
-/// 文字列リテラルから期間を解析し、TokenStream2を返す
-fn parse_lit_duration(value: Expr) -> Result<Option<TokenStream2>> {
-    match value {
-        Expr::Lit(expr_lit) => {
-            match expr_lit.lit {
-                Lit::Str(ref lit_str) => {
-                    let duration_str = lit_str.value();
-                    // humantime::parse_durationを使用して文字列を解析
-                    match humantime::parse_duration(&duration_str) {
-                        Ok(duration) => {
-                            // 秒数に変換してTokenStream2を生成
-                            let seconds = duration.as_secs();
-                            Ok(Some(quote!(::std::time::Duration::from_secs(#seconds))))
-                        }
-                        Err(_) => {
-                            let span = expr_lit.span();
-                            Err(syn::Error::new(
-                                span,
-                                format!("Invalid duration format: {}", duration_str),
-                            ))
-                        }
-                    }
-                }
-                _ => {
-                    let span = expr_lit.span();
-                    Err(syn::Error::new(
-                        span,
-                        "Expected string literal for duration",
-                    ))
-                }
-            }
-        }
-        _ => Err(syn::Error::new(value.span(), "Expected literal")),
     }
 }

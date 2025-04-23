@@ -1,12 +1,9 @@
-use crate::error::PublishError; // エラー型をインポート
 use anyhow::{Context, Result};
-use async_nats::jetstream;
 use async_trait::async_trait;
 use domain::event::Event; // 新しい Event トレイトをインポート
 use domain::ports::event_sink::EventSink;
 use heck::ToSnakeCase; // スネークケース変換用
 use std::any::type_name; // 型名取得用
-use std::marker::PhantomData;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument, warn}; // info, warn を追加
 
@@ -109,7 +106,7 @@ where
                     nats_config.subjects = vec![subject.clone()];
 
                     match js_ctx.create_stream(nats_config).await {
-                        Ok(stream_info) => {
+                        Ok(_stream_info) => {
                             info!(stream = %stream_name, "Successfully created stream");
                         }
                         Err(create_err) => {

@@ -1,12 +1,11 @@
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // crate:: -> shared_core::
-                                                               // use crate::event_metadata::Event; // 削除
 use anyhow::Result;
 use async_trait::async_trait;
 use domain::event::Event;
 use domain::ports::event_source::EventSource;
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use serde::de::DeserializeOwned; // DeserializeOwned をインポート
+use serde::de::DeserializeOwned;
+use shared_core::error_handling::ClassifyError;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::select;

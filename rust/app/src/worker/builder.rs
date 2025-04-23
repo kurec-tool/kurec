@@ -1,9 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use domain::ports::EventSource; // domain::ports からインポート
+use domain::ports::EventSource;
 use futures::future::BoxFuture;
 use futures::StreamExt;
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio::select;

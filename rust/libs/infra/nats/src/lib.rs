@@ -9,13 +9,12 @@ use async_nats::{
     client::Client,
     connect_with_options,
     jetstream,
-    jetstream::kv, // kv を jetstream モジュールからインポート
     ConnectOptions,
     // ServerAddr, // 未使用のため削除
 };
 use std::{sync::Arc, time::Duration};
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Error, Debug)]
 pub enum NatsInfraError {

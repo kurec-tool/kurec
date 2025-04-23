@@ -4,9 +4,7 @@
 //! 特に、イベント型とJetStreamストリームの設定情報を関連付けるためのマクロを提供します。
 
 use heck::ToKebabCase;
-use humantime::parse_duration;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, LitStr};
 

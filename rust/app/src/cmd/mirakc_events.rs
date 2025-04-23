@@ -9,8 +9,6 @@ use domain::{
     ports::event_source::EventSource, // EventSource をインポート
 };
 use futures::StreamExt;
-// 不要な DTO インポートを削除: use shared_core::dtos::mirakc_event::MirakcEventDto;
-use shared_core::error_handling::ClassifyError; // ClassifyError のみインポート
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;

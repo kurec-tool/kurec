@@ -3,7 +3,6 @@ use syn::{
     punctuated::Punctuated,
     spanned::Spanned, // span() メソッドを利用するためにインポート
     Expr,
-    Ident,
     Lit,
     LitBool,
     LitInt,

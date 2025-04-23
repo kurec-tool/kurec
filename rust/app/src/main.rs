@@ -206,7 +206,6 @@ async fn main() -> Result<()> {
             // EPG更新ワーカーを実行
             let _epg_updater_handle = tokio::spawn(async move {
                 if let Err(e) = cmd::epg_updater::run_epg_updater(
-                    nats_client.clone(), // NatsClient を渡す
                     epg_updated_source,
                     epg_stored_sink,
                     worker_shutdown,
