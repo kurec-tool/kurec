@@ -63,7 +63,7 @@ impl TestSubscriber {
 }
 
 #[async_trait]
-impl EventSource<TestEvent> for TestSubscriber {
+impl EventSource<TestEvent, anyhow::Error> for TestSubscriber {
     async fn subscribe(&self) -> Result<BoxStream<'static, Result<TestEvent, anyhow::Error>>> {
         let events = self.events.clone();
         let ack_called = self.ack_called.clone();

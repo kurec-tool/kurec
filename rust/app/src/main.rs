@@ -158,7 +158,7 @@ async fn main() -> Result<()> {
             println!("Starting mirakc events worker with URL: {}...", mirakc_url);
 
             // 依存関係の初期化
-            let mirakc_source: Arc<dyn EventSource<MirakcEventDto>> =
+            let mirakc_source: Arc<dyn EventSource<MirakcEventDto, anyhow::Error>> =
                 Arc::new(MirakcSseSource::new(mirakc_url.clone()));
 
             // TODO: MirakcEventSinks の初期化 (必要な Sink を作成して渡す)
@@ -194,9 +194,11 @@ async fn main() -> Result<()> {
             let kurec_stream = streams_def::kurec_event_stream::<EpgStoredEvent>();
 
             // JsSubscriber と JsPublisher を作成
-            let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> = Arc::new(
-                JsSubscriber::<EpgProgramsUpdatedEvent>::new(nats_client.clone(), mirakc_stream),
-            );
+            let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent, anyhow::Error>> =
+                Arc::new(JsSubscriber::<EpgProgramsUpdatedEvent>::new(
+                    nats_client.clone(),
+                    mirakc_stream,
+                ));
             let epg_stored_sink: Arc<dyn EventSink<EpgStoredEvent>> =
                 Arc::new(JsPublisher::<EpgStoredEvent>::new(
                     nats_client.clone(),
