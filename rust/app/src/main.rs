@@ -8,8 +8,6 @@ use domain::{
 };
 use infra_jetstream::{self, JsPublisher, JsSubscriber}; // infra_jetstream とその要素をインポート
 use infra_mirakc::MirakcSseSource; // MirakcSseSource をインポート
-use infra_nats;
-// 不要な DTO インポートを削除: use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::{env, sync::Arc}; // Arc をインポート
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
@@ -167,13 +165,8 @@ async fn main() -> Result<()> {
             let worker_shutdown = shutdown.clone();
 
             // mirakcイベント処理コマンドを実行
-            if let Err(e) = cmd::mirakc_events::run_mirakc_events(
-                &mirakc_url, // _mirakc_url として受け取るので渡す必要はある
-                mirakc_source,
-                sinks,
-                worker_shutdown,
-            )
-            .await
+            if let Err(e) =
+                cmd::mirakc_events::run_mirakc_events(mirakc_source, sinks, worker_shutdown).await
             {
                 eprintln!("mirakc events worker error: {}", e);
                 std::process::exit(1);

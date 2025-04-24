@@ -9,7 +9,6 @@ pub mod kurec_events;
 pub mod mirakc_events;
 
 /// mirakcから受信したイベントの生データを表す構造体
-/// (以前の MirakcEventDto に相当)
 #[derive(Debug, Clone, Deserialize)]
 pub struct MirakcEventInput {
     pub mirakc_url: String,

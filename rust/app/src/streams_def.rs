@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
     description = "mirakc events stream"
 )]
 pub struct MirakcEventStreamDef;
-// 不要な Event 実装を削除: impl Event for MirakcEventStreamDef {}
 
 /// kurecイベントストリーム定義
 #[derive(Debug, Clone, Serialize, Deserialize)]

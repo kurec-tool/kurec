@@ -3,25 +3,22 @@
 //! このモジュールはEPG更新イベントを処理するコマンドを提供します。
 
 use anyhow::Result;
-// use async_trait::async_trait; // 不要になった
-use domain::ports::event_source::EventSource; // domain::ports::event_source をインポート
+use domain::ports::event_source::EventSource;
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     handlers::epg_update_handler::{EpgUpdateHandler, StreamHandler},
     ports::event_sink::EventSink,
 };
-use futures::StreamExt; // StreamExt をインポート
+use futures::StreamExt;
 use std::sync::Arc;
-use tokio::select; // select! マクロをインポート
+use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info}; // error, info をインポート
-
-// JsEpgNotifier 構造体と実装を削除
+use tracing::{error, info};
 
 /// EPG更新ワーカーを実行 (手動ループ)
 pub async fn run_epg_updater(
-    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>>, // EventSource を引数で受け取る
-    sink: Arc<dyn EventSink<EpgStoredEvent>>,              // EventSink を引数で受け取る
+    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>>,
+    sink: Arc<dyn EventSink<EpgStoredEvent>>,
     shutdown: CancellationToken,
 ) -> Result<()> {
     info!("Starting EPG updater worker...");
@@ -29,10 +26,8 @@ pub async fn run_epg_updater(
     // EpgUpdateHandler の作成
     let handler = Arc::new(EpgUpdateHandler::new());
 
-    // StreamWorker 関連のコードは完全に削除されていることを確認
-
     // イベント処理ループ
-    let mut event_stream = source.subscribe().await?; // event_stream() -> subscribe() に変更
+    let mut event_stream = source.subscribe().await?;
     let shutdown_token = shutdown.clone();
 
     loop {
@@ -47,7 +42,7 @@ pub async fn run_epg_updater(
                 match maybe_event {
                     Some(Ok(event)) => {
                         info!(
-                            service_id = event.service_id, // data フィールドを削除
+                            service_id = event.service_id,
                             "Received EpgProgramsUpdatedEvent"
                         );
                         // ハンドラでイベントを処理

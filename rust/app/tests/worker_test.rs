@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use domain::event::Event; // domain::event::Event を使用
+use domain::event::Event;
 use futures::future::BoxFuture;
-use kurec_app::worker::builder::{FnHandler, Handler, Middleware, Next}; // kurec_app::worker::builder を使用
-use shared_core::error_handling::{ClassifyError, ErrorAction}; // shared_core からインポート
+use kurec_app::worker::builder::{FnHandler, Handler, Middleware, Next};
+use shared_core::error_handling::{ClassifyError, ErrorAction};
 use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -15,7 +15,7 @@ pub struct TestEvent {
     pub data: String,
 }
 
-// Event トレイトを実装（stream_name と event_name メソッドは削除）
+// Event トレイトを実装
 impl Event for TestEvent {}
 
 // テスト用のトレイト

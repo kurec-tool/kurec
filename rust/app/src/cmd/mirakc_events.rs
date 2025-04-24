@@ -2,11 +2,11 @@
 //!
 //! このモジュールはmirakcイベントを処理するコマンドを提供します。
 
-use anyhow::Result; // Context は未使用なので削除
+use anyhow::Result;
 use domain::{
-    events::MirakcEventInput, // MirakcEventInput をインポート
+    events::MirakcEventInput,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
-    ports::event_source::EventSource, // EventSource をインポート
+    ports::event_source::EventSource,
 };
 use futures::StreamExt;
 use std::sync::Arc;
@@ -16,19 +16,12 @@ use tracing::{debug, error, info};
 
 /// mirakcイベント処理コマンドを実行
 pub async fn run_mirakc_events(
-    // _config: &crate::AppConfig // AppConfig型が見つからないため削除
-    _mirakc_url: &str, // mirakc_url は source 作成にしか使わないので不要
     // 引数の型を MirakcEventInput に変更
-    source: Arc<dyn EventSource<MirakcEventInput>>, // Source を引数で受け取る
+    source: Arc<dyn EventSource<MirakcEventInput>>,
     sinks: MirakcEventSinks,
     shutdown: CancellationToken,
 ) -> Result<()> {
-    info!("Starting mirakc events command..."); // URL表示を削除
-
-    // SSEイベントソースは引数で受け取るため削除
-    // let source = MirakcSseSource::new(mirakc_url.to_string());
-
-    // Sink 構築ロジックは削除済み
+    info!("Starting mirakc events command...");
 
     // イベントハンドラの作成 (引数で受け取った sinks を使用)
     let handler = MirakcEventHandler::new(sinks);
@@ -99,5 +92,3 @@ pub async fn run_mirakc_events(
     info!("Mirakc events processing stopped.");
     Ok(())
 }
-
-// 古い CombinedPublisher と impl_event_sink マクロは削除

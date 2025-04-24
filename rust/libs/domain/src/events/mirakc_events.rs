@@ -2,13 +2,10 @@
 //!
 //! このモジュールはmirakcから受信するイベントを定義します。
 
-use crate::event::Event; // 新しい Event トレイトをインポート
+use crate::event::Event;
 use chrono::{DateTime, Utc};
-use infra_macros::define_event_stream; // 新しいマクロをインポート
+use infra_macros::define_event_stream;
 use serde::{Deserialize, Serialize};
-// DTOへの依存を削除: use shared_core::dtos::mirakc_event::*;
-
-// --- DTOから移動したenum定義 ---
 
 /// 録画失敗理由 (ドメイン層)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

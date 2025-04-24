@@ -47,36 +47,36 @@ pub struct StreamAttributes {
 impl From<StreamConfigArgs> for StreamAttributes {
     fn from(args: StreamConfigArgs) -> Self {
         // max_ageとduplicate_windowは特別に処理
-        let max_age = args.max_age.and_then(|lit_str| {
+        let max_age = args.max_age.map(|lit_str| {
             let duration_str = lit_str.value();
             match humantime::parse_duration(&duration_str) {
                 Ok(duration) => {
                     let seconds = duration.as_secs();
-                    Some(quote!(::std::time::Duration::from_secs(#seconds)))
+                    quote!(::std::time::Duration::from_secs(#seconds))
                 }
                 Err(_) => {
                     // エラーの場合はコンパイル時にパニックさせる
                     let err_msg = format!("Invalid duration format: {}", duration_str);
-                    Some(quote! {
+                    quote! {
                         compile_error!(#err_msg)
-                    })
+                    }
                 }
             }
         });
 
-        let duplicate_window = args.duplicate_window.and_then(|lit_str| {
+        let duplicate_window = args.duplicate_window.map(|lit_str| {
             let duration_str = lit_str.value();
             match humantime::parse_duration(&duration_str) {
                 Ok(duration) => {
                     let seconds = duration.as_secs();
-                    Some(quote!(::std::time::Duration::from_secs(#seconds)))
+                    quote!(::std::time::Duration::from_secs(#seconds))
                 }
                 Err(_) => {
                     // エラーの場合はコンパイル時にパニックさせる
                     let err_msg = format!("Invalid duration format: {}", duration_str);
-                    Some(quote! {
+                    quote! {
                         compile_error!(#err_msg)
-                    })
+                    }
                 }
             }
         });

@@ -21,7 +21,7 @@ struct InputEvent {
     pub data: String,
 }
 
-// Event トレイトを実装（stream_name と event_name メソッドは削除）
+// Event トレイトを実装
 impl Event for InputEvent {}
 
 // テスト用の出力イベント型
@@ -32,7 +32,7 @@ struct OutputEvent {
     pub processed: bool,
 }
 
-// Event トレイトを実装（stream_name と event_name メソッドは削除）
+// Event トレイトを実装
 impl Event for OutputEvent {}
 
 // テスト用のエラー型
