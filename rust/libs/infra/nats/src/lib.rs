@@ -9,13 +9,12 @@ use async_nats::{
     client::Client,
     connect_with_options,
     jetstream,
-    jetstream::kv, // kv を jetstream モジュールからインポート
     ConnectOptions,
     // ServerAddr, // 未使用のため削除
 };
 use std::{sync::Arc, time::Duration};
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Error, Debug)]
 pub enum NatsInfraError {
@@ -94,11 +93,9 @@ pub async fn connect(nats_url: &str) -> Result<Arc<NatsClient>, NatsInfraError> 
 mod tests {
     use super::*;
     use anyhow::Result;
-    use async_nats::jetstream::kv; // kv をインポート
     use testcontainers::{
         core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
     };
-    use tokio;
     use tracing::debug; // debug をインポート
 
     // テスト終了時に自動的にコンテナを停止・削除するための構造体

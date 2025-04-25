@@ -4,9 +4,7 @@
 //! 特に、イベント型とJetStreamストリームの設定情報を関連付けるためのマクロを提供します。
 
 use heck::ToKebabCase;
-use humantime::parse_duration;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, LitStr};
 
@@ -60,7 +58,7 @@ pub fn define_event_stream(attr: TokenStream, item: TokenStream) -> TokenStream 
 
     // EventStream インスタンスの生成
     let event_stream_def = quote! {
-        pub const EVENT_STREAM: ::infra_jetstream::EventStream<Self> =
+        pub const EVENT_STREAM: ::infra_jetstream::EventStream =
             ::infra_jetstream::EventStream::new(
                 #stream_name_lit,
                 #stream_config

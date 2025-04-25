@@ -1,19 +1,78 @@
 //! mirakcイベントハンドラ
 
-use crate::events::mirakc_events::*;
-use anyhow::{Context, Result}; // Context を追加
-                               // use async_trait::async_trait; // 削除済み
+// MirakcEventInput を crate::events からインポート
+use crate::events::{mirakc_events::*, MirakcEventInput};
 use crate::ports::event_sink::EventSink; // 正しいパスからインポート
-use shared_core::{
-    dtos::mirakc_event::MirakcEventDto,
-    error_handling::{ClassifyError, ErrorAction},
-    // event_sink::EventSink, // 削除
-    // stream_worker::StreamHandler, // 削除済み
-};
+use anyhow::Result; // Context は未使用なので削除
+use serde::Deserialize; // Deserialize をインポート
+use shared_core::error_handling::{ClassifyError, ErrorAction};
 use std::sync::Arc;
 use tracing::{debug, error, info};
 
-// MirakcEventError の定義と実装
+// ローカルの MirakcEventInput 定義は削除
+
+// --- ローカル定義: 各イベントのデータ部分をパースするための一時構造体 ---
+#[derive(Deserialize)]
+struct TunerStatusChangedData {
+    #[serde(rename = "tunerIndex")]
+    tuner_index: usize,
+}
+#[derive(Deserialize)]
+struct EpgProgramsUpdatedData {
+    #[serde(rename = "serviceId")]
+    service_id: i64,
+}
+#[derive(Deserialize)]
+struct RecordingStartedData {
+    #[serde(rename = "programId")]
+    program_id: u64,
+}
+#[derive(Deserialize)]
+struct RecordingStoppedData {
+    #[serde(rename = "programId")]
+    program_id: u64,
+}
+#[derive(Deserialize)]
+struct RecordingFailedData {
+    #[serde(rename = "programId")]
+    program_id: u64,
+    reason: RecordingFailedReason,
+} // ドメインのenumを直接使う
+#[derive(Deserialize)]
+struct RecordingRescheduledData {
+    #[serde(rename = "programId")]
+    program_id: u64,
+}
+#[derive(Deserialize)]
+struct RecordingRecordSavedData {
+    #[serde(rename = "recordId")]
+    record_id: String,
+    #[serde(rename = "recordingStatus")]
+    recording_status: RecordingStatus,
+} // ドメインのenumを直接使う
+#[derive(Deserialize)]
+struct RecordingRecordRemovedData {
+    #[serde(rename = "recordId")]
+    record_id: String,
+}
+#[derive(Deserialize)]
+struct RecordingContentRemovedData {
+    #[serde(rename = "recordId")]
+    record_id: String,
+}
+#[derive(Deserialize)]
+struct RecordingRecordBrokenData {
+    #[serde(rename = "recordId")]
+    record_id: String,
+    reason: String,
+}
+#[derive(Deserialize)]
+struct OnairProgramChangedData {
+    #[serde(rename = "serviceId")]
+    service_id: i64,
+}
+
+// --- MirakcEventError の定義と実装 ---
 #[derive(Debug, thiserror::Error)] // thiserror を使用
 pub enum MirakcEventError {
     #[error("Serialization error: {0}")]
@@ -63,26 +122,30 @@ impl MirakcEventHandler {
     }
 
     // handle メソッドは StreamHandler のメソッドではなく、通常のメソッド
-    pub async fn handle(&self, event_dto: MirakcEventDto) -> Result<Option<()>, MirakcEventError> {
+    // 入力型をローカル定義の MirakcEventInput に変更
+    pub async fn handle(
+        &self,
+        event_input: MirakcEventInput,
+    ) -> Result<Option<()>, MirakcEventError> {
         info!(
-            event_type = %event_dto.event_type,
-            "Handling MirakcEventDto"
+            event_type = %event_input.event_type,
+            "Handling MirakcEventInput" // Dto -> Input
         );
 
         // mirakc_url を事前にクローン
-        let mirakc_url = event_dto.mirakc_url.clone();
+        let mirakc_url = event_input.mirakc_url.clone();
+        let received_at = event_input.received_at; // received_at も事前に取得
 
         // イベントタイプに応じてデシリアライズし、対応する Sink に発行
-        // エラーは ? で伝播させる (From 実装により MirakcEventError に変換される)
-        // result 変数を削除し、match 式全体に ? を適用
-        match event_dto.event_type.as_str() {
+        match event_input.event_type.as_str() {
             "tuner.status-changed" => {
-                let data: shared_core::dtos::mirakc_event::TunerStatusChangedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: TunerStatusChangedData = serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = TunerStatusChangedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at, // received_at は Copy なのでムーブされない
+                    mirakc_url,
+                    tuner_index: parsed_data.tuner_index, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing TunerStatusChangedEvent to JetStream");
                 if let Some(sink) = &self.sinks.tuner_status_changed {
@@ -94,12 +157,13 @@ impl MirakcEventHandler {
                 }
             }
             "epg.programs-updated" => {
-                let data: shared_core::dtos::mirakc_event::EpgProgramsUpdatedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: EpgProgramsUpdatedData = serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = EpgProgramsUpdatedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    service_id: parsed_data.service_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing EpgProgramsUpdatedEvent to JetStream");
                 if let Some(sink) = &self.sinks.epg_programs_updated {
@@ -111,12 +175,13 @@ impl MirakcEventHandler {
                 }
             }
             "recording.started" => {
-                let data: shared_core::dtos::mirakc_event::RecordingStartedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingStartedData = serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingStartedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    program_id: parsed_data.program_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingStartedEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_started {
@@ -128,12 +193,13 @@ impl MirakcEventHandler {
                 }
             }
             "recording.stopped" => {
-                let data: shared_core::dtos::mirakc_event::RecordingStoppedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingStoppedData = serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingStoppedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    program_id: parsed_data.program_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingStoppedEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_stopped {
@@ -145,12 +211,14 @@ impl MirakcEventHandler {
                 }
             }
             "recording.failed" => {
-                let data: shared_core::dtos::mirakc_event::RecordingFailedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingFailedData = serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingFailedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    program_id: parsed_data.program_id, // パース結果からフィールドを取得
+                    reason: parsed_data.reason,         // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingFailedEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_failed {
@@ -162,12 +230,14 @@ impl MirakcEventHandler {
                 }
             }
             "recording.rescheduled" => {
-                let data: shared_core::dtos::mirakc_event::RecordingRescheduledDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingRescheduledData =
+                    serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingRescheduledEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    program_id: parsed_data.program_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingRescheduledEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_rescheduled {
@@ -181,12 +251,15 @@ impl MirakcEventHandler {
                 }
             }
             "recording.record-saved" => {
-                let data: shared_core::dtos::mirakc_event::RecordingRecordSavedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingRecordSavedData =
+                    serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingRecordSavedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    record_id: parsed_data.record_id, // パース結果からフィールドを取得
+                    recording_status: parsed_data.recording_status, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingRecordSavedEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_record_saved {
@@ -200,12 +273,14 @@ impl MirakcEventHandler {
                 }
             }
             "recording.record-removed" => {
-                let data: shared_core::dtos::mirakc_event::RecordingRecordRemovedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingRecordRemovedData =
+                    serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingRecordRemovedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    record_id: parsed_data.record_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingRecordRemovedEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_record_removed {
@@ -219,12 +294,14 @@ impl MirakcEventHandler {
                 }
             }
             "recording.content-removed" => {
-                let data: shared_core::dtos::mirakc_event::RecordingContentRemovedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingContentRemovedData =
+                    serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingContentRemovedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    record_id: parsed_data.record_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingContentRemovedEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_content_removed {
@@ -236,12 +313,15 @@ impl MirakcEventHandler {
                 }
             }
             "recording.record-broken" => {
-                let data: shared_core::dtos::mirakc_event::RecordingRecordBrokenDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: RecordingRecordBrokenData =
+                    serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = RecordingRecordBrokenEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    record_id: parsed_data.record_id, // パース結果からフィールドを取得
+                    reason: parsed_data.reason,       // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing RecordingRecordBrokenEvent to JetStream");
                 if let Some(sink) = &self.sinks.recording_record_broken {
@@ -255,12 +335,13 @@ impl MirakcEventHandler {
                 }
             }
             "onair.program-changed" => {
-                let data: shared_core::dtos::mirakc_event::OnairProgramChangedDto =
-                    serde_json::from_str(&event_dto.data)?;
+                // 一時的なデータ構造にパース
+                let parsed_data: OnairProgramChangedData = serde_json::from_str(&event_input.data)?;
+                // ドメインイベントを組み立て
                 let event = OnairProgramChangedEvent {
-                    mirakc_url, // クローンした値を使用
-                    data,
-                    received_at: event_dto.received_at,
+                    mirakc_url,
+                    service_id: parsed_data.service_id, // パース結果からフィールドを取得
+                    received_at,
                 };
                 debug!("Publishing OnairProgramChangedEvent to JetStream");
                 if let Some(sink) = &self.sinks.onair_program_changed {
@@ -275,14 +356,12 @@ impl MirakcEventHandler {
                 // 未知のイベントタイプはログに記録するだけ
                 info!(
                     "Unknown mirakc event type received: {}",
-                    event_dto.event_type
+                    event_input.event_type // dto -> input
                 );
-                // Ok(()) を返す必要はない。match 式が値を返さないようにする。
             }
-        } // match 式全体の ? を削除。各アーム内の ? でエラーは処理される。
+        }
 
-        // 常に Ok(None) を返す (このハンドラは StreamWorker の出力としては使われないため)
+        // 常に Ok(None) を返す
         Ok(None)
     }
-} // impl MirakcEventHandler の閉じ括弧
-  // 重複した match ブロックを削除
+}

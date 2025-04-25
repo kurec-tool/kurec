@@ -172,7 +172,6 @@ mod tests {
     // use async_nats::connect; // infra_nats::connect を使うので不要
     use chrono::{TimeZone, Utc};
     use domain::models::epg::KurecProgram;
-    use futures::StreamExt;
     use infra_nats::connect as nats_connect; // infra_nats::connect をインポート
     use testcontainers::{
         core::WaitFor, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
@@ -358,7 +357,7 @@ mod tests {
     #[tokio::test]
     async fn test_save_and_get_programs() -> anyhow::Result<()> {
         // NatsClient を取得するが、リポジトリ作成には store を直接使う (new のテストではないため)
-        let (_container, nats_client, store, _cleaner) = setup_test_kv().await?;
+        let (_container, _nats_client, store, _cleaner) = setup_test_kv().await?;
         // let repository = NatsKvProgramRepository::new(nats_client.clone()).await?; // new を使う場合
         let repository = NatsKvProgramRepository {
             store: store.clone(),

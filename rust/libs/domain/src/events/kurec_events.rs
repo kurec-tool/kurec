@@ -1,5 +1,5 @@
-use crate::event::Event; // 新しい Event トレイトをインポート
-use infra_macros::define_event_stream; // 新しいマクロをインポート
+use crate::event::Event;
+use infra_macros::define_event_stream;
 use serde::{Deserialize, Serialize};
 
 /// EPG情報がKVSに保存されたことを示すイベント。
@@ -12,7 +12,7 @@ pub struct EpgStoredEvent {
     /// 更新されたEPGのサービスID (Mirakurun Service ID)
     pub service_id: i64,
 }
-impl Event for EpgStoredEvent {} // Event トレイトを実装
+impl Event for EpgStoredEvent {}
 
 #[cfg(test)]
 mod tests {

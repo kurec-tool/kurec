@@ -2,58 +2,32 @@
 //!
 //! このモジュールはEPG更新イベントを処理するコマンドを提供します。
 
-use anyhow::{Context, Result};
-// use async_trait::async_trait; // 不要になった
-use domain::ports::event_source::EventSource; // domain::ports::event_source をインポート
+use anyhow::Result;
+use domain::ports::event_source::EventSource;
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     handlers::epg_update_handler::{EpgUpdateHandler, StreamHandler},
-    ports::{
-        event_sink::EventSink, repositories::kurec_program_repository::KurecProgramRepository,
-    },
+    ports::event_sink::EventSink,
 };
-use futures::StreamExt; // StreamExt をインポート
-use infra_kvs::nats_kv::NatsKvProgramRepository;
-use infra_mirakc::factory::MirakcClientFactoryImpl;
-use shared_core::error_handling::ClassifyError; // ErrorAction を削除
-                                                // use shared_core::{ ... }; // まとめていたものを削除
+use futures::StreamExt;
 use std::sync::Arc;
-use tokio::select; // select! マクロをインポート
+use tokio::select;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info}; // error, info をインポート
-
-// JsEpgNotifier 構造体と実装を削除
+use tracing::{error, info};
 
 /// EPG更新ワーカーを実行 (手動ループ)
 pub async fn run_epg_updater(
-    nats_client: Arc<infra_nats::NatsClient>, // Arc<NatsClient> を引数で受け取る
-    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>>, // EventSource を引数で受け取る
-    sink: Arc<dyn EventSink<EpgStoredEvent>>, // EventSink を引数で受け取る
+    source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>>,
+    sink: Arc<dyn EventSink<EpgStoredEvent>>,
     shutdown: CancellationToken,
 ) -> Result<()> {
     info!("Starting EPG updater worker...");
 
-    // KVSリポジトリの作成
-    let repo_result = NatsKvProgramRepository::new(nats_client) // すでに Arc<NatsClient> なので Arc::new は不要
-        .await
-        .context("KVS プログラムリポジトリの作成に失敗しました");
-    let program_repository: Arc<dyn KurecProgramRepository> = Arc::new(repo_result?);
-
-    // MirakcClientFactory の作成
-    let _mirakc_api_factory = Arc::new(MirakcClientFactoryImpl::new());
-
     // EpgUpdateHandler の作成
-    // TODO: EpgUpdateHandler::new のシグネチャも修正が必要
-    let handler = Arc::new(EpgUpdateHandler::new(
-        program_repository,
-        sink.clone(), // sink を渡す
-                      // mirakc_api_factory, // TODO: ハンドラに追加
-    ));
-
-    // StreamWorker 関連のコードは完全に削除されていることを確認
+    let handler = Arc::new(EpgUpdateHandler::new());
 
     // イベント処理ループ
-    let mut event_stream = source.subscribe().await?; // event_stream() -> subscribe() に変更
+    let mut event_stream = source.subscribe().await?;
     let shutdown_token = shutdown.clone();
 
     loop {
@@ -68,7 +42,7 @@ pub async fn run_epg_updater(
                 match maybe_event {
                     Some(Ok(event)) => {
                         info!(
-                            service_id = event.data.service_id,
+                            service_id = event.service_id,
                             "Received EpgProgramsUpdatedEvent"
                         );
                         // ハンドラでイベントを処理

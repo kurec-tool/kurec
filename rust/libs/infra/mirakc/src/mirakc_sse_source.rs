@@ -5,10 +5,11 @@ use async_trait::async_trait;
 use backoff::{backoff::Backoff, ExponentialBackoff};
 use bytes::Bytes;
 use chrono::Utc;
+use domain::events::MirakcEventInput; // MirakcEventInput をインポート
 use domain::ports::event_source::EventSource; // domain::ports::event_source からインポート
 use eventsource_stream::Eventsource;
 use futures::{future, stream::BoxStream, Stream, StreamExt};
-use shared_core::dtos::mirakc_event::MirakcEventDto;
+// 不要な DTO インポートを削除: use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::time::Duration;
 
 /// mirakc SSEイベントソース
@@ -91,11 +92,12 @@ impl MirakcSseSource {
 
     // #[async_trait] を削除
     // EventSource<MirakcEventDto> の実装を削除
-    // 代わりに、MirakcEventDto を返すストリームを提供するメソッドを追加する
+    // 代わりに、MirakcEventInput を返すストリームを提供するメソッドを追加する
 
-    /// MirakcEventDto のストリームを取得する
+    /// MirakcEventInput のストリームを取得する
     /// EventSource トレイトの実装で使用するためのヘルパーメソッド
-    async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventDto>> {
+    // 返り値の型を MirakcEventInput に変更
+    async fn event_stream(&self) -> Result<BoxStream<'static, MirakcEventInput>> {
         let mirakc_url = self.mirakc_url.clone();
         tracing::info!("Starting event stream from mirakc URL: {}", mirakc_url);
 
@@ -112,20 +114,21 @@ impl MirakcSseSource {
             }
         };
 
-        // SSEストリームを MirakcEventDto ストリームに変換
-        tracing::debug!("Converting SSE stream to MirakcEventDto stream");
+        // SSEストリームを MirakcEventInput ストリームに変換
+        tracing::debug!("Converting SSE stream to MirakcEventInput stream"); // Dto -> Input
         let event_stream = stream
             .eventsource()
             .filter_map(move |event_result| {
                 let mirakc_url = mirakc_url.clone(); // 各イベント用にURLをクローン
                 future::ready(match event_result {
                     Ok(event) => {
-                        // MirakcEventDtoを作成
+                        // MirakcEventInput を作成
                         tracing::info!(
                             event_type = %event.event,
                             "Received SSE event - will be processed and published to JetStream"
                         );
-                        Some(MirakcEventDto {
+                        // MirakcEventInput を作成
+                        Some(MirakcEventInput {
                             mirakc_url,
                             event_type: event.event,
                             data: event.data,
@@ -148,15 +151,19 @@ impl MirakcSseSource {
     }
 } // impl MirakcSseSource の閉じ括弧を追加
 
-/// MirakcSseSource に EventSource<MirakcEventDto> トレイトを実装
+/// MirakcSseSource に EventSource<MirakcEventInput> トレイトを実装
 #[async_trait]
-impl EventSource<MirakcEventDto> for MirakcSseSource {
-    /// MirakcEventDto のストリームを購読する
-    async fn subscribe(&self) -> Result<BoxStream<'static, Result<MirakcEventDto, anyhow::Error>>> {
+// ジェネリック型を MirakcEventInput に変更
+impl EventSource<MirakcEventInput> for MirakcSseSource {
+    /// MirakcEventInput のストリームを購読する
+    // 返り値の型を MirakcEventInput に変更
+    async fn subscribe(
+        &self,
+    ) -> Result<BoxStream<'static, Result<MirakcEventInput, anyhow::Error>>> {
         // イベントストリームを取得
         let event_stream = self.event_stream().await?;
 
-        // Result<MirakcEventDto, anyhow::Error> を返すストリームに変換
+        // Result<MirakcEventInput, anyhow::Error> を返すストリームに変換
         let result_stream = event_stream.map(|event| Ok(event)).boxed();
 
         Ok(result_stream)

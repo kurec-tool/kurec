@@ -10,7 +10,6 @@ use kurec_app::worker::stream_worker::{
 };
 use shared_core::error_handling::{ClassifyError, ErrorAction};
 use std::fmt;
-use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
@@ -22,7 +21,7 @@ struct InputEvent {
     pub data: String,
 }
 
-// Event トレイトを実装（stream_name と event_name メソッドは削除）
+// Event トレイトを実装
 impl Event for InputEvent {}
 
 // テスト用の出力イベント型
@@ -33,7 +32,7 @@ struct OutputEvent {
     pub processed: bool,
 }
 
-// Event トレイトを実装（stream_name と event_name メソッドは削除）
+// Event トレイトを実装
 impl Event for OutputEvent {}
 
 // テスト用のエラー型

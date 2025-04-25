@@ -20,7 +20,6 @@ struct TestEvent1 {
 impl Event for TestEvent1 {}
 
 // テスト用のストリーム定義
-const TEST_EVENT1_STREAM_NAME: &str = "test-event1-stream";
 const TEST_EVENT1_SUBJECT: &str = "event1";
 
 // テスト用のイベント型2（異なるストリームとサブジェクト）
@@ -34,13 +33,15 @@ struct TestEvent2 {
 impl Event for TestEvent2 {}
 
 // テスト用のストリーム定義
-const TEST_EVENT2_STREAM_NAME: &str = "test-event2-stream";
 const TEST_EVENT2_SUBJECT: &str = "event2";
+
+type PublishedEvent = (String, Vec<u8>);
+type PublishedEvents = Vec<PublishedEvent>;
 
 // モック用のJetStreamコンテキスト
 #[derive(Clone)]
 struct MockJetStreamCtx {
-    published_events: Arc<Mutex<Vec<(String, Vec<u8>)>>>,
+    published_events: Arc<Mutex<PublishedEvents>>,
 }
 
 impl MockJetStreamCtx {

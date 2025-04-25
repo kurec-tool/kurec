@@ -2,20 +2,13 @@
 //!
 //! このモジュールはmirakcイベントを処理するコマンドを提供します。
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use domain::{
-    events::mirakc_events::*,
+    events::MirakcEventInput,
     handlers::mirakc_event_handler::{MirakcEventHandler, MirakcEventSinks},
-    ports::event_source::EventSource, // EventSource をインポート
+    ports::event_source::EventSource,
 };
 use futures::StreamExt;
-// use infra_jetstream::EventStream;
-// use infra_mirakc::MirakcSseSource; // Source は引数で受け取るため削除
-use shared_core::{
-    dtos::mirakc_event::MirakcEventDto,
-    error_handling::ClassifyError,
-    // stream_worker::StreamHandler, // StreamHandler を削除
-};
 use std::sync::Arc;
 use tokio::select;
 use tokio_util::sync::CancellationToken;
@@ -23,18 +16,12 @@ use tracing::{debug, error, info};
 
 /// mirakcイベント処理コマンドを実行
 pub async fn run_mirakc_events(
-    // _config: &crate::AppConfig // AppConfig型が見つからないため削除
-    _mirakc_url: &str, // mirakc_url は source 作成にしか使わないので不要
-    source: Arc<dyn EventSource<MirakcEventDto>>, // Source を引数で受け取る
+    // 引数の型を MirakcEventInput に変更
+    source: Arc<dyn EventSource<MirakcEventInput>>,
     sinks: MirakcEventSinks,
     shutdown: CancellationToken,
 ) -> Result<()> {
-    info!("Starting mirakc events command..."); // URL表示を削除
-
-    // SSEイベントソースは引数で受け取るため削除
-    // let source = MirakcSseSource::new(mirakc_url.to_string());
-
-    // Sink 構築ロジックは削除済み
+    info!("Starting mirakc events command...");
 
     // イベントハンドラの作成 (引数で受け取った sinks を使用)
     let handler = MirakcEventHandler::new(sinks);
@@ -52,18 +39,20 @@ pub async fn run_mirakc_events(
                 break;
             }
             // イベントを受信したら処理
-            maybe_event_dto = event_stream.next() => {
-                match maybe_event_dto {
-                    Some(Ok(event_dto)) => {
+            // maybe_event_dto -> maybe_event_input
+            maybe_event_input = event_stream.next() => {
+                match maybe_event_input {
+                    // event_dto -> event_input
+                    Some(Ok(event_input)) => {
                         // イベント受信のログを追加
                         info!(
-                            event_type = %event_dto.event_type,
-                            received_at = %event_dto.received_at,
+                            event_type = %event_input.event_type,
+                            received_at = %event_input.received_at,
                             "Received mirakc event"
                         );
 
-                        // ハンドラでイベントを処理
-                        match handler.handle(event_dto.clone()).await {
+                        // ハンドラでイベントを処理 (clone は不要になる場合があるが、念のため残す)
+                        match handler.handle(event_input.clone()).await {
                             Ok(_) => {
                                 // 処理成功のログを追加
                                 debug!("Successfully handled mirakc event");
@@ -103,5 +92,3 @@ pub async fn run_mirakc_events(
     info!("Mirakc events processing stopped.");
     Ok(())
 }
-
-// 古い CombinedPublisher と impl_event_sink マクロは削除

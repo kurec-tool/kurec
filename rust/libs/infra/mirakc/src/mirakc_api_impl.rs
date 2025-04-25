@@ -4,11 +4,9 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use domain::ports::mirakc_api::MirakcApi;
 use mirakc_client::apis::configuration::Configuration; // mirakc_client:: を使用
-use mirakc_client::apis::{programs_api, services_api}; // mirakc_client:: を使用
+use mirakc_client::apis::services_api; // mirakc_client:: を使用
 use reqwest::Client;
-// use mirakc_client::models::{MirakurunProgram, MirakurunService}; // 直接返さないので不要
 use serde_json::Value;
-use url::Url;
 
 /// reqwest を使用した MirakcApi の実装
 #[derive(Clone)] // Clone を追加
@@ -24,11 +22,11 @@ impl MirakcApiClientImpl {
             client: Client::new(), // reqwest::Client を初期化
         }
     }
+}
 
-    /// ベースURLとパスから完全なURLを構築するヘルパー関数
-    fn build_url(base_url: &str, path: &str) -> Result<Url> {
-        let base = Url::parse(base_url).context("Invalid base URL")?;
-        base.join(path).context("Failed to join URL path")
+impl Default for MirakcApiClientImpl {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

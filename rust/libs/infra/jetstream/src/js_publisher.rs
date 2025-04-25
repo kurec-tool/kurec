@@ -1,12 +1,9 @@
-use crate::error::PublishError; // エラー型をインポート
 use anyhow::{Context, Result};
-use async_nats::jetstream;
 use async_trait::async_trait;
 use domain::event::Event; // 新しい Event トレイトをインポート
 use domain::ports::event_sink::EventSink;
 use heck::ToSnakeCase; // スネークケース変換用
 use std::any::type_name; // 型名取得用
-use std::marker::PhantomData;
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument, warn}; // info, warn を追加
 
@@ -16,23 +13,25 @@ use infra_nats::NatsClient;
 /// JetStreamを使用したイベント発行者
 pub struct JsPublisher<E: Event> {
     nats_client: Arc<NatsClient>,
-    event_stream: crate::event_stream::EventStream<E>,
+    event_stream: crate::event_stream::EventStream,
+    _phantom: std::marker::PhantomData<E>, // 型パラメータを保持するためのフィールド
 }
 
 impl<E: Event> JsPublisher<E> {
     /// 新しいJsPublisherを作成
     pub fn new(
         nats_client: Arc<NatsClient>,
-        event_stream: crate::event_stream::EventStream<E>,
+        event_stream: crate::event_stream::EventStream,
     ) -> Self {
         Self {
             nats_client,
             event_stream,
+            _phantom: std::marker::PhantomData, // 型パラメータを保持
         }
     }
 
     /// イベントストリームを取得
-    pub fn event_stream(&self) -> &crate::event_stream::EventStream<E> {
+    pub fn event_stream(&self) -> &crate::event_stream::EventStream {
         &self.event_stream
     }
 }
@@ -109,7 +108,7 @@ where
                     nats_config.subjects = vec![subject.clone()];
 
                     match js_ctx.create_stream(nats_config).await {
-                        Ok(stream_info) => {
+                        Ok(_stream_info) => {
                             info!(stream = %stream_name, "Successfully created stream");
                         }
                         Err(create_err) => {

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use domain::events::MirakcEventInput; // MirakcEventInput をインポート
 use domain::{
     events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
     handlers::mirakc_event_handler::MirakcEventSinks,
@@ -7,8 +8,6 @@ use domain::{
 };
 use infra_jetstream::{self, JsPublisher, JsSubscriber}; // infra_jetstream とその要素をインポート
 use infra_mirakc::MirakcSseSource; // MirakcSseSource をインポート
-use infra_nats;
-use shared_core::dtos::mirakc_event::MirakcEventDto; // MirakcEventDto をインポート
 use std::{env, sync::Arc}; // Arc をインポート
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
@@ -89,11 +88,6 @@ async fn main() -> Result<()> {
         shutdown_clone.cancel();
     });
 
-    // アプリケーション設定を作成
-    let app_config = AppConfig {
-        nats_url: nats_url.clone(),
-    };
-
     // ワーカーを起動
     match cli.worker {
         WorkerType::CheckVersion { mirakc_url } => {
@@ -158,7 +152,8 @@ async fn main() -> Result<()> {
             println!("Starting mirakc events worker with URL: {}...", mirakc_url);
 
             // 依存関係の初期化
-            let mirakc_source: Arc<dyn EventSource<MirakcEventDto>> =
+            // EventSource の型パラメータを MirakcEventInput に変更
+            let mirakc_source: Arc<dyn EventSource<MirakcEventInput>> =
                 Arc::new(MirakcSseSource::new(mirakc_url.clone()));
 
             // TODO: MirakcEventSinks の初期化 (必要な Sink を作成して渡す)
@@ -170,13 +165,8 @@ async fn main() -> Result<()> {
             let worker_shutdown = shutdown.clone();
 
             // mirakcイベント処理コマンドを実行
-            if let Err(e) = cmd::mirakc_events::run_mirakc_events(
-                &mirakc_url, // _mirakc_url として受け取るので渡す必要はある
-                mirakc_source,
-                sinks,
-                worker_shutdown,
-            )
-            .await
+            if let Err(e) =
+                cmd::mirakc_events::run_mirakc_events(mirakc_source, sinks, worker_shutdown).await
             {
                 eprintln!("mirakc events worker error: {}", e);
                 std::process::exit(1);
@@ -190,8 +180,8 @@ async fn main() -> Result<()> {
 
             // 依存関係の初期化
             // ストリーム定義を取得
-            let mirakc_stream = streams_def::mirakc_event_stream::<EpgProgramsUpdatedEvent>();
-            let kurec_stream = streams_def::kurec_event_stream::<EpgStoredEvent>();
+            let mirakc_stream = streams_def::mirakc_event_stream();
+            let kurec_stream = streams_def::kurec_event_stream();
 
             // JsSubscriber と JsPublisher を作成
             let epg_updated_source: Arc<dyn EventSource<EpgProgramsUpdatedEvent>> = Arc::new(
@@ -209,7 +199,6 @@ async fn main() -> Result<()> {
             // EPG更新ワーカーを実行
             let _epg_updater_handle = tokio::spawn(async move {
                 if let Err(e) = cmd::epg_updater::run_epg_updater(
-                    nats_client.clone(), // NatsClient を渡す
                     epg_updated_source,
                     epg_stored_sink,
                     worker_shutdown,

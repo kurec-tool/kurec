@@ -1,18 +1,15 @@
-use crate::error::{AckError, SubscribeError}; // エラー型をインポート
-use crate::message::EventMessage; // EventMessage をインポート
 use anyhow::Result;
 use async_nats::jetstream::{self, consumer::pull::MessagesErrorKind};
 use async_trait::async_trait;
 use domain::event::Event; // 新しい Event トレイトをインポート
 use domain::ports::event_source::EventSource;
-use futures::stream::{BoxStream, StreamExt, TryStreamExt}; // TryStreamExt を追加
+use futures::stream::{BoxStream, TryStreamExt}; // TryStreamExt を追加
 use heck::ToSnakeCase;
 use serde::de::DeserializeOwned; // DeserializeOwned をインポート
 use std::any::type_name;
 use std::fmt::Debug; // Debug をインポート
-use std::marker::PhantomData;
 use std::sync::Arc;
-use tracing::{debug, error, info, instrument, warn}; // ログレベルを追加
+use tracing::{debug, error, info, warn}; // ログレベルを追加
 
 // infra_nats クレートの NatsClient をインポート
 use infra_nats::NatsClient;
@@ -38,23 +35,25 @@ fn type_name_to_snake_case<T: ?Sized + Event>() -> String {
 /// JetStreamを使用したイベント購読者
 pub struct JsSubscriber<E: Event> {
     nats_client: Arc<NatsClient>,
-    event_stream: crate::event_stream::EventStream<E>,
+    event_stream: crate::event_stream::EventStream,
+    _phantom: std::marker::PhantomData<E>, // 型パラメータを保持するためのフィールド
 }
 
 impl<E: Event> JsSubscriber<E> {
     /// 新しいJsSubscriberを作成
     pub fn new(
         nats_client: Arc<NatsClient>,
-        event_stream: crate::event_stream::EventStream<E>,
+        event_stream: crate::event_stream::EventStream,
     ) -> Self {
         Self {
             nats_client,
             event_stream,
+            _phantom: std::marker::PhantomData, // 型パラメータを保持
         }
     }
 
     /// イベントストリームを取得
-    pub fn event_stream(&self) -> &crate::event_stream::EventStream<E> {
+    pub fn event_stream(&self) -> &crate::event_stream::EventStream {
         &self.event_stream
     }
 }

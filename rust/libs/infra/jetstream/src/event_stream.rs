@@ -3,24 +3,20 @@
 //! このモジュールは、イベント型とJetStreamストリームの設定情報を関連付けるための型を定義します。
 
 use crate::config::StreamConfig;
-use domain::event::Event;
-use std::marker::PhantomData;
 
 /// イベント型とJetStreamストリームの設定情報を関連付ける構造体
 ///
 /// この構造体は、イベント型に対応するJetStreamストリームの名前と設定情報を保持します。
 /// アプリケーション層で、具体的なイベント型に対応するEventStreamのインスタンスを定義します。
 #[derive(Debug, Clone)]
-pub struct EventStream<E: Event> {
+pub struct EventStream {
     /// ストリーム名
     stream_name: &'static str,
     /// ストリーム設定
     config: StreamConfig,
-    /// イベント型のマーカー
-    _phantom: PhantomData<E>,
 }
 
-impl<E: Event> EventStream<E> {
+impl EventStream {
     /// 新しいEventStreamを作成
     ///
     /// # 引数
@@ -35,7 +31,6 @@ impl<E: Event> EventStream<E> {
         Self {
             stream_name,
             config,
-            _phantom: PhantomData,
         }
     }
 

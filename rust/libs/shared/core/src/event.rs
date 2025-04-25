@@ -4,15 +4,4 @@ use serde::{de::DeserializeOwned, Serialize};
 ///
 /// イベントの種類を一意に識別するための情報を提供します。
 /// また、シリアライズ/デシリアライズ可能であることを要求します。
-pub trait Event: Serialize + DeserializeOwned + Send + Sync + 'static {
-    /// イベント名を返します。
-    ///
-    /// イベントの種類を一意に識別するために使用されます。
-    /// 通常は構造体名をスネークケースにしたものが使われます。
-    fn event_name() -> &'static str;
-
-    /// イベントが属するストリーム名を返します。
-    ///
-    /// #[event(stream = "...")] で指定された名前が使われます。
-    fn stream_name() -> &'static str;
-}
+pub trait Event: Serialize + DeserializeOwned + Send + Sync + 'static {}

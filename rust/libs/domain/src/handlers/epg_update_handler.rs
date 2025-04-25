@@ -1,13 +1,7 @@
 //! EPG更新イベントハンドラ
 
-use crate::{
-    events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent},
-    ports::{
-        event_sink::EventSink, // DomainEventSink -> EventSink
-        repositories::kurec_program_repository::KurecProgramRepository,
-    },
-};
-use anyhow::{Context, Result};
+use crate::events::{kurec_events::EpgStoredEvent, mirakc_events::EpgProgramsUpdatedEvent};
+use anyhow::Result;
 use async_trait::async_trait;
 // TODO: StreamHandler は app::worker に移動したが、domain から app に依存できない。
 //       StreamHandler トレイト自体を domain::ports に移動するか、
@@ -15,7 +9,6 @@ use async_trait::async_trait;
 //       一旦、コンパイルエラーを許容して進める。
 // use app::worker::stream_worker::StreamHandler;
 use shared_core::error_handling::{ClassifyError, ErrorAction}; // これは shared_core のままで良い
-use std::sync::Arc;
 
 // 仮の StreamHandler トレイト定義 (コンパイルを通すため)
 // TODO: 上記 TODO を解決したら削除
@@ -58,24 +51,18 @@ impl ClassifyError for EpgUpdateError {
 // impl From<anyhow::Error> for EpgUpdateError { ... } ブロックを削除
 
 /// EPG更新イベントハンドラ
-pub struct EpgUpdateHandler {
-    program_repository: Arc<dyn KurecProgramRepository>,
-    kurec_event_sink: Arc<dyn EventSink<EpgStoredEvent>>, // DomainEventSink -> EventSink
-                                                          // TODO: Add MirakcClientFactory if needed for fetching program details
-}
+pub struct EpgUpdateHandler {}
 
 impl EpgUpdateHandler {
     /// 新しいEpgUpdateHandlerを作成
-    pub fn new(
-        program_repository: Arc<dyn KurecProgramRepository>,
-        kurec_event_sink: Arc<dyn EventSink<EpgStoredEvent>>, // DomainEventSink -> EventSink
-                                                              // TODO: Add MirakcClientFactory if needed
-    ) -> Self {
-        Self {
-            program_repository,
-            kurec_event_sink,
-            // TODO: Initialize MirakcClientFactory if added
-        }
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for EpgUpdateHandler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -89,7 +76,7 @@ impl StreamHandler<EpgProgramsUpdatedEvent, EpgStoredEvent, EpgUpdateError> for 
     ) -> Result<Option<EpgStoredEvent>, EpgUpdateError> {
         tracing::info!(
             "Handling EpgProgramsUpdatedEvent for service_id: {}",
-            event.data.service_id
+            event.service_id // data フィールドを削除
         );
 
         // TODO: Implement the actual EPG update logic here.

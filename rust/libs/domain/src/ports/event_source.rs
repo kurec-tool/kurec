@@ -1,4 +1,3 @@
-use crate::event::Event; // domain クレート内の Event トレイトを使用
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;

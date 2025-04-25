@@ -6,10 +6,11 @@ use async_trait::async_trait;
 use backoff::{backoff::Backoff, ExponentialBackoff};
 use bytes::Bytes;
 use chrono::Utc;
+use domain::events::MirakcEventInput; // MirakcEventInput をインポート
 use domain::ports::repositories::mirakc_event_repository::MirakcEventRepository;
 use eventsource_stream::Eventsource;
-use futures::{future, Stream, StreamExt};
-use shared_core::dtos::mirakc_event::MirakcEventDto;
+use futures::{future, stream::BoxStream, Stream, StreamExt}; // BoxStream をインポート
+                                                             // 不要な DTO インポートを削除: use shared_core::dtos::mirakc_event::MirakcEventDto;
 use std::time::Duration;
 
 /// mirakcイベントリポジトリの実装
@@ -83,19 +84,19 @@ impl MirakcEventRepositoryImpl {
 
 #[async_trait]
 impl MirakcEventRepository for MirakcEventRepositoryImpl {
-    async fn get_event_stream(
-        &self,
-    ) -> anyhow::Result<futures::stream::BoxStream<'static, MirakcEventDto>> {
+    // 返り値の型を MirakcEventInput に変更し、`futures::stream::` プレフィックスを削除
+    async fn get_event_stream(&self) -> anyhow::Result<BoxStream<'static, MirakcEventInput>> {
         let mirakc_url = self.mirakc_url.clone();
 
         // 初回接続
         let stream = self.get_sse_stream().await?;
 
-        // SSEストリームをMirakcEventDtoストリームに変換
+        // SSEストリームをMirakcEventInputストリームに変換
         let event_stream = stream
             .eventsource()
             .filter_map(move |event| {
-                future::ready(event.ok().map(|e| MirakcEventDto {
+                // MirakcEventInput を作成
+                future::ready(event.ok().map(|e| MirakcEventInput {
                     mirakc_url: mirakc_url.clone(),
                     event_type: e.event,
                     data: e.data,
@@ -133,14 +134,16 @@ mod tests {
         let repository = MirakcEventRepositoryImpl::new(mock_server.uri());
         let mut stream = repository.get_event_stream().await.unwrap();
 
-        // イベントを受信できることを確認
+        // イベントを受信できることを確認 (MirakcEventInput のフィールドをチェック)
         let event = stream.next().await.unwrap();
         assert_eq!(event.event_type, "tuner.status-changed");
         assert_eq!(event.mirakc_url, mock_server.uri());
+        // data フィールドは JSON 文字列として比較
+        assert_eq!(event.data, "{\"tunerIndex\":0}");
 
-        // データが正しいことを確認
-        let data: shared_core::dtos::mirakc_event::TunerStatusChangedDto =
-            serde_json::from_str(&event.data).unwrap();
-        assert_eq!(data.tuner_index, 0);
+        // DTOへのデシリアライズは不要になったため削除
+        // let data: shared_core::dtos::mirakc_event::TunerStatusChangedDto =
+        //     serde_json::from_str(&event.data).unwrap();
+        // assert_eq!(data.tuner_index, 0);
     }
 }
